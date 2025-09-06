@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,16 +11,17 @@ import {
   BarChart3, 
   LogOut,
   Stethoscope,
-  User,
-  Menu,
-  X
+  User
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
-const Sidebar = () => {
+interface SidebarProps {
+  isCollapsed: boolean;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const adminNavItems = [
     { to: '/admin', icon: BarChart3, label: 'Dashboard' },
@@ -62,18 +63,7 @@ const Sidebar = () => {
               </div>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="h-8 w-8 p-0 hover:bg-sidebar-accent"
-          >
-            {isCollapsed ? (
-              <Menu className="w-4 h-4" />
-            ) : (
-              <X className="w-4 h-4" />
-            )}
-          </Button>
+          {/* Old header toggle removed; use the layout toggle button instead */}
         </div>
       </div>
 
