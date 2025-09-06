@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,16 @@ import {
   BarChart3, 
   LogOut,
   Stethoscope,
-  User
+  User,
+  Menu,
+  X
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const adminNavItems = [
     { to: '/admin', icon: BarChart3, label: 'Dashboard' },
@@ -42,17 +45,35 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-sidebar border-r border-sidebar-border">
+    <div className={`flex flex-col h-full bg-sidebar border-r border-sidebar-border transition-all duration-300 ${
+      isCollapsed ? 'w-16' : 'w-64'
+    }`}>
       {/* Header */}
       <div className="p-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-medical rounded-xl flex items-center justify-center">
-            <Stethoscope className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-medical rounded-xl flex items-center justify-center">
+              <Stethoscope className="w-6 h-6 text-white" />
+            </div>
+            {!isCollapsed && (
+              <div>
+                <h2 className="font-bold text-sidebar-foreground">LabManager Pro</h2>
+                <p className="text-sm text-muted-foreground capitalize">{user?.role} Panel</p>
+              </div>
+            )}
           </div>
-          <div>
-            <h2 className="font-bold text-sidebar-foreground">LabManager Pro</h2>
-            <p className="text-sm text-muted-foreground capitalize">{user?.role} Panel</p>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="h-8 w-8 p-0 hover:bg-sidebar-accent"
+          >
+            {isCollapsed ? (
+              <Menu className="w-4 h-4" />
+            ) : (
+              <X className="w-4 h-4" />
+            )}
+          </Button>
         </div>
       </div>
 
@@ -71,9 +92,10 @@ const Sidebar = () => {
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary'
               }`
             }
+            title={isCollapsed ? item.label : undefined}
           >
-            <item.icon className="w-5 h-5" />
-            <span>{item.label}</span>
+            <item.icon className="w-5 h-5 flex-shrink-0" />
+            {!isCollapsed && <span>{item.label}</span>}
           </NavLink>
         ))}
       </nav>
@@ -82,29 +104,48 @@ const Sidebar = () => {
 
       {/* User Info & Logout */}
       <div className="p-4 space-y-4">
-        <div className="flex items-center space-x-3 px-3 py-2 bg-sidebar-accent/30 rounded-lg">
-          <div className="w-8 h-8 bg-gradient-medical rounded-full flex items-center justify-center">
-            <User className="w-4 h-4 text-white" />
+        {!isCollapsed ? (
+          <>
+            <div className="flex items-center space-x-3 px-3 py-2 bg-sidebar-accent/30 rounded-lg">
+              <div className="w-8 h-8 bg-gradient-medical rounded-full flex items-center justify-center">
+                <User className="w-4 h-4 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {user?.name}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user?.email}
+                </p>
+              </div>
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={logout}
+              className="w-full justify-start text-destructive border-destructive/20 hover:bg-destructive/5"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </>
+        ) : (
+          <div className="space-y-2 flex flex-col items-center">
+            <div className="w-8 h-8 bg-gradient-medical rounded-full flex items-center justify-center">
+              <User className="w-4 h-4 text-white" />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={logout}
+              className="w-10 h-10 p-0 text-destructive border-destructive/20 hover:bg-destructive/5"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">
-              {user?.name}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              {user?.email}
-            </p>
-          </div>
-        </div>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={logout}
-          className="w-full justify-start text-destructive border-destructive/20 hover:bg-destructive/5"
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          Sign Out
-        </Button>
+        )}
       </div>
     </div>
   );

@@ -6,10 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Hospital, Upload, Eye, Save, ArrowLeft } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Hospital, Upload, Eye, Save, ArrowLeft, Settings, Printer } from 'lucide-react';
 import { demoHospital } from '@/data/demoData';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
+import { PrintSettings } from '@/components/billing/PrintSettings';
 
 const HospitalProfile = () => {
   const navigate = useNavigate();
@@ -49,8 +51,8 @@ const HospitalProfile = () => {
             Back to Dashboard
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Hospital Profile</h1>
-            <p className="text-muted-foreground">Manage your hospital information and letterhead settings</p>
+            <h1 className="text-3xl font-bold text-foreground">Hospital Profile & Settings</h1>
+            <p className="text-muted-foreground">Manage your hospital information, letterhead and print settings</p>
           </div>
         </div>
         <div className="flex space-x-3">
@@ -72,6 +74,21 @@ const HospitalProfile = () => {
           )}
         </div>
       </div>
+
+      {/* Tabs for different sections */}
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="profile" className="flex items-center space-x-2">
+            <Hospital className="w-4 h-4" />
+            <span>Hospital Profile</span>
+          </TabsTrigger>
+          <TabsTrigger value="print-settings" className="flex items-center space-x-2">
+            <Printer className="w-4 h-4" />
+            <span>Print & Billing Settings</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="profile" className="space-y-6 mt-6">
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Hospital Information */}
@@ -257,6 +274,12 @@ const HospitalProfile = () => {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="print-settings" className="mt-6">
+          <PrintSettings />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
