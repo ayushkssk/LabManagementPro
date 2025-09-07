@@ -109,6 +109,48 @@ const AdminDashboard = () => {
         ))}
       </div>
 
+      {/* Quick Actions */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <TrendingUp className="w-5 h-5 text-primary" />
+            <span>Quick Actions</span>
+          </CardTitle>
+          <CardDescription>Common administrative tasks</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button 
+              variant="outline" 
+              className="p-6 h-auto flex flex-col space-y-2"
+              onClick={() => navigate('/lab/register')}
+            >
+              <UserPlus className="w-8 h-8 text-primary" />
+              <span className="font-medium">Register Patient</span>
+              <span className="text-xs text-muted-foreground">New patient entry</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="p-6 h-auto flex flex-col space-y-2"
+              onClick={() => navigate('/admin/tests')}
+            >
+              <TestTube className="w-8 h-8 text-accent" />
+              <span className="font-medium">Add New Test</span>
+              <span className="text-xs text-muted-foreground">Create test templates</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="p-6 h-auto flex flex-col space-y-2"
+              onClick={() => navigate('/admin/settings')}
+            >
+              <Settings className="w-8 h-8 text-muted-foreground" />
+              <span className="font-medium">System Settings</span>
+              <span className="text-xs text-muted-foreground">Configure preferences</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Patients */}
@@ -199,47 +241,6 @@ const AdminDashboard = () => {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            <span>Quick Actions</span>
-          </CardTitle>
-          <CardDescription>Common administrative tasks</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button 
-              variant="outline" 
-              className="p-6 h-auto flex flex-col space-y-2"
-              onClick={() => navigate('/admin/tests')}
-            >
-              <TestTube className="w-8 h-8 text-accent" />
-              <span className="font-medium">Add New Test</span>
-              <span className="text-xs text-muted-foreground">Create test templates</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="p-6 h-auto flex flex-col space-y-2"
-              onClick={() => navigate('/lab/register')}
-            >
-              <UserPlus className="w-8 h-8 text-primary" />
-              <span className="font-medium">Register Patient</span>
-              <span className="text-xs text-muted-foreground">New patient entry</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="p-6 h-auto flex flex-col space-y-2"
-              onClick={() => navigate('/admin/settings')}
-            >
-              <Settings className="w-8 h-8 text-muted-foreground" />
-              <span className="font-medium">System Settings</span>
-              <span className="text-xs text-muted-foreground">Configure preferences</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

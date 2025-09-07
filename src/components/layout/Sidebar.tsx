@@ -88,7 +88,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
             {!isCollapsed && <span>{item.label}</span>}
           </NavLink>
         ))}
-      </nav>
+       </nav>
 
       <Separator />
 

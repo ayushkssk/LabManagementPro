@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { UserPlus, ArrowLeft, Receipt, FileText, Calculator } from 'lucide-react';
+import { UserPlus, ArrowLeft, Receipt, FileText, Calculator, X, Check, ChevronsUpDown } from 'lucide-react';
 import { demoTests } from '@/data/demoData';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -30,6 +30,47 @@ const PatientRegistration = () => {
     doctor: '',
     selectedTests: []
   });
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  
+  // Filter tests based on search query with debounce
+  const [filteredTests, setFilteredTests] = React.useState(demoTests);
+  
+  React.useEffect(() => {
+    // Simple debounce implementation
+    const timer = setTimeout(() => {
+      if (searchQuery.trim() === '') {
+        setFilteredTests(demoTests);
+      } else {
+        const query = searchQuery.toLowerCase();
+        const results = demoTests.filter(test => 
+          test.name.toLowerCase().includes(query) ||
+          test.fields.some(field => field.name.toLowerCase().includes(query))
+        );
+        setFilteredTests(results);
+      }
+    }, 150);
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+  
+  const toggleTestSelection = (testId: string) => {
+    setPatient(prev => ({
+      ...prev,
+      selectedTests: prev.selectedTests.includes(testId)
+        ? prev.selectedTests.filter(id => id !== testId)
+        : [...prev.selectedTests, testId]
+    }));
+  };
+  
+  const removeTest = (testId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPatient(prev => ({
+      ...prev,
+      selectedTests: prev.selectedTests.filter(id => id !== testId)
+    }));
+  };
   
   const [showBillDialog, setShowBillDialog] = useState(false);
   const [generatedBill, setGeneratedBill] = useState<any>(null);
@@ -204,28 +245,132 @@ const PatientRegistration = () => {
                 {/* Test Selection */}
                 <div className="space-y-4">
                   <Label className="text-base font-medium">Select Tests *</Label>
-                  <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto border rounded-lg p-4">
-                    {demoTests.map((test) => (
-                      <div key={test.id} className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/30 transition-smooth">
-                        <Checkbox
-                          id={test.id}
-                          checked={patient.selectedTests.includes(test.id)}
-                          onCheckedChange={(checked) => handleTestSelection(test.id, checked as boolean)}
-                        />
-                        <div className="flex-1">
-                          <Label htmlFor={test.id} className="font-medium cursor-pointer">
-                            {test.name}
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            {test.fields.length} parameters
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-bold text-primary">₹{test.price}</span>
-                        </div>
+                  <div className="relative">
+                    <div 
+                      className="flex flex-wrap gap-2 p-2 border rounded-lg min-h-[42px] cursor-pointer bg-background"
+                      onClick={() => setIsOpen(!isOpen)}
+                    >
+                      {patient.selectedTests.length === 0 ? (
+                        <span className="text-muted-foreground text-sm py-1.5 px-2">Search and select tests...</span>
+                      ) : (
+                        patient.selectedTests.map(testId => {
+                          const test = demoTests.find(t => t.id === testId);
+                          return test ? (
+                            <div 
+                              key={testId}
+                              className="flex items-center gap-1 bg-muted rounded-md px-2 py-1 text-sm"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <span>{test.name}</span>
+                              <button 
+                                type="button"
+                                className="ml-1 text-muted-foreground hover:text-foreground"
+                                onClick={(e) => removeTest(testId, e)}
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : null;
+                        })
+                      )}
+                      <input
+                        type="text"
+                        className="flex-1 min-w-[100px] bg-transparent outline-none text-sm"
+                        placeholder={patient.selectedTests.length === 0 ? "Type to search tests..." : ""}
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          if (!isOpen) setIsOpen(true);
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsOpen(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && filteredTests.length > 0) {
+                            toggleTestSelection(filteredTests[0].id);
+                            setSearchQuery('');
+                          }
+                        }}
+                      />
+                      <button 
+                        type="button" 
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsOpen(!isOpen);
+                        }}
+                      >
+                        <ChevronsUpDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    {isOpen && (
+                      <div className="absolute z-10 mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover shadow-md">
+                        {filteredTests.length > 0 ? (
+                          <div className="p-1">
+                            {filteredTests.map((test) => {
+                              const isSelected = patient.selectedTests.includes(test.id);
+                              return (
+                                <div
+                                  key={test.id}
+                                  className={`relative flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer ${isSelected ? 'bg-muted/30' : ''}`}
+                                  onClick={() => {
+                                    toggleTestSelection(test.id);
+                                    setSearchQuery('');
+                                  }}
+                                >
+                                  <div className={`flex items-center justify-center w-5 h-5 border rounded ${isSelected ? 'bg-primary border-primary' : 'border-border'}`}>
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-sm font-medium">{test.name}</span>
+                                      <span className="text-xs text-primary font-medium">₹{test.price}</span>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {test.fields.length} parameters
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-4 text-center text-sm text-muted-foreground">
+                            No tests found
+                          </div>
+                        )}
                       </div>
-                    ))}
+                    )}
                   </div>
+                  
+                  {/* Selected tests summary */}
+                  {patient.selectedTests.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-sm font-medium">Selected Tests ({patient.selectedTests.length}):</p>
+                      <div className="space-y-1">
+                        {patient.selectedTests.map(testId => {
+                          const test = demoTests.find(t => t.id === testId);
+                          return test ? (
+                            <div key={testId} className="flex justify-between items-center text-sm p-2 bg-muted/30 rounded">
+                              <span>{test.name}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-primary font-medium">₹{test.price}</span>
+                                <button 
+                                  type="button"
+                                  className="text-muted-foreground hover:text-destructive"
+                                  onClick={(e) => removeTest(testId, e)}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ) : null;
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <Button 
