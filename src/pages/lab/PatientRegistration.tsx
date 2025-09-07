@@ -434,6 +434,17 @@ const PatientRegistration: React.FC = () => {
       footerNote: 'This is a computer generated bill. No signature required.'
     };
 
+    // Load admin design settings from localStorage to sync with HospitalProfile
+    const savedProfileRaw = localStorage.getItem('hospitalProfile');
+    const savedProfile = savedProfileRaw ? JSON.parse(savedProfileRaw) : {};
+    const primaryColor: string = savedProfile.primaryColor || '#1a365d';
+    const fontFamily: string = savedProfile.fontFamily || 'Arial, sans-serif';
+    const showLogo: boolean = savedProfile.showLogo !== false; // default true
+    const showTagline: boolean = savedProfile.showTagline !== false; // default true
+    const showGst: boolean = savedProfile.showGst !== false; // default true
+    const logo: string | undefined = savedProfile.logo || undefined;
+    const tagline: string | undefined = savedProfile.tagline || undefined;
+
     // Format date and time in Indian format
     const formatDate = (date: Date) => {
       return date.toLocaleDateString('en-IN', {
@@ -459,6 +470,12 @@ const PatientRegistration: React.FC = () => {
         <title>Bill - ${patientId || 'Receipt'}</title>
         <style>
           ${letterheadStyles}
+          /* Overrides from admin Design Settings */
+          body { font-family: ${fontFamily}; }
+          .letterhead-header { border-bottom: 2px solid ${primaryColor}; }
+          .letterhead-title { color: ${primaryColor}; }
+          .bill-title { color: ${primaryColor}; }
+          .patient-info th, .bill-info th, .tests-table th, .payment-info th { color: ${primaryColor}; }
           @page { 
             size: A4; 
             margin: 10mm;
@@ -609,13 +626,15 @@ const PatientRegistration: React.FC = () => {
 
         <!-- Letterhead -->
         <div class="letterhead">
-          <div class="letterhead-header">
+          <div class="letterhead-header" style="text-align: center;">
+            ${showLogo && logo ? `<img src="${logo}" alt="${hospital.name}" class="letterhead-logo" />` : ''}
             <h1 class="letterhead-title">${hospital.name}</h1>
+            ${showTagline && tagline ? `<p class="letterhead-address">${tagline}</p>` : ''}
             <p class="letterhead-address">${hospital.address}</p>
             <div class="letterhead-contact">
               <span>Phone: ${hospital.phone}</span>
               <span>Email: ${hospital.email}</span>
-              <span>GSTIN: ${hospital.gstin}</span>
+              ${showGst ? `<span>GSTIN: ${hospital.gstin}</span>` : ''}
               ${hospital.registration ? `<span>${hospital.registration}</span>` : ''}
             </div>
           </div>

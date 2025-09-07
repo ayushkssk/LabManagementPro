@@ -3,9 +3,21 @@ export interface Hospital {
   name: string;
   address: string;
   phone: string;
+  email?: string;
+  website?: string;
   gst: string;
+  registration?: string;
+  tagline?: string;
   logo?: string;
   letterHeadEnabled: boolean;
+  footerNote?: string;
+  additionalInfo?: string[];
+  primaryColor?: string;
+  fontFamily?: string;
+  headerStyle?: 'centered' | 'left' | 'withSideLogo';
+  showLogo?: boolean;
+  showTagline?: boolean;
+  showGst?: boolean;
 }
 
 export interface Test {
@@ -83,6 +95,8 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'technician';
+  role: 'admin' | 'technician' | 'super-admin';
   hospitalId: string;
+  createdAt: string;
+  photoURL?: string;
 }

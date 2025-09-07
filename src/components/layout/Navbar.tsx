@@ -13,11 +13,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 interface NavbarProps {
-  onMenuToggle: () => void;
-  isSidebarCollapsed: boolean;
+  onMenuToggle?: () => void;
+  onToggleSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
+  isCollapsed?: boolean;
+  role?: 'admin' | 'technician' | 'super-admin';
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isSidebarCollapsed }) => {
+const Navbar: React.FC<NavbarProps> = ({ 
+  onMenuToggle, 
+  onToggleSidebar = onMenuToggle, // For backward compatibility
+  isSidebarCollapsed,
+  isCollapsed = isSidebarCollapsed,
+  role = 'admin' // Default to 'admin' for backward compatibility
+}) => {
   const { user, logout } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -53,8 +62,8 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isSidebarCollapsed }) => 
         <Button
           variant="ghost"
           size="icon"
+          onClick={onToggleSidebar}
           className="md:hidden"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
           {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           <span className="sr-only">Toggle menu</span>
@@ -91,11 +100,12 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuToggle, isSidebarCollapsed }) => 
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.name || 'User'}</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user?.email || 'user@example.com'}
-                </p>
+              <div className="hidden flex-col items-start md:flex">
+                <span className="text-sm font-medium">{user?.name || 'User'}</span>
+                <span className="text-xs text-muted-foreground">
+                  {role === 'super-admin' ? 'Super Admin' : 
+                   role === 'admin' ? 'Administrator' : 'Lab Technician'}
+                </span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

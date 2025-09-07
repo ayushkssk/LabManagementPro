@@ -750,15 +750,17 @@ export const demoUsers: User[] = [
   {
     id: 'user-1',
     email: 'admin@healthcare.com',
-    name: 'Dr. Administrator',
+    name: 'Admin User',
     role: 'admin',
-    hospitalId: 'hospital-1'
+    hospitalId: 'hospital-1',
+    createdAt: new Date('2023-01-01').toISOString(),
   },
   {
     id: 'user-2',
     email: 'tech@healthcare.com',
     name: 'Lab Technician',
     role: 'technician',
-    hospitalId: 'hospital-1'
-  }
+    hospitalId: 'hospital-1',
+    createdAt: new Date('2023-01-01').toISOString(),
+  },
 ];

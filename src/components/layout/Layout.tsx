@@ -3,6 +3,7 @@ import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
+import { FloatingActionButton } from './FloatingActionButton';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -47,10 +48,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             isSidebarCollapsed={isCollapsed} 
           />
           
-          <main className="flex-1 overflow-auto p-4 md:p-6 bg-muted/20">
+          <main className="flex-1 overflow-auto p-4 md:p-6 bg-muted/20 relative">
             <div className="max-w-[1600px] mx-auto w-full h-full">
               {children}
             </div>
+            <FloatingActionButton />
           </main>
         </div>
       </div>
