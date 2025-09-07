@@ -13,6 +13,7 @@ import TestForm from '@/modules/tests/TestForm';
 import { sampleTests as extSampleTests, testConfigurations as extTestConfigs, testConfigByTestId as extConfigMap } from '@/modules/tests/config';
 import { Loader2 } from 'lucide-react';
 import { getPatient, PatientData } from '@/services/patientService';
+import { demoTests } from '@/data/demoData';
 
 // Use shared tests meta from reusable module
 const sampleTests = extSampleTests;
@@ -114,19 +115,35 @@ const SampleCollection = () => {
         setPatient(p);
 
         const selectedIds = p.tests || [];
-        // Keep only tests that we have configurations/meta for
-        const selectedTests = sampleTests.filter(test => selectedIds.includes(test.id));
 
-        // Map to the required sample format
-        const orderedSamples = selectedTests.map(test => ({
-          testId: test.id,
-          testName: test.name,
-          sampleType: test.sampleType,
-          container: test.container,
-          instructions: test.instructions,
-          collected: false,
-          notes: ''
-        }));
+        // Build ordered samples for ALL selected IDs.
+        const orderedSamples = selectedIds.map(testId => {
+          // Try to find rich meta first (with sampleType/container/instructions)
+          const rich = sampleTests.find(t => t.id === testId);
+          if (rich) {
+            return {
+              testId: rich.id,
+              testName: rich.name,
+              sampleType: rich.sampleType,
+              container: rich.container,
+              instructions: rich.instructions,
+              collected: false,
+              notes: ''
+            } as Sample;
+          }
+
+          // Fallback: find in demoTests to at least get the name
+          const fallback = demoTests.find(t => t.id === testId);
+          return {
+            testId,
+            testName: fallback?.name || `Test ${testId}`,
+            sampleType: 'Blood',
+            container: 'Standard',
+            instructions: '',
+            collected: false,
+            notes: ''
+          } as Sample;
+        });
 
         setSamples(orderedSamples);
       } catch (error) {
@@ -272,9 +289,38 @@ const SampleCollection = () => {
   // Map selected demo test IDs to the corresponding configuration keys above
   const testConfigByTestId = extConfigMap;
 
-  // Get current test configuration using the mapping
+  // Build a generic fallback configuration if a test does not have a specific config mapping
+  const buildGenericConfig = (testName: string): { fields: FieldConfig[] } => ({
+    fields: [
+      {
+        id: 'result',
+        label: `${testName} Result`,
+        type: 'select',
+        options: ['Normal', 'Abnormal', 'Positive', 'Negative', 'Reactive', 'Non-Reactive'],
+        required: false,
+      },
+      {
+        id: 'value',
+        label: 'Value',
+        type: 'number',
+        unit: '',
+        refRange: '',
+        required: false,
+      },
+      {
+        id: 'sample_time',
+        label: 'Sample Collection Time',
+        type: 'datetime-local',
+        required: false,
+      },
+    ] as FieldConfig[],
+  });
+
+  // Get current test configuration using the mapping, or generic fallback
   const currentTestConfig = selectedTest
-    ? testConfigurations[testConfigByTestId[selectedTest.testId] as keyof typeof testConfigurations]
+    ? (testConfigurations[
+        testConfigByTestId[selectedTest.testId] as keyof typeof testConfigurations
+      ] || buildGenericConfig(selectedTest.testName))
     : null;
 
   const handleTestValueChange = (fieldId: string, value: any) => {

@@ -10,6 +10,8 @@ export const sampleTests: SampleTestMeta[] = [
   { id: 'test-7', name: 'Coagulation Profile', category: 'Hematology', sampleType: 'Blood', container: 'Blue Top', instructions: 'Fasting not required' },
   { id: 'test-8', name: 'Blood Sugar Tests', category: 'Biochemistry', sampleType: 'Blood', container: 'Gray Top', instructions: 'Fasting required (8-12 hours)' },
   { id: 'test-10', name: 'Liver Function Test (LFT)', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting required (8-12 hours)' },
+  { id: 'test-37', name: 'Male Hormone Profile', category: 'Hormone', sampleType: 'Blood', container: 'Red Top', instructions: 'Morning sample preferred' },
+  { id: 'test-22', name: 'VDRL (Syphilis)', category: 'Serology', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
 ];
 
 export const testConfigurations: TestConfigurationMap = {
@@ -102,6 +104,25 @@ export const testConfigurations: TestConfigurationMap = {
       { id: 'sample_time', label: 'Sample Collection Time', type: 'datetime-local', required: true },
     ],
   },
+  male_hormone_profile: {
+    fields: [
+      { id: 'testosterone_total', label: 'Testosterone Total', type: 'number', unit: 'ng/dL', refRange: '264 - 916', required: true },
+      { id: 'testosterone_free', label: 'Testosterone Free', type: 'number', unit: 'pg/mL', refRange: '50 - 210', required: false },
+      { id: 'fsh', label: 'FSH', type: 'number', unit: 'mIU/mL', refRange: '1.5 - 12.4', required: false },
+      { id: 'lh', label: 'LH', type: 'number', unit: 'mIU/mL', refRange: '1.7 - 8.6', required: false },
+      { id: 'prolactin', label: 'Prolactin', type: 'number', unit: 'ng/mL', refRange: '4.0 - 15.2', required: false },
+      { id: 'shbg', label: 'SHBG', type: 'number', unit: 'nmol/L', refRange: '16.5 - 55.9', required: false },
+      { id: 'sample_time', label: 'Sample Collection Time', type: 'datetime-local', required: false },
+    ],
+  },
+  vdrl: {
+    fields: [
+      { id: 'qualitative', label: 'VDRL Qualitative', type: 'select', options: ['Non-Reactive', 'Reactive'], required: true },
+      { id: 'titer', label: 'VDRL Titer', type: 'select', options: ['N/A', '1:2', '1:4', '1:8', '1:16', '1:32', '1:64', '1:128'], required: false },
+      { id: 'tpha', label: 'TPHA', type: 'select', options: ['Not Done', 'Negative', 'Positive'], required: false },
+      { id: 'sample_time', label: 'Sample Collection Time', type: 'datetime-local', required: false },
+    ],
+  },
 };
 
 export const testConfigByTestId: Record<string, keyof typeof testConfigurations> = {
@@ -114,4 +135,6 @@ export const testConfigByTestId: Record<string, keyof typeof testConfigurations>
   'test-7': 'coagulation_profile',
   'test-8': 'blood_glucose',
   'test-10': 'liver_function',
+  'test-37': 'male_hormone_profile',
+  'test-22': 'vdrl',
 };
