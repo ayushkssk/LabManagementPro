@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Download, MoreHorizontal, Loader2, Filter, Droplets } from 'lucide-react';
+import { Plus, Search, Filter, Download, MoreHorizontal, Loader2, TestTube2, Droplets } from 'lucide-react';
+import { getTests } from '@/services/testService';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
@@ -11,36 +13,71 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Calendar as CalendarIcon } from 'lucide-react';
-import { getPatients, PatientData, searchPatients } from '@/services/patientService';
+import { getPatients, type PatientData, searchPatients } from '@/services/patientService';
 import { toast } from '@/hooks/use-toast';
 
-interface Patient {
+type Test = string | {
   id: string;
   name: string;
-  age: number;
-  gender: 'Male' | 'Female' | 'Other';
-  phone: string;
-  registrationDate: Date;
-  lastVisit: Date;
-  balance: number;
-  status: 'active' | 'inactive' | 'overdue';
+  code?: string;
+  price?: number;
+};
+
+interface TestReferenceObject {
+  id: string;
+  name?: string;
+  code?: string;
 }
+
+interface TestReferenceObject {
+  id: string;
+  name?: string;
+  code?: string;
+}
+
+type TestReference = string | TestReferenceObject;
+
+type Patient = PatientData & {
+  tests?: TestReference[];
+};
 
 const Patients = () => {
   const navigate = useNavigate();
-  const [patients, setPatients] = useState<PatientData[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [tests, setTests] = useState<Record<string, { id: string; name: string; code?: string; price?: number }>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   useEffect(() => {
-    const fetchPatients = async () => {
+    async function fetchPatients() {
       try {
         setLoading(true);
-        const data = await getPatients();
-        setPatients(data);
+        // Fetch patients and tests in parallel
+        const [patientsData, testsData] = await Promise.all([
+          getPatients(),
+          getTests()
+        ]) as [PatientData[], any[]];
+
+        // Create a map of test IDs to test details
+        const testsMap = testsData.reduce<Record<string, { id: string; name: string; code?: string; price?: number }>>((acc, test) => {
+          if (test?.id) {
+            acc[test.id] = { 
+              id: test.id, 
+              name: test.name || 'Unnamed Test', 
+              code: test.code,
+              price: test.price
+            };
+          }
+          return acc;
+        }, {});
+
+        console.log('Tests data from database:', testsData);
+        console.log('Processed tests map:', testsMap);
+        setPatients(patientsData);
+        setTests(testsMap);
       } catch (error) {
-        console.error('Error fetching patients:', error);
+        console.error('Error fetching data:', error);
         toast({
           title: 'Error',
           description: 'Failed to load patients. Please try again.',
@@ -49,30 +86,48 @@ const Patients = () => {
       } finally {
         setLoading(false);
       }
-    };
+    }
 
     fetchPatients();
   }, []);
 
-  const filteredPatients = patients.filter(patient => {
-    const matchesSearch = 
-      patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.phone.includes(searchQuery) ||
-      patient.hospitalId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.id?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Sort patients by registration date (newest first) and then by hospital ID
+  const sortedPatients = [...patients].sort((a, b) => {
+    // First sort by registration date (newest first)
+    const dateDiff = new Date(b.registrationDate).getTime() - new Date(a.registrationDate).getTime();
+    if (dateDiff !== 0) return dateDiff;
     
+    // If same date, sort by hospital ID
+    const idA = a.hospitalId || a.id || '';
+    const idB = b.hospitalId || b.id || '';
+    return idA.localeCompare(idB);
+  });
+
+  const filteredPatients = sortedPatients.filter(patient => {
+    const searchLower = searchQuery.toLowerCase();
+    const patientId = patient.hospitalId || patient.id || '';
+    
+    // Check if patient matches search query
+    const matchesSearch = (
+      patient.name.toLowerCase().includes(searchLower) ||
+      patient.phone.includes(searchQuery) ||
+      patientId.toLowerCase().includes(searchLower)
+    );
+    
+    // If no date range is selected, only filter by search
     if (!dateRange?.from || !dateRange?.to) return matchesSearch;
     
-    const visitDate = new Date(patient.registrationDate);
+    // Check if patient's registration date is within the selected date range
+    const visitDate = new Date(patient.registrationDate).getTime();
     const fromDate = new Date(dateRange.from);
     fromDate.setHours(0, 0, 0, 0);
     
     const toDate = new Date(dateRange.to);
     toDate.setHours(23, 59, 59, 999);
     
-    const matchesDate = visitDate >= fromDate && visitDate <= toDate;
+    const isInDateRange = visitDate >= fromDate.getTime() && visitDate <= toDate.getTime();
     
-    return matchesSearch && matchesDate;
+    return matchesSearch && isInDateRange;
   });
 
   const getStatusBadge = (status: string) => {
@@ -182,6 +237,7 @@ const Patients = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Registration Date</TableHead>
+                    <TableHead>Tests</TableHead>
                     <TableHead>Last Visit</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
                     <TableHead>Status</TableHead>
@@ -192,7 +248,14 @@ const Patients = () => {
                   {filteredPatients.length > 0 ? (
                     filteredPatients.map((patient) => (
                       <TableRow key={patient.id}>
-                        <TableCell className="font-medium">{patient.hospitalId || patient.id}</TableCell>
+                        <TableCell className="font-mono font-medium">
+                          <div className="flex flex-col">
+                            {patient.hospitalId && <span className="text-foreground">{patient.hospitalId}</span>}
+                            {!patient.hospitalId && patient.id && (
+                              <span className="text-muted-foreground text-xs">{patient.id}</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="space-y-1">
                           <div className="font-medium">{patient.name}</div>
                           <div className="flex items-center space-x-2 text-xs text-muted-foreground">
@@ -207,6 +270,53 @@ const Patients = () => {
                           <div className="text-xs text-muted-foreground">
                             {format(patient.registrationDate, 'hh:mm a')}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {patient.tests?.length ? (
+                            <div className="flex flex-col gap-1 max-w-[250px]">
+                              <div className="flex items-center gap-2">
+                                <TestTube2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="text-sm font-medium">{patient.tests.length} Tests</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {patient.tests.map((testRef: TestReference, i: number) => {
+                                  // Handle both string (test ID) and object test references
+                                  const testId = typeof testRef === 'string' ? testRef : testRef.id;
+                                  const test = tests[testId];
+                                  
+                                  // Get name and code from testRef if it's an object, otherwise use test data or fallback
+                                  const displayName = (typeof testRef === 'object' && testRef.name) 
+                                    ? testRef.name 
+                                    : test?.name || `Test ${i + 1}`;
+                                  
+                                  const displayCode = (typeof testRef === 'object' && testRef.code) 
+                                    ? testRef.code 
+                                    : test?.code || `T${testId.substring(0, 4).toUpperCase()}`;
+                                  return (
+                                    <div key={i} className="group relative">
+                                      <Badge 
+                                        variant="secondary" 
+                                        className="text-xs font-mono py-1 px-1.5 h-auto hover:bg-secondary/80 transition-colors"
+                                      >
+                                        <span className="font-semibold">{displayCode}</span>
+                                      </Badge>
+                                      <div className="absolute z-50 hidden group-hover:block bg-popover text-popover-foreground text-xs p-2 rounded-md shadow-lg border max-w-[200px] break-words">
+                                        <div className="font-semibold">{displayName}</div>
+                                        {test?.code && <div className="text-muted-foreground">Code: {test.code}</div>}
+                                        {test?.price !== undefined && (
+                                          <div className="mt-1 text-green-600">
+                                            ₹{test?.price.toLocaleString()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">No tests assigned</span>
+                          )}
                         </TableCell>
                         <TableCell>{format(patient.lastVisit, 'dd MMM yyyy')}</TableCell>
                         <TableCell className={`text-right font-medium ${patient.balance > 0 ? 'text-red-600' : 'text-green-600'}`}>

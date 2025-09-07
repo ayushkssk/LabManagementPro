@@ -9,9 +9,9 @@ import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Trash2, Plus, Upload, Download, Pencil } from "lucide-react";
+import { Trash2, Plus, Upload, Download, Pencil, Loader2 } from "lucide-react";
 import type { Test as TestType, TestField } from "@/types";
-import { addTest, deleteTest, getTests, updateTest, type TestData } from "@/services/testService";
+import { addTest, deleteTest, getTests, updateTest, assignTestCodes, type TestData } from "@/services/testService";
 
 const useXLSX = () => {
   const [xlsx, setXLSX] = useState<any>(null);
@@ -62,7 +62,7 @@ const TestManagement: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<{ id?: string; data: Omit<TestType, "id"> } | null>(null);
 
-  type LoadedTest = TestData & { id: string };
+  type LoadedTest = TestData & { id: string; code?: string; };
   const { data: tests = [], isLoading } = useQuery<LoadedTest[]>({ queryKey: ["tests"], queryFn: getTests as any });
 
   const getErrorMessage = (e: unknown) => {
@@ -105,6 +105,18 @@ const TestManagement: React.FC = () => {
     onSuccess: () => {
       toast.success("Test deleted");
       queryClient.invalidateQueries({ queryKey: ["tests"] });
+    }
+  });
+
+  const assignCodesMut = useMutation({
+    mutationFn: assignTestCodes,
+    onSuccess: (count) => {
+      toast.success(`Successfully assigned codes to ${count} tests`);
+      queryClient.invalidateQueries({ queryKey: ["tests"] });
+    },
+    onError: (error) => {
+      console.error('Error assigning test codes:', error);
+      toast.error('Failed to assign test codes. Please try again.');
     }
   });
 
@@ -398,6 +410,23 @@ const TestManagement: React.FC = () => {
           <Button variant="outline" onClick={exportExcel}>
             <Download className="w-4 h-4 mr-2" /> Export
           </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => assignCodesMut.mutate()} 
+            disabled={assignCodesMut.isPending || tests.length === 0}
+          >
+            {assignCodesMut.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Assigning...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-2" />
+                Assign Test Codes
+              </>
+            )}
+          </Button>
           <Button onClick={openAdd}>
             <Plus className="w-4 h-4 mr-2" /> Add Test
           </Button>
@@ -410,8 +439,6 @@ const TestManagement: React.FC = () => {
             <span>All Tests</span>
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <span>Total: {tests.length}</span>
-              <Separator orientation="vertical" className="h-4" />
-              <span>Sum Price: ₹{totalPrice}</span>
               <Separator orientation="vertical" className="h-4" />
               <div>
                 <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={onFileChange} />
@@ -432,6 +459,7 @@ const TestManagement: React.FC = () => {
               <table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr>
+                    <th className="text-left p-3 font-medium">Code</th>
                     <th className="text-left p-3 font-medium">Name</th>
                     <th className="text-left p-3 font-medium">Category</th>
                     <th className="text-left p-3 font-medium">Price</th>
@@ -442,6 +470,11 @@ const TestManagement: React.FC = () => {
                 <tbody>
                   {filteredTests.map((t) => (
                     <tr key={t.id} className="border-b last:border-b-0">
+                      <td className="p-3 font-mono text-sm">
+                        {t.code || (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
                       <td className="p-3">{t.name}</td>
                       <td className="p-3">{t.category}</td>
                       <td className="p-3">₹{t.price}</td>

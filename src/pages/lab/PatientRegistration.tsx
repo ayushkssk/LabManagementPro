@@ -82,19 +82,32 @@ indianStates.forEach(state => {
   }
 });
 
-// Function to generate patient ID
-const generatePatientId = (prefix: string): string => {
+// Function to generate patient ID in format SWT-YYMMDD-COUNT
+const generatePatientId = (): string => {
   const now = new Date();
-  const dateStr = now.toISOString().slice(2, 10).replace(/-/g, '');
-  const countKey = `patientCount_${prefix}_${dateStr}`;
+  const year = now.getFullYear().toString().slice(-2);
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const dateStr = `${year}${month}${day}`;
+  
+  // Get or initialize the count for today
+  const countKey = `patientCount_${dateStr}`;
   let count = parseInt(localStorage.getItem(countKey) || '0', 10) + 1;
   localStorage.setItem(countKey, count.toString());
   
-  return `${prefix}-${dateStr}-${String(count).padStart(4, '0')}`;
+  return `SWT-${dateStr}-${String(count).padStart(2, '0')}`;
 };
 
 const PatientRegistration: React.FC = () => {
   const navigate = useNavigate();
+  const [patientId, setPatientId] = useState(''); // SWT-YYMMDD-XX format ID
+  const [patientDocId, setPatientDocId] = useState(''); // Firestore document ID
+  
+  // Generate patient ID on component mount
+  useEffect(() => {
+    setPatientId(generatePatientId());
+  }, []);
+  
   const [patient, setPatient] = useState<PatientForm>({
     name: '',
     age: '',
@@ -109,9 +122,6 @@ const PatientRegistration: React.FC = () => {
     selectedTests: [],
     registrationDate: new Date()
   });
-  
-  const [patientId, setPatientId] = useState(''); // Human-readable hospital ID
-  const [patientDocId, setPatientDocId] = useState(''); // Firestore document ID
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBillDialog, setShowBillDialog] = useState(false);
   const [cities, setCities] = useState<string[]>([]);
@@ -360,13 +370,9 @@ const PatientRegistration: React.FC = () => {
         return;
       }
       
-      // Generate patient ID using the hospital prefix from the hospital data
-      const hospitalPrefixValue = 'SWT'; // In a real app, this would come from hospital settings
-      const newPatientId = generatePatientId(hospitalPrefixValue);
-      
-      // Prepare patient data for Firestore
+      // Prepare patient data with the generated ID
       const patientData = {
-        hospitalId: newPatientId,
+        hospitalId: patientId, // The generated SWT-YYMMDD-XX ID
         name: patient.name,
         age: parseInt(patient.age) || 0,
         gender: patient.gender as Gender,
@@ -386,14 +392,13 @@ const PatientRegistration: React.FC = () => {
       // Save to Firestore
       const savedDocId = await addPatient(patientData);
       
-      // Set both IDs
-      setPatientId(newPatientId); // hospital ID for display/bill
-      setPatientDocId(savedDocId); // document ID for navigation
+      // Set the document ID for navigation
+      setPatientDocId(savedDocId);
       
-      // Show success message
+      // Show success message with the generated patient ID
       toast({
         title: 'Patient registered successfully!',
-        description: `Patient ID: ${newPatientId}`,
+        description: `Patient ID: ${patientId}`,
         variant: 'default',
       });
       

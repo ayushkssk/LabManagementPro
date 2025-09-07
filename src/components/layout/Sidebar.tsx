@@ -22,12 +22,14 @@ import {
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { useEffect } from 'react';
 
 interface NavItem {
   to?: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   className?: string;
+  exact?: boolean;
   items?: NavItem[];
 }
 
@@ -39,21 +41,66 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  
+  // Auto-expand menus based on current route
+  useEffect(() => {
+    const path = location.pathname;
+    const newOpenMenus = { ...openMenus };
+
+    // Auto-expand menus based on current path
+    if (path.includes('/admin/hospitals') || path.includes('/super-admin/hospitals')) {
+      newOpenMenus['Hospitals'] = true;
+    }
+    if (path.includes('/admin/users') || path.includes('/super-admin/users')) {
+      newOpenMenus['Users'] = true;
+    }
+    if (path.includes('/super-admin/system') || path.includes('/super-admin/roles') || path.includes('/super-admin/audit')) {
+      newOpenMenus['System'] = true;
+    }
+
+    setOpenMenus(newOpenMenus);
+  }, [location.pathname]);
+  // Track expanded menus
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
-    Hospitals: false,
-    Users: false,
-    System: false
+    Hospitals: true,
+    Users: true,
+    System: true
   });
 
-  const toggleMenu = (label: string) => {
-    setOpenMenus(prev => ({
-      ...prev,
-      [label]: !prev[label]
-    }));
-  };
+  // Common navigation items for all roles
+  const commonNavItems: NavItem[] = [
+    { 
+      to: user?.role === 'admin' ? '/admin' : 
+         user?.role === 'super-admin' ? '/super-admin/overview' : 
+         '/lab', 
+      icon: LayoutDashboard, 
+      label: 'Dashboard',
+      exact: true
+    },
+    { to: '/patients', icon: Users, label: 'Patients' },
+    { to: '/tests', icon: TestTube, label: 'Tests' },
+    { to: '/reports', icon: FileText, label: 'Reports' },
+    { to: '/profile', icon: UserIcon, label: 'Profile' },
+    { to: '/settings', icon: Settings, label: 'Settings' }
+  ];
 
+  // Admin specific navigation items
+  const adminNavItems: NavItem[] = [
+    ...commonNavItems,
+    {
+      icon: Building2,
+      label: 'Hospitals',
+      items: [
+        { to: '/admin/hospitals', icon: Building2, label: 'Manage Hospitals' },
+        { to: '/admin/users', icon: Users, label: 'Manage Users' },
+        { to: '/admin/roles', icon: UserCog, label: 'Roles & Permissions' }
+      ]
+    }
+  ];
+
+  // Super Admin specific navigation items
   const superAdminNavItems: NavItem[] = [
-    { to: '/super-admin', icon: LayoutDashboard, label: 'Dashboard' },
+    ...commonNavItems,
     {
       icon: Building2,
       label: 'Hospitals',
@@ -83,16 +130,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
     }
   ];
 
-  const adminNavItems: NavItem[] = [
-    { to: '/admin', icon: BarChart3, label: 'Dashboard' },
-    { to: '/admin/profile', icon: Hospital, label: 'Hospital Profile' },
-    { to: '/admin/tests', icon: TestTube, label: 'Test Management' },
-    { to: '/admin/settings', icon: Settings, label: 'Settings' }
-  ];
-
+  // Lab Technician navigation items (only common items)
   const technicianNavItems: NavItem[] = [
-    { to: '/lab', icon: BarChart3, label: 'Dashboard' },
-    { to: '/lab/register', icon: UserPlus, label: 'New Patient' },
+    ...commonNavItems,
     {
       to: '/lab/patients',
       icon: Users,
@@ -102,29 +142,45 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   ];
 
   // Role-based navigation sections
-  let navSections: { title: string; items: NavItem[] }[] = [];
-
-  if (user?.role === 'super-admin') {
-    navSections = [
-      { title: 'Super Admin', items: superAdminNavItems }
-    ];
-  } else if (user?.role === 'admin') {
-    navSections = [
-      { title: 'Admin', items: adminNavItems },
-      { title: 'Lab', items: technicianNavItems }
-    ];
-  } else {
-    navSections = [{ title: '', items: technicianNavItems }];
-  }
-
-  const isActive = (path: string = '') => {
-    if (!path) return false;
-    // For exact matches
-    if (path === '/super-admin' || path === '/admin' || path === '/lab') {
-      return location.pathname === path;
+  const navSections = (() => {
+    if (user?.role === 'super-admin') {
+      return [
+        { title: 'Navigation', items: superAdminNavItems },
+      ];
+    } else if (user?.role === 'admin') {
+      // For admin, we'll show both common items and admin-specific sections
+      return [
+        { title: 'Navigation', items: commonNavItems },
+        { 
+          title: 'Administration', 
+          items: adminNavItems.filter(item => !commonNavItems.some(commonItem => commonItem.label === item.label))
+        }
+      ];
+    } else {
+      // Default to technician view (only common items)
+      return [
+        { title: 'Navigation', items: technicianNavItems },
+      ];
     }
-    // For subpaths
-    return location.pathname.startsWith(path);
+  })();
+
+  const isActive = (path: string = '', exact: boolean = false) => {
+    if (!path) return false;
+    
+    const currentPath = location.pathname;
+    
+    // For exact matches
+    if (exact) {
+      return currentPath === path;
+    }
+    
+    // For dashboard paths, we want exact matching
+    if (path === '/admin' || path === '/super-admin/overview' || path === '/lab') {
+      return currentPath === path;
+    }
+    
+    // For all other paths, check if current path starts with the path
+    return currentPath.startsWith(path);
   };
 
   const hasActiveChild = (items: NavItem[] = []): boolean => {
@@ -171,36 +227,54 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
               {section.items.map((item) => {
                 const hasItems = item.items && item.items.length > 0;
                 const isMenuOpen = openMenus[item.label] ?? false;
-                const isActiveItem = isActive(item.to) || (hasItems && hasActiveChild(item.items));
+                const isActiveItem = isActive(item.to, item.exact) || (hasItems && hasActiveChild(item.items));
 
                 return (
                   <div key={item.label} className="space-y-1">
-                    <div
-                      onClick={() => hasItems && toggleMenu(item.label)}
-                      className={cn(
-                        'flex items-center justify-between px-4 py-2 text-sm font-medium rounded-md',
-                        'cursor-pointer transition-colors',
-                        isActiveItem
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                        item.className
-                      )}
-                    >
-                      <div className="flex items-center">
+                    {item.to ? (
+                      <NavLink
+                        to={item.to}
+                        className={({ isActive }) =>
+                          cn(
+                            'flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors',
+                            isActive || isActiveItem
+                              ? 'bg-primary/10 text-primary fill-primary [&>svg]:text-primary [&>svg]:fill-primary'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                            item.className
+                          )
+                        }
+                      >
                         <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
                         {!isCollapsed && item.label}
+                      </NavLink>
+                    ) : (
+                      <div
+                        className={cn(
+                          'flex items-center px-4 py-2 text-sm font-medium rounded-md',
+                          'transition-colors cursor-pointer',
+                          isActiveItem
+                            ? 'bg-primary/10 text-primary fill-primary [&>svg]:text-primary [&>svg]:fill-primary'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                          item.className
+                        )}
+                        onClick={() => item.items && setOpenMenus(prev => ({ ...prev, [item.label]: !prev[item.label] }))}
+                      >
+                        <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                        {!isCollapsed && (
+                          <>
+                            <span className="flex-1">{item.label}</span>
+                            <ChevronDown
+                              className={cn(
+                                'h-4 w-4 transition-transform',
+                                isMenuOpen ? 'rotate-180' : ''
+                              )}
+                            />
+                          </>
+                        )}
                       </div>
-                      {hasItems && !isCollapsed && (
-                        <ChevronDown
-                          className={cn(
-                            'h-4 w-4 transition-transform',
-                            isMenuOpen ? 'rotate-180' : ''
-                          )}
-                        />
-                      )}
-                    </div>
+                    )}
 
-                    {hasItems && !isCollapsed && isMenuOpen && (
+                    {hasItems && !isCollapsed && (
                       <div className="ml-6 space-y-1">
                         {item.items?.map((subItem) => (
                           <NavLink
@@ -208,11 +282,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
                             to={subItem.to || '#'}
                             className={({ isActive }) =>
                               cn(
-                                'flex items-center px-4 py-2 text-sm rounded-md',
-                                'transition-colors',
-                                isActive || isActive(subItem.to)
-                                  ? 'bg-primary/10 text-primary font-medium'
-                                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                                'flex items-center px-4 py-2 text-sm rounded-md transition-colors',
+                                isActive || location.pathname === subItem.to
+                                  ? 'bg-primary/10 text-primary fill-primary font-medium [&>svg]:text-primary [&>svg]:fill-primary'
+                                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                               )
                             }
                           >

@@ -3,6 +3,7 @@ import { Bell, ChevronDown, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/context/AuthContext';
+import { useHospitals } from '@/context/HospitalContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +29,8 @@ const Navbar: React.FC<NavbarProps> = ({
   role = 'admin' // Default to 'admin' for backward compatibility
 }) => {
   const { user, logout } = useAuth();
+  const { hospitals } = useHospitals();
+  const currentHospital = hospitals.find(h => h.id === user?.hospitalId);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -57,31 +60,38 @@ const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b bg-background px-4 md:px-6">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleSidebar}
-          className="md:hidden"
-        >
-          {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          <span className="sr-only">Toggle menu</span>
-        </Button>
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <span className="text-lg font-bold">S</span>
-          </div>
-          <h1 className="text-lg font-semibold whitespace-nowrap">Swati Hospital</h1>
-        </div>
+    <header className="flex h-16 items-center justify-between border-b bg-white px-4 dark:bg-gray-950">
+      {/* Left side - Hospital Name */}
+      <div className="hidden md:block">
+        <h1 className="text-lg font-semibold">
+          {role === 'super-admin' 
+            ? 'Super Admin' 
+            : currentHospital?.name || 'Admin Dashboard'}
+        </h1>
       </div>
       
+      {/* Right side - Navigation, Date/Time and Profile */}
       <div className="flex items-center gap-4">
-        <div className="hidden items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm font-medium md:flex">
+        {/* Date and Time */}
+        <div className="hidden md:flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm font-medium">
           <span>{formatTime(currentTime)}</span>
           <span className="text-muted-foreground">|</span>
           <span>{formatDate(currentTime)}</span>
         </div>
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
+          <span className="sr-only">Toggle menu</span>
+        </Button>
         
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
@@ -98,9 +108,9 @@ const Navbar: React.FC<NavbarProps> = ({
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuContent className="w-48" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
-              <div className="hidden flex-col items-start md:flex">
+              <div className="flex flex-col items-start">
                 <span className="text-sm font-medium">{user?.name || 'User'}</span>
                 <span className="text-xs text-muted-foreground">
                   {role === 'super-admin' ? 'Super Admin' : 

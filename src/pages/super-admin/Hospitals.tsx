@@ -3,50 +3,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PlusCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useHospitals } from '@/context/HospitalContext';
 
-// Mock data - replace with actual API call
-const mockHospitals = [
-  {
-    id: 1,
-    name: 'City General Hospital',
-    email: 'contact@citygeneral.com',
-    phone: '+1 (555) 123-4567',
-    address: '123 Medical Center Drive, New York, NY 10001',
-    status: 'active',
-    logo: '/placeholder-hospital-1.jpg',
-    registrationDate: '2023-01-15',
-  },
-  {
-    id: 2,
-    name: 'Sunshine Medical Center',
-    email: 'info@sunshinemed.com',
-    phone: '+1 (555) 987-6543',
-    address: '456 Health Avenue, Los Angeles, CA 90001',
-    status: 'active',
-    logo: '/placeholder-hospital-2.jpg',
-    registrationDate: '2023-02-20',
-  },
-  // Add more hospitals as needed
-];
 
 const Hospitals = () => {
+  const { hospitals } = useHospitals();
   return (
     <div className="w-full max-w-full pl-6 pt-4">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Registered Hospitals</h1>
           <p className="text-muted-foreground text-sm">Manage all registered hospitals in the system</p>
         </div>
+        <Button asChild>
+          <Link to="/super-admin/hospitals/new">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            New Hospital
+          </Link>
+        </Button>
       </div>
 
       <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {mockHospitals.map((hospital) => (
-          <Card key={hospital.id} className="hover:shadow-md transition-shadow">
+        {hospitals.map((hospital) => (
+          <Card key={hospital.id} className="hover:shadow-md transition-shadow cursor-pointer hover:border-primary">
+            <Link to={`/super-admin/hospitals/${hospital.id}`} className="block">
             <CardHeader className="flex flex-row items-center space-x-4">
               <Avatar className="h-10 w-10">
                 <AvatarImage src={hospital.logo} alt={hospital.name} />
-                <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                  {hospital.name
+                <AvatarFallback className={`bg-primary/10 text-primary text-sm ${hospital.isDemo ? 'bg-demo' : ''}`}>
+                  {hospital.isDemo ? 'D' : hospital.name
                     .split(' ')
                     .map((n) => n[0])
                     .join('')}
@@ -55,8 +42,8 @@ const Hospitals = () => {
               <div className="space-y-0.5">
                 <CardTitle className="text-base">{hospital.name}</CardTitle>
                 <CardDescription className="flex items-center flex-wrap gap-1">
-                  <Badge variant={hospital.status === 'active' ? 'default' : 'secondary'} className="text-[10px] h-4">
-                    {hospital.status}
+                  <Badge variant={hospital.isDemo ? 'outline' : 'secondary'} className={`ml-2 ${hospital.isDemo ? 'bg-yellow-100 text-yellow-800' : ''}`}>
+                    {hospital.isDemo ? 'Demo' : hospital.status}
                   </Badge>
                   <span className="text-xs">{new Date(hospital.registrationDate).toLocaleDateString()}</span>
                 </CardDescription>
@@ -130,6 +117,7 @@ const Hospitals = () => {
                 </Button>
               </div>
             </CardContent>
+            </Link>
           </Card>
         ))}
       </div>

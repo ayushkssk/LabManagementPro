@@ -9,7 +9,8 @@ import {
   deleteDoc, 
   query, 
   where,
-  orderBy
+  orderBy,
+  writeBatch
 } from 'firebase/firestore';
 
 const TESTS_COLLECTION = 'tests';
@@ -88,6 +89,28 @@ export const deleteTest = async (id: string): Promise<void> => {
     await deleteDoc(testRef);
   } catch (error) {
     console.error('Error deleting test:', error);
+    throw error;
+  }
+};
+
+// Assign sequential test codes to all tests
+export const assignTestCodes = async (): Promise<number> => {
+  try {
+    const tests = await getTests();
+    const batch = writeBatch(db);
+    let count = 0;
+
+    tests.forEach((test, index) => {
+      if (!test.id) return;
+      const testRef = doc(db, TESTS_COLLECTION, test.id);
+      batch.update(testRef, { code: `TEST-${index + 1}` });
+      count++;
+    });
+
+    await batch.commit();
+    return count;
+  } catch (error) {
+    console.error('Error assigning test codes:', error);
     throw error;
   }
 };
