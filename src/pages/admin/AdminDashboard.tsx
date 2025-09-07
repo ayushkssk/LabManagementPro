@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -10,34 +10,73 @@ import {
   Calendar,
   Activity,
   UserPlus,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
-import { demoPatients, demoBills, demoTests, demoHospital } from '@/data/demoData';
 import { useNavigate } from 'react-router-dom';
+import { getPatients } from '@/services/patientService';
+import { getTests } from '@/services/testService';
+import { PatientData } from '@/services/patientService';
+import { TestData } from '@/services/testService';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const [patients, setPatients] = useState<PatientData[]>([]);
+  const [tests, setTests] = useState<TestData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [patientsData, testsData] = await Promise.all([
+          getPatients(),
+          getTests()
+        ]);
+        
+        setPatients(patientsData);
+        setTests(testsData);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Calculate statistics
+  const pendingReports = patients.filter(p => p.status === 'inactive').length;
+  const activePatients = patients.filter(p => p.status === 'active').length;
+  const overduePatients = patients.filter(p => p.status === 'overdue').length;
+  const totalRevenue = patients.reduce((sum, patient) => sum + (patient.balance || 0), 0);
+  const recentPatients = [...patients].sort((a, b) => 
+    new Date(b.registrationDate).getTime() - new Date(a.registrationDate).getTime()
+  ).slice(0, 3);
 
   const stats = [
     {
       title: 'Total Patients',
-      value: demoPatients.length,
+      value: patients.length,
       icon: Users,
       description: 'Registered patients',
       color: 'text-primary',
       bgColor: 'bg-primary/10'
     },
     {
-      title: 'Active Tests',
-      value: demoTests.length,
+      title: 'Available Tests',
+      value: tests.length,
       icon: TestTube,
-      description: 'Available test types',
+      description: 'Test types',
       color: 'text-accent',
       bgColor: 'bg-accent/10'
     },
     {
-      title: 'Revenue Today',
-      value: `₹${demoBills.reduce((sum, bill) => sum + bill.totalAmount, 0)}`,
+      title: 'Total Revenue',
+      value: `₹${totalRevenue.toLocaleString()}`,
       icon: DollarSign,
       description: 'Total earnings',
       color: 'text-success',
@@ -45,7 +84,7 @@ const AdminDashboard = () => {
     },
     {
       title: 'Reports Pending',
-      value: demoPatients.filter(p => p.status === 'Report Pending').length,
+      value: pendingReports,
       icon: Activity,
       description: 'Awaiting results',
       color: 'text-warning',
@@ -53,7 +92,29 @@ const AdminDashboard = () => {
     }
   ];
 
-  const recentPatients = demoPatients.slice(0, 3);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <span className="ml-2">Loading dashboard...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-destructive">{error}</p>
+        <Button 
+          variant="outline" 
+          className="mt-4"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -125,27 +186,27 @@ const AdminDashboard = () => {
               className="p-6 h-auto flex flex-col space-y-2"
               onClick={() => navigate('/lab/register')}
             >
-              <UserPlus className="w-8 h-8 text-primary" />
-              <span className="font-medium">Register Patient</span>
-              <span className="text-xs text-muted-foreground">New patient entry</span>
+              <UserPlus className="w-12 h-12 text-primary" />
+              <span className="text-lg font-semibold">Register Patient</span>
+              <span className="text-sm text-muted-foreground">New patient entry</span>
             </Button>
             <Button 
               variant="outline" 
               className="p-6 h-auto flex flex-col space-y-2"
               onClick={() => navigate('/admin/tests')}
             >
-              <TestTube className="w-8 h-8 text-accent" />
-              <span className="font-medium">Add New Test</span>
-              <span className="text-xs text-muted-foreground">Create test templates</span>
+              <TestTube className="w-12 h-12 text-accent" />
+              <span className="text-lg font-semibold">Add New Test</span>
+              <span className="text-sm text-muted-foreground">Create test templates</span>
             </Button>
             <Button 
               variant="outline" 
               className="p-6 h-auto flex flex-col space-y-2"
               onClick={() => navigate('/admin/settings')}
             >
-              <Settings className="w-8 h-8 text-muted-foreground" />
-              <span className="font-medium">System Settings</span>
-              <span className="text-xs text-muted-foreground">Configure preferences</span>
+              <Settings className="w-12 h-12 text-muted-foreground" />
+              <span className="text-lg font-semibold">System Settings</span>
+              <span className="text-sm text-muted-foreground">Configure preferences</span>
             </Button>
           </div>
         </CardContent>
@@ -163,27 +224,29 @@ const AdminDashboard = () => {
             <CardDescription>Latest patient registrations</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {recentPatients.map((patient) => (
-              <div key={patient.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                <div>
-                  <p className="font-medium text-foreground">{patient.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Age: {patient.age}, Dr. {patient.doctor}
-                  </p>
+            {recentPatients.length > 0 ? (
+              recentPatients.map((patient) => (
+                <div key={patient.id} className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-lg transition-colors">
+                  <div>
+                    <p className="font-medium">{patient.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {patient.age} • {patient.gender}
+                    </p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => navigate(`/lab/patients/${patient.id}`)}
+                  >
+                    View
+                  </Button>
                 </div>
-                <div className="text-right">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    patient.status === 'Report Ready' 
-                      ? 'bg-success/10 text-success' 
-                      : patient.status === 'Report Pending'
-                      ? 'bg-warning/10 text-warning'
-                      : 'bg-accent/10 text-accent'
-                  }`}>
-                    {patient.status}
-                  </span>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No patients found</p>
               </div>
-            ))}
+            )}
             <Button 
               variant="outline" 
               className="w-full"
@@ -205,29 +268,22 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center space-x-4">
-              {demoHospital.logo && (
-                <img 
-                  src={demoHospital.logo} 
-                  alt="Hospital Logo" 
-                  className="w-16 h-16 rounded-lg object-cover border"
-                />
-              )}
+              <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center">
+                <Hospital className="w-8 h-8 text-muted-foreground" />
+              </div>
               <div>
-                <h3 className="font-semibold text-foreground">{demoHospital.name}</h3>
-                <p className="text-sm text-muted-foreground">{demoHospital.address}</p>
-                <p className="text-sm text-muted-foreground">GST: {demoHospital.gst}</p>
+                <h3 className="font-semibold text-foreground">Lab Management System</h3>
+                <p className="text-sm text-muted-foreground">Manage your laboratory operations</p>
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Letter Head:</span>
-                <span className={demoHospital.letterHeadEnabled ? 'text-success' : 'text-muted-foreground'}>
-                  {demoHospital.letterHeadEnabled ? 'Enabled' : 'Disabled'}
-                </span>
+                <span className="text-muted-foreground">Total Tests:</span>
+                <span className="text-foreground font-medium">{tests.length}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Available Tests:</span>
-                <span className="text-foreground font-medium">{demoTests.length}</span>
+                <span className="text-muted-foreground">Active Patients:</span>
+                <span className="text-foreground font-medium">{activePatients}</span>
               </div>
             </div>
             <Button 

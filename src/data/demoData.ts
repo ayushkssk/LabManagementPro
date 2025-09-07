@@ -1,5 +1,45 @@
 import { Hospital, Test, Patient, Bill, Report, User } from '@/types';
 
+export const demoPatients: Patient[] = [
+  {
+    id: 'patient-1',
+    name: 'John Doe',
+    age: 35,
+    gender: 'Male',
+    phone: '+1 (555) 123-4567',
+    doctor: 'Dr. Smith',
+    testsSelected: ['test-1', 'test-2'],
+    status: 'Report Ready',
+    createdAt: new Date('2023-01-15'),
+    billId: 'bill-1',
+    reportId: 'report-1'
+  },
+  {
+    id: 'patient-2',
+    name: 'Sarah Johnson',
+    age: 42,
+    gender: 'Female',
+    phone: '+1 (555) 234-5678',
+    doctor: 'Dr. Wilson',
+    testsSelected: ['test-3'],
+    status: 'Report Pending',
+    createdAt: new Date('2023-02-20'),
+    billId: 'bill-2'
+  },
+  {
+    id: 'patient-3',
+    name: 'Mike Chen',
+    age: 28,
+    gender: 'Male',
+    phone: '+1 (555) 345-6789',
+    doctor: 'Dr. Lee',
+    testsSelected: ['test-1', 'test-4'],
+    status: 'Bill Printed',
+    createdAt: new Date('2023-03-10'),
+    billId: 'bill-3'
+  }
+];
+
 export const demoHospital: Hospital = {
   id: 'hospital-1',
   name: 'HealthCare Plus Medical Center',
@@ -19,6 +59,7 @@ export const demoTests: Test[] = [
   {
     id: 'test-1',
     name: 'Complete Blood Count (CBC)',
+    category: 'Hematology',
     price: 300,
     fields: [
       { id: getFieldId(), name: 'Hemoglobin (Hb)', type: 'number', unit: 'g/dL', normalRange: '12-16' },
@@ -36,6 +77,7 @@ export const demoTests: Test[] = [
   {
     id: 'test-2',
     name: 'Differential Leukocyte Count (DLC)',
+    category: 'Hematology',
     price: 200,
     fields: [
       { id: getFieldId(), name: 'Neutrophils', type: 'number', unit: '%', normalRange: '40-75' },
@@ -49,6 +91,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-3',
+    category: 'Hematology',
     name: 'Erythrocyte Sedimentation Rate (ESR)',
     price: 150,
     fields: [
@@ -57,6 +100,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-4',
+    category: 'Hematology',
     name: 'Peripheral Smear Examination',
     price: 350,
     fields: [
@@ -69,6 +113,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-5',
+    category: 'Hematology',
     name: 'Absolute Eosinophil Count (AEC)',
     price: 250,
     fields: [
@@ -77,6 +122,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-6',
+    category: 'Hematology',
     name: 'Reticulocyte Count',
     price: 300,
     fields: [
@@ -86,6 +132,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-7',
+    category: 'Hematology',
     name: 'Coagulation Profile',
     price: 1200,
     fields: [
@@ -101,6 +148,7 @@ export const demoTests: Test[] = [
   // ========== BIOCHEMISTRY ==========
   {
     id: 'test-8',
+    category: 'Biochemistry',
     name: 'Blood Sugar Tests',
     price: 800,
     fields: [
@@ -113,6 +161,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-9',
+    category: 'Biochemistry',
     name: 'Kidney Function Test (KFT)',
     price: 900,
     fields: [
@@ -129,6 +178,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-10',
+    category: 'Biochemistry',
     name: 'Liver Function Test (LFT)',
     price: 1000,
     fields: [
@@ -147,6 +197,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-11',
+    category: 'Biochemistry',
     name: 'Lipid Profile',
     price: 800,
     fields: [
@@ -161,6 +212,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-12',
+    category: 'Biochemistry',
     name: 'Cardiac Markers',
     price: 2500,
     fields: [
@@ -178,6 +230,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-13',
+    category: 'Biochemistry',
     name: 'Thyroid Profile',
     price: 1200,
     fields: [
@@ -192,6 +245,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-14',
+    category: 'Biochemistry',
     name: 'Iron Studies',
     price: 1500,
     fields: [
@@ -205,6 +259,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-15',
+    category: 'Biochemistry',
     name: 'Vitamin Profile',
     price: 5000,
     fields: [
@@ -221,6 +276,7 @@ export const demoTests: Test[] = [
   // ========== SEROLOGY & INFECTIOUS DISEASE ==========
   {
     id: 'test-16',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
     name: 'Dengue Panel',
     price: 1800,
     fields: [
@@ -232,6 +288,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-17',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
     name: 'Malaria Test',
     price: 400,
     fields: [
@@ -242,6 +299,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-18',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
     name: 'Widal Test (Typhoid)',
     price: 600,
     fields: [
@@ -253,6 +311,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-19',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
     name: 'HIV 1 & 2 Antibody',
     price: 500,
     fields: [
@@ -262,6 +321,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-20',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
     name: 'Hepatitis B Surface Antigen (HBsAg)',
     price: 400,
     fields: [
@@ -271,6 +331,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-21',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
     name: 'Anti-HCV (Hepatitis C)',
     price: 500,
     fields: [
@@ -280,6 +341,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-22',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
     name: 'VDRL (Syphilis)',
     price: 300,
     fields: [
@@ -289,6 +351,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-23',
+    category: 'Biochemistry',
     name: 'Inflammatory Markers Panel',
     price: 1200,
     fields: [
@@ -302,6 +365,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-24',
+    category: 'Immunology',
     name: 'Autoimmune Panel',
     price: 4500,
     fields: [
@@ -317,6 +381,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-25',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
     name: 'COVID-19 RT-PCR',
     price: 1800,
     fields: [
@@ -327,6 +392,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-26',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
     name: 'TB Tests',
     price: 2500,
     fields: [
@@ -339,6 +405,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-27',
+    category: 'Biochemistry',
     name: 'Electrolyte Panel',
     price: 300,
     fields: [
@@ -353,6 +420,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-28',
+    category: 'Hepatology',
     name: 'Hepatitis Panel',
     price: 1500,
     fields: [
@@ -365,6 +433,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-29',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
     name: 'HIV Screening',
     price: 500,
     fields: [
@@ -374,6 +443,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-30',
+    category: 'Urology',
     name: 'Complete Urine Examination (CUE)',
     price: 200,
     fields: [
@@ -400,6 +470,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-33',
+    category: 'Urology',
     name: '24-Hour Urine Protein',
     price: 350,
     fields: [
@@ -412,6 +483,7 @@ export const demoTests: Test[] = [
   },
     {
     id: 'test-34',
+    category: 'Hematology',
     name: 'Coagulation Profile',
     price: 600,
     fields: [
@@ -424,6 +496,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-35',
+    category: 'Hematology',
     name: 'Tumor Markers Panel',
     price: 2500,
     fields: [
@@ -439,6 +512,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-36',
+    category: 'Hormone',
     name: 'Female Hormone Profile',
     price: 1800,
     fields: [
@@ -452,6 +526,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-37',
+    category: 'Hormone',
     name: 'Male Hormone Profile',
     price: 1600,
     fields: [
@@ -465,6 +540,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-38',
+    category: 'Biochemistry',
     name: 'Vitamin Profile',
     price: 2200,
     fields: [
@@ -478,6 +554,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-39',
+    category: 'Biochemistry',
     name: 'Iron Profile',
     price: 700,
     fields: [
@@ -492,6 +569,7 @@ export const demoTests: Test[] = [
   // Special Chemistry
   {
     id: 'test-40',
+    category: 'Biochemistry',
     name: 'HbA1c with eAG',
     price: 400,
     fields: [
@@ -501,6 +579,7 @@ export const demoTests: Test[] = [
   },
   {
     id: 'test-41',
+    category: 'Biochemistry',
     name: 'Microalbuminuria (Random)',
     price: 300,
     fields: [
@@ -513,6 +592,7 @@ export const demoTests: Test[] = [
   // Immunology
   {
     id: 'test-42',
+    category: 'Immunology',
     name: 'Immunoglobulin Profile',
     price: 1200,
     fields: [
@@ -528,6 +608,7 @@ export const demoTests: Test[] = [
   // Endocrinology
   {
     id: 'test-43',
+    category: 'Endocrinology',
     name: 'Cortisol (AM & PM)',
     price: 800,
     fields: [
@@ -536,7 +617,8 @@ export const demoTests: Test[] = [
     ]
   },
   {
-    id: 'test-27',
+    id: 'test-44',
+    category: 'Endocrinology',
     name: 'Growth Hormone (GH) & IGF-1',
     price: 1500,
     fields: [
@@ -548,7 +630,8 @@ export const demoTests: Test[] = [
   
   // Toxicology
   {
-    id: 'test-28',
+    id: 'test-45',
+    category: 'Toxicology',
     name: 'Heavy Metals Panel',
     price: 2800,
     fields: [
@@ -562,7 +645,8 @@ export const demoTests: Test[] = [
   
   // Microbiology
   {
-    id: 'test-29',
+    id: 'test-46',
+    category: 'Microbiology',
     name: 'Culture & Sensitivity',
     price: 900,
     fields: [
@@ -574,7 +658,8 @@ export const demoTests: Test[] = [
   
   // Serology
   {
-    id: 'test-30',
+    id: 'test-47',
+    category: 'Serology',
     name: 'TORCH Panel',
     price: 3200,
     fields: [
@@ -590,45 +675,6 @@ export const demoTests: Test[] = [
   }
 ];
 
-export const demoPatients: Patient[] = [
-  {
-    id: 'patient-1',
-    name: 'John Doe',
-    age: 45,
-    gender: 'Male',
-    phone: '+1 (555) 987-6543',
-    doctor: 'Dr. Smith',
-    testsSelected: ['test-1', 'test-2'],
-    billId: 'bill-1',
-    reportId: 'report-1',
-    status: 'Report Ready',
-    createdAt: new Date('2024-01-15')
-  },
-  {
-    id: 'patient-2',
-    name: 'Sarah Johnson',
-    age: 32,
-    gender: 'Female',
-    phone: '+1 (555) 456-7890',
-    doctor: 'Dr. Williams',
-    testsSelected: ['test-3'],
-    billId: 'bill-2',
-    status: 'Report Pending',
-    createdAt: new Date('2024-01-16')
-  },
-  {
-    id: 'patient-3',
-    name: 'Mike Chen',
-    age: 28,
-    gender: 'Male',
-    phone: '+1 (555) 234-5678',
-    doctor: 'Dr. Brown',
-    testsSelected: ['test-1', 'test-4'],
-    billId: 'bill-3',
-    status: 'Bill Printed',
-    createdAt: new Date('2024-01-16')
-  }
-];
 
 export const demoBills: Bill[] = [
   {

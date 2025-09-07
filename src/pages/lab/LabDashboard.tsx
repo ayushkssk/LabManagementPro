@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -9,54 +9,101 @@ import {
   AlertCircle,
   Calendar,
   Activity,
-  TestTube
+  TestTube,
+  Loader2
 } from 'lucide-react';
-import { demoPatients, demoBills } from '@/data/demoData';
 import { useNavigate } from 'react-router-dom';
+import { getPatients } from '@/services/patientService';
+import { PatientData } from '@/services/patientService';
 
 const LabDashboard = () => {
   const navigate = useNavigate();
+  const [patients, setPatients] = useState<PatientData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [revenue, setRevenue] = useState(0);
+  const [todaysPatients, setTodaysPatients] = useState(0);
 
-  const pendingReports = demoPatients.filter(p => p.status === 'Report Pending').length;
-  const readyReports = demoPatients.filter(p => p.status === 'Report Ready').length;
-  const billsPrinted = demoPatients.filter(p => p.status === 'Bill Printed').length;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [patientsData] = await Promise.all([
+          getPatients()
+        ]);
+        
+        setPatients(patientsData);
+        
+        // Calculate today's patients
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todaysPatientsCount = patientsData.filter(p => {
+          const regDate = new Date(p.registrationDate);
+          return regDate >= today;
+        }).length;
+        setTodaysPatients(todaysPatientsCount);
+        
+        // Calculate revenue (using balance as a proxy since we don't have bills)
+        const totalRevenue = patientsData.reduce((sum, patient) => sum + (patient.balance || 0), 0);
+        setRevenue(totalRevenue);
+        
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchData();
+  }, []);
+
+  // Calculate statistics
+  const pendingReports = patients.filter(p => p.status === 'inactive').length;
+  const activePatients = patients.filter(p => p.status === 'active').length;
+  const overduePatients = patients.filter(p => p.status === 'overdue').length;
+  const completedReports = activePatients; // Assuming active patients have completed reports
+
+  // Calculate today's date for filtering
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
   const stats = [
     {
       title: 'Total Patients',
-      value: demoPatients.length,
+      value: patients.length,
       icon: Users,
-      description: 'Registered today',
+      description: 'All patients',
       color: 'text-primary',
       bgColor: 'bg-primary/10'
     },
     {
-      title: 'Reports Pending',
-      value: pendingReports,
-      icon: Clock,
-      description: 'Awaiting results',
-      color: 'text-warning',
-      bgColor: 'bg-warning/10'
-    },
-    {
-      title: 'Reports Ready',
-      value: readyReports,
+      title: 'Active Patients',
+      value: activePatients,
       icon: CheckCircle,
-      description: 'Completed tests',
+      description: 'Active status',
       color: 'text-success',
       bgColor: 'bg-success/10'
     },
     {
-      title: 'Bills Printed',
-      value: billsPrinted,
-      icon: Activity,
-      description: 'Payment collected',
-      color: 'text-accent',
-      bgColor: 'bg-accent/10'
+      title: 'Pending Reports',
+      value: pendingReports,
+      icon: Clock,
+      description: 'In progress',
+      color: 'text-warning',
+      bgColor: 'bg-warning/10'
+    },
+    {
+      title: 'Overdue',
+      value: overduePatients,
+      icon: AlertCircle,
+      description: 'Needs attention',
+      color: 'text-destructive',
+      bgColor: 'bg-destructive/10'
     }
   ];
 
-  const urgentPatients = demoPatients.filter(p => p.status === 'Report Pending');
+  const urgentPatients = patients.filter(p => p.status === 'overdue').slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -131,15 +178,20 @@ const LabDashboard = () => {
                     <div>
                       <p className="font-medium text-foreground">{patient.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        Age: {patient.age}, Dr. {patient.doctor}
+                        Age: {patient.age}, {patient.city}
                       </p>
                       <p className="text-xs text-warning font-medium">
-                        {patient.testsSelected.length} test(s) pending
+                        Status: {patient.status}
                       </p>
                     </div>
-                    <Button size="sm" variant="outline" className="border-warning text-warning hover:bg-warning/10">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="border-warning text-warning hover:bg-warning/10"
+                      onClick={() => navigate(`/lab/patients/${patient.id}`)}
+                    >
                       <TestTube className="w-4 h-4 mr-1" />
-                      Enter Results
+                      View Details
                     </Button>
                   </div>
                 ))}
@@ -181,7 +233,7 @@ const LabDashboard = () => {
                     <p className="text-sm text-muted-foreground">Today</p>
                   </div>
                 </div>
-                <span className="text-xl font-bold text-primary">{demoPatients.length}</span>
+                <span className="text-xl font-bold text-primary">{todaysPatients}</span>
               </div>
 
               <div className="flex justify-between items-center p-3 rounded-lg bg-muted/30">
@@ -191,10 +243,10 @@ const LabDashboard = () => {
                   </div>
                   <div>
                     <p className="font-medium">Reports Completed</p>
-                    <p className="text-sm text-muted-foreground">Ready for print</p>
+                    <p className="text-sm text-muted-foreground">Active patients</p>
                   </div>
                 </div>
-                <span className="text-xl font-bold text-success">{readyReports}</span>
+                <span className="text-xl font-bold text-success">{completedReports}</span>
               </div>
 
               <div className="flex justify-between items-center p-3 rounded-lg bg-muted/30">
@@ -204,11 +256,11 @@ const LabDashboard = () => {
                   </div>
                   <div>
                     <p className="font-medium">Revenue Generated</p>
-                    <p className="text-sm text-muted-foreground">Total bills</p>
+                    <p className="text-sm text-muted-foreground">Total balance</p>
                   </div>
                 </div>
                 <span className="text-xl font-bold text-accent">
-                  ₹{demoBills.reduce((sum, bill) => sum + bill.totalAmount, 0)}
+                  ₹{revenue.toLocaleString()}
                 </span>
               </div>
             </div>

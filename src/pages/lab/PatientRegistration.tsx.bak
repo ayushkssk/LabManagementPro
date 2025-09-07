@@ -24,6 +24,180 @@ import { demoTests } from '@/data/demoData';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { addPatient } from '@/services/patientService';
+import PrintBill from '@/components/PrintBill';
+import ReactDOM from 'react-dom/client';
+
+interface PrintBillProps {
+  patient: any;
+  patientId: string;
+  totalAmount: number;
+  demoTests: any[];
+}
+
+const PrintBill = React.forwardRef<HTMLDivElement, PrintBillProps>(({ patient, patientId, totalAmount, demoTests }, ref) => {
+  const currentDate = new Date().toLocaleDateString('en-IN');
+  const currentTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  
+  return (
+    <div ref={ref} className="p-6">
+      <div className="flex justify-between items-center mb-6 border-b pb-4">
+        <div>
+          <h2 className="text-2xl font-bold">Lab Manager Pro</h2>
+          <p className="text-sm text-gray-600">123 Lab Street, City, State</p>
+          <p className="text-sm text-gray-600">Phone: +91 1234567890</p>
+        </div>
+        <div className="text-right">
+          <p className="font-semibold">Bill No: {patientId || 'N/A'}</p>
+          <p className="text-sm">Date: {currentDate}</p>
+          <p className="text-sm">Time: {currentTime}</p>
+        </div>
+      </div>
+      
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">Patient Details</h3>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p><span className="font-medium">Name:</span> {patient.name}</p>
+            <p><span className="font-medium">Age/Gender:</span> {patient.age} / {patient.gender}</p>
+            <p><span className="font-medium">Phone:</span> {patient.phone}</p>
+          </div>
+          <div>
+            <p><span className="font-medium">Doctor:</span> {patient.doctor || 'N/A'}</p>
+            <p><span className="font-medium">Date:</span> {currentDate}</p>
+            <p><span className="font-medium">Time:</span> {currentTime}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">Tests</h3>
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border p-2 text-left">Test Name</th>
+              <th className="border p-2 text-right">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {patient.selectedTests.map((testId: string) => {
+              const test = demoTests.find((t: any) => t.id === testId);
+              return test ? (
+                <tr key={testId}>
+                  <td className="border p-2">{test.name}</td>
+                  <td className="border p-2 text-right">{test.price.toFixed(2)}</td>
+                </tr>
+              ) : null;
+            })}
+            <tr className="font-semibold">
+              <td className="border p-2 text-right">Total:</td>
+              <td className="border p-2 text-right">₹{totalAmount.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-8 pt-4 border-t border-gray-300 text-sm">
+        <p className="mb-2"><span className="font-medium">Notes:</span> Report will be available within 24 hours.</p>
+        <p className="mb-2"><span className="font-medium">Terms & Conditions:</span></p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Report collection time will be informed via SMS.</li>
+          <li>Please bring this bill at the time of report collection.</li>
+          <li>For any queries, contact our customer care.</li>
+        </ul>
+      </div>
+
+      <div className="mt-8 text-center text-sm">
+        <p>Thank you for choosing us!</p>
+        <p className="mt-2">** This is a computer generated bill **</p>
+      </div>
+    </div>
+  );
+});
+
+PrintBill.displayName = 'PrintBill';
+
+// Print Component
+const PrintBill = React.forwardRef(({ patient, patientId, totalAmount }, ref) => {
+  const currentDate = new Date().toLocaleDateString('en-IN');
+  const currentTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  
+  return (
+    <div ref={ref} className="p-6">
+      <div className="flex justify-between items-center mb-6 border-b pb-4">
+        <div>
+          <h2 className="text-2xl font-bold">Lab Manager Pro</h2>
+          <p className="text-sm text-gray-600">123 Lab Street, City, State</p>
+          <p className="text-sm text-gray-600">Phone: +91 1234567890</p>
+        </div>
+        <div className="text-right">
+          <p className="font-semibold">Bill No: {patientId || 'N/A'}</p>
+          <p className="text-sm">Date: {currentDate}</p>
+          <p className="text-sm">Time: {currentTime}</p>
+        </div>
+      </div>
+      
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">Patient Details</h3>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p><span className="font-medium">Name:</span> {patient.name}</p>
+            <p><span className="font-medium">Age/Gender:</span> {patient.age} / {patient.gender}</p>
+            <p><span className="font-medium">Phone:</span> {patient.phone}</p>
+          </div>
+          <div>
+            <p><span className="font-medium">Doctor:</span> {patient.doctor || 'N/A'}</p>
+            <p><span className="font-medium">Date:</span> {currentDate}</p>
+            <p><span className="font-medium">Time:</span> {currentTime}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-2">Tests</h3>
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border p-2 text-left">Test Name</th>
+              <th className="border p-2 text-right">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {patient.selectedTests.map(testId => {
+              const test = demoTests.find(t => t.id === testId);
+              return test ? (
+                <tr key={testId}>
+                  <td className="border p-2">{test.name}</td>
+                  <td className="border p-2 text-right">{test.price.toFixed(2)}</td>
+                </tr>
+              ) : null;
+            })}
+            <tr className="font-semibold">
+              <td className="border p-2 text-right">Total:</td>
+              <td className="border p-2 text-right">₹{totalAmount.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-8 pt-4 border-t border-gray-300 text-sm">
+        <p className="mb-2"><span className="font-medium">Notes:</span> Report will be available within 24 hours.</p>
+        <p className="mb-2"><span className="font-medium">Terms & Conditions:</span></p>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Report collection time will be informed via SMS.</li>
+          <li>Please bring this bill at the time of report collection.</li>
+          <li>For any queries, contact our customer care.</li>
+        </ul>
+      </div>
+
+      <div className="mt-8 text-center text-sm">
+        <p>Thank you for choosing us!</p>
+        <p className="mt-2">** This is a computer generated bill **</p>
+      </div>
+    </div>
+  );
+});
+
+PrintBill.displayName = 'PrintBill';
 
 type Gender = 'Male' | 'Female' | 'Other';
 
@@ -108,111 +282,16 @@ const PatientRegistration: React.FC = () => {
     registrationDate: new Date()
   });
   
-  const [patientId, setPatientId] = useState(''); // Human-readable hospital ID
-  const [patientDocId, setPatientDocId] = useState(''); // Firestore document ID
+  const [patientId, setPatientId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBillDialog, setShowBillDialog] = useState(false);
   const [cities, setCities] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Sample data for quick fill
-  const firstNames = ['Aarav', 'Vihaan', 'Aaradhya', 'Diya', 'Advait', 'Ananya', 'Ishaan', 'Aanya', 'Vivaan', 'Anaya', 'Reyansh', 'Saanvi', 'Mohammed', 'Sai', 'Myra', 'Aarush', 'Aadhya', 'Ishita', 'Kabir', 'Anika'];
-  const lastNames = ['Patel', 'Shah', 'Kumar', 'Sharma', 'Singh', 'Gupta', 'Verma', 'Yadav', 'Jain', 'Mehta', 'Reddy', 'Naidu', 'Nair', 'Menon', 'Pillai', 'Iyengar', 'Agarwal', 'Mishra', 'Trivedi', 'Joshi'];
-  const cityList = ['Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Surat', 'Lucknow', 'Kanpur', 'Nagpur', 'Visakhapatnam', 'Indore', 'Thane', 'Bhopal', 'Patna', 'Vadodara', 'Ghaziabad'];
-  const streets = ['MG Road', 'Bannerghatta Road', 'Juhu Tara Road', 'Brigade Road', 'Park Street', 'Marine Drive', 'Connaught Place', 'Jubilee Hills', 'Koregaon Park', 'Baner Road'];
-  const doctors = ['Dr. Sharma', 'Dr. Patel', 'Dr. Gupta', 'Dr. Reddy', 'Dr. Kapoor', 'Dr. Malhotra', 'Dr. Choudhary', 'Dr. Iyer', 'Dr. Nair', 'Dr. Desai'];
-  const stateList = ['Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'Uttar Pradesh', 'West Bengal', 'Gujarat', 'Rajasthan'];
-
-  // Generate random date of birth (between 18-80 years ago)
-  const getRandomDOB = () => {
-    const currentYear = new Date().getFullYear();
-    const birthYear = currentYear - Math.floor(Math.random() * 62 + 18);
-    const birthMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
-    const birthDay = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
-    return `${birthYear}-${birthMonth}-${birthDay}`;
-  };
-
-  // Generate random phone number
-  const getRandomPhone = () => {
-    return '9' + Math.floor(100000000 + Math.random() * 900000000);
-  };
-
-  // Quick fill function for testing (Ctrl+E)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'e') {
-        e.preventDefault();
-        
-        const gender = Math.random() > 0.5 ? 'Male' : 'Female';
-        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-        const city = cityList[Math.floor(Math.random() * cityList.length)];
-        const state = stateList[Math.floor(Math.random() * stateList.length)];
-        const street = streets[Math.floor(Math.random() * streets.length)];
-        const houseNumber = Math.floor(Math.random() * 200) + 1;
-        const pincode = Math.floor(400000 + Math.random() * 100000);
-        const doctor = doctors[Math.floor(Math.random() * doctors.length)];
-        const dob = getRandomDOB();
-        const age = new Date().getFullYear() - new Date(dob).getFullYear();
-        
-        // Available test IDs from the test data
-        const allTestIds = demoTests.map(test => test.id);
-        const selectedTests = [];
-        
-        // Select 1-4 random tests
-        const numTests = Math.min(Math.floor(Math.random() * 4) + 1, allTestIds.length);
-        const testIndices = new Set<number>();
-        
-        while (testIndices.size < numTests) {
-          testIndices.add(Math.floor(Math.random() * allTestIds.length));
-        }
-        
-        testIndices.forEach(index => {
-          selectedTests.push(allTestIds[index]);
-        });
-
-        // Update form fields with random data
-        setPatient(prev => ({
-          ...prev,
-          name: `${firstName} ${lastName}`,
-          age: age.toString(),
-          gender: gender,
-          phone: getRandomPhone(),
-          doctor: doctor,
-          address: `${houseNumber}, ${street}`,
-          city: city,
-          state: state,
-          pincode: pincode.toString(),
-          selectedTests: selectedTests,
-          dob: dob
-        }));
-
-        // Update date input fields
-        const [year, month, day] = dob.split('-');
-        setTimeout(() => {
-          const dayInput = document.getElementById('day') as HTMLInputElement;
-          const monthInput = document.getElementById('month') as HTMLInputElement;
-          const yearInput = document.getElementById('year') as HTMLInputElement;
-          
-          if (dayInput) dayInput.value = day;
-          if (monthInput) monthInput.value = month;
-          if (yearInput) yearInput.value = year;
-        }, 100);
-
-        // Trigger toast notification
-        toast({
-          title: 'Test Data Loaded',
-          description: `Form filled with random data for ${firstName} ${lastName}`,
-          variant: 'default',
-        });
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [demoTests, firstNames, lastNames, cityList, stateList, streets, doctors]);
+  
+  // Hospital prefix - in a real app, this would come from the logged-in hospital's data
+  const hospitalPrefix = 'SWT';
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -304,30 +383,6 @@ const PatientRegistration: React.FC = () => {
     }, 0);
   };
 
-  const resetForm = () => {
-    setPatient({
-      name: '',
-      age: '',
-      dob: '',
-      gender: '',
-      phone: '',
-      doctor: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: '',
-      selectedTests: [],
-      registrationDate: new Date()
-    });
-    // Reset date inputs
-    const dayInput = document.getElementById('day') as HTMLInputElement;
-    const monthInput = document.getElementById('month') as HTMLInputElement;
-    const yearInput = document.getElementById('year') as HTMLInputElement;
-    if (dayInput) dayInput.value = '';
-    if (monthInput) monthInput.value = '';
-    if (yearInput) yearInput.value = '';
-  };
-
   const handleSubmit = async (e: React.FormEvent, isBillGenerate: boolean = false) => {
     e.preventDefault();
     
@@ -358,13 +413,12 @@ const PatientRegistration: React.FC = () => {
         return;
       }
       
-      // Generate patient ID using the hospital prefix from the hospital data
-      const hospitalPrefixValue = 'SWT'; // In a real app, this would come from hospital settings
-      const newPatientId = generatePatientId(hospitalPrefixValue);
+      // Generate patient ID
+      const newPatientId = generatePatientId(hospitalPrefix);
       
       // Prepare patient data for Firestore
       const patientData = {
-        hospitalId: newPatientId,
+        id: newPatientId,
         name: patient.name,
         age: parseInt(patient.age) || 0,
         gender: patient.gender as Gender,
@@ -382,11 +436,10 @@ const PatientRegistration: React.FC = () => {
       };
       
       // Save to Firestore
-      const savedDocId = await addPatient(patientData);
+      await addPatient(patientData);
       
-      // Set both IDs
-      setPatientId(newPatientId); // hospital ID for display/bill
-      setPatientDocId(savedDocId); // document ID for navigation
+      // Set the patient ID for display
+      setPatientId(newPatientId);
       
       // Show success message
       toast({
@@ -398,10 +451,26 @@ const PatientRegistration: React.FC = () => {
       // Show bill dialog if tests are selected
       if (patient.selectedTests.length > 0) {
         setShowBillDialog(true);
-      } else {
-        // Reset form if no tests selected
-        resetForm();
       }
+      
+      // Reset form if not just generating a bill
+      if (!isBillGenerate) {
+        setPatient({
+          name: '',
+          age: '',
+          dob: '',
+          gender: '',
+          phone: '',
+          doctor: '',
+          address: '',
+          city: '',
+          state: '',
+          pincode: '',
+          selectedTests: [],
+          registrationDate: new Date()
+        });
+      }
+      
     } catch (error) {
       console.error('Error saving patient:', error);
       toast({
@@ -414,180 +483,255 @@ const PatientRegistration: React.FC = () => {
     }
   };
 
-  const handlePrintBill = () => {
-    // Open print window with bill content
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+  const PrintBill = React.forwardRef<HTMLDivElement>((props, ref) => {
+    const totalAmount = calculateTotal();
+    const currentDate = new Date().toLocaleDateString('en-IN');
+    const currentTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
     
-    // Hospital prefix - in a real app, this would come from the logged-in hospital's data
-    const hospitalPrefixValue = 'SWT';
-    const hospital = {
-      name: 'HealthCare Plus Medical Center',
-      address: '123 Medical Drive, Health City, HC 12345',
-      phone: '+1 (555) 123-4567',
-      email: 'info@healthcareplus.com',
-      logo: '/logo.png', // Update with your logo path
-      gst: 'GSTIN: 22AAAAA0000A1Z5',
-      registration: 'Reg. No.: 123456/2023'
-    };
+    return (
+      <div ref={ref} className="p-6 print:p-0 print:block">
+        <div className="flex justify-between items-center mb-6 border-b pb-4 print:border-b-2 print:border-gray-800">
+          <div>
+            <h2 className="text-2xl font-bold">Lab Manager Pro</h2>
+            <p className="text-sm text-gray-600">123 Lab Street, City, State</p>
+            <p className="text-sm text-gray-600">Phone: +91 1234567890</p>
+          </div>
+          <div className="text-right">
+            <p className="font-semibold">Bill No: {patientId || 'N/A'}</p>
+            <p className="text-sm">Date: {currentDate}</p>
+            <p className="text-sm">Time: {currentTime}</p>
+          </div>
+        </div>
+        
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-2">Patient Details</h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p><span className="font-medium">Name:</span> {patient.name}</p>
+              <p><span className="font-medium">Age/Gender:</span> {patient.age} / {patient.gender}</p>
+              <p><span className="font-medium">Phone:</span> {patient.phone}</p>
+            </div>
+            <div>
+              <p><span className="font-medium">Doctor:</span> {patient.doctor || 'N/A'}</p>
+              <p><span className="font-medium">Date:</span> {currentDate}</p>
+              <p><span className="font-medium">Time:</span> {currentTime}</p>
+            </div>
+          </div>
+        </div>
 
-    // Format bill content with hospital letterhead
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-2">Tests</h3>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border p-2 text-left">Test Name</th>
+                <th className="border p-2 text-right">Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {patient.selectedTests.map(testId => {
+                const test = demoTests.find(t => t.id === testId);
+                return test ? (
+                  <tr key={testId}>
+                    <td className="border p-2">{test.name}</td>
+                    <td className="border p-2 text-right">{test.price.toFixed(2)}</td>
+                  </tr>
+                ) : null;
+              })}
+              <tr className="font-semibold">
+                <td className="border p-2 text-right">Total:</td>
+                <td className="border p-2 text-right">₹{totalAmount.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-8 pt-4 border-t border-gray-300 text-sm">
+          <p className="mb-2"><span className="font-medium">Notes:</span> Report will be available within 24 hours.</p>
+          <p className="mb-2"><span className="font-medium">Terms & Conditions:</span></p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>Report collection time will be informed via SMS.</li>
+            <li>Please bring this bill at the time of report collection.</li>
+            <li>For any queries, contact our customer care.</li>
+          </ul>
+        </div>
+
+        <div className="mt-8 text-center text-sm">
+          <p>Thank you for choosing us!</p>
+          <p className="mt-2">** This is a computer generated bill **</p>
+        </div>
+      </div>
+    );
+  });
+
+  const handlePrintBill = () => {
+    const printWindow = window.open('', '', 'width=800,height=1000');
+    if (printWindow) {
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Bill - ${patientId || 'New Bill'}</title>
+            <style>
+              @page { size: auto; margin: 10mm; }
+              body { font-family: Arial, sans-serif; line-height: 1.5; }
+              table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+              th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+              .text-right { text-align: right; }
+              .text-center { text-align: center; }
+              .font-medium { font-weight: 500; }
+              .font-semibold { font-weight: 600; }
+              .font-bold { font-weight: 700; }
+              .border-b-2 { border-bottom-width: 2px; }
+              .border-gray-800 { border-color: #1f2937; }
+              .border-t { border-top: 1px solid #e5e7eb; }
+              .border-gray-300 { border-color: #d1d5db; }
+              .list-disc { list-style-type: disc; }
+              .pl-5 { padding-left: 1.25rem; }
+              .space-y-1 > * + * { margin-top: 0.25rem; }
+              .space-y-2 > * + * { margin-top: 0.5rem; }
+              .space-y-4 > * + * { margin-top: 1rem; }
+              .mb-2 { margin-bottom: 0.5rem; }
+              .mb-4 { margin-bottom: 1rem; }
+              .mb-6 { margin-bottom: 1.5rem; }
+              .mt-2 { margin-top: 0.5rem; }
+              .mt-8 { margin-top: 2rem; }
+              .p-2 { padding: 0.5rem; }
+              .p-6 { padding: 1.5rem; }
+              .pb-4 { padding-bottom: 1rem; }
+              .pt-4 { padding-top: 1rem; }
+              .text-sm { font-size: 0.875rem; }
+              .text-lg { font-size: 1.125rem; }
+              .text-xl { font-size: 1.25rem; }
+              .text-2xl { font-size: 1.5rem; }
+              .text-gray-600 { color: #4b5563; }
+              .grid { display: grid; }
+              .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+              .gap-4 { gap: 1rem; }
+              .w-full { width: 100%; }
+              .flex { display: flex; }
+              .justify-between { justify-content: space-between; }
+              .items-center { align-items: center; }
+              @media print {
+                body { -webkit-print-color-adjust: exact; }
+                .no-print { display: none !important; }
+              }
+            </style>
+          </head>
+          <body>
+            <div>${document.getElementById('print-bill')?.innerHTML || 'No content to print'}</div>
+            <script>
+              window.onload = function() {
+                window.print();
+                window.onafterprint = function() {
+                  window.close();
+                };
+              };
+            </script>
+          </body>
+        </html>
+      `;
+      
+      printWindow.document.open();
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      
+      // Add the print bill content to the current page (hidden)
+      const printBillElement = document.createElement('div');
+      printBillElement.id = 'print-bill';
+      printBillElement.className = 'hidden';
+      document.body.appendChild(printBillElement);
+      
+      // Render the print bill component
+      const root = ReactDOM.createRoot(printBillElement);
+      root.render(<PrintBill />);
+      
+      // Clean up after printing
+    toast({
+      title: "Error",
+      description: "Could not open print window. Please check your popup blocker settings.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  const totalAmount = calculateTotal();
+  const printContent = `
+    <!DOCTYPE html>
+    <html>
       <head>
-        <title>Bill Receipt - ${patient.name}</title>
+        <title>Bill - ${patientId || 'New Bill'}</title>
         <style>
-          @media print {
-            @page { margin: 0; }
-            body { margin: 1.6cm; font-family: Arial, sans-serif; }
-            .no-print { display: none !important; }
-          }
-          .letterhead {
-            text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 15px;
-          }
-          .letterhead img { height: 80px; margin-bottom: 10px; }
-          .letterhead h1 { margin: 5px 0; font-size: 24px; }
-          .letterhead p { margin: 3px 0; font-size: 14px; }
-          .bill-header { margin: 20px 0; }
-          .patient-info, .bill-summary { margin: 15px 0; }
-          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f5f5f5; }
-          .total { font-weight: bold; text-align: right; }
-          .footer { margin-top: 30px; text-align: center; font-size: 12px; }
-          .signature { margin-top: 50px; text-align: right; }
+          @page { size: auto; margin: 10mm; }
+          body { font-family: Arial, sans-serif; line-height: 1.5; }
+          table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+          th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .font-medium { font-weight: 500; }
+          .font-semibold { font-weight: 600; }
+          .font-bold { font-weight: 700; }
+          .border { border: 1px solid #000; }
+          .border-t { border-top: 1px solid #e5e7eb; }
+          .list-disc { list-style-type: disc; }
+          .pl-5 { padding-left: 1.25rem; }
+          .mb-2 { margin-bottom: 0.5rem; }
+          .mb-4 { margin-bottom: 1rem; }
+          .mb-6 { margin-bottom: 1.5rem; }
+          .mt-2 { margin-top: 0.5rem; }
+          .mt-8 { margin-top: 2rem; }
+          .p-2 { padding: 0.5rem; }
+          .p-6 { padding: 1.5rem; }
+          .pb-4 { padding-bottom: 1rem; }
+          .pt-4 { padding-top: 1rem; }
+          .text-sm { font-size: 0.875rem; }
+          .text-lg { font-size: 1.125rem; }
+          .text-2xl { font-size: 1.5rem; }
+          .text-gray-600 { color: #4b5563; }
+          .w-full { width: 100%; }
+          .flex { display: flex; }
+          .justify-between { justify-content: space-between; }
+          .items-center { align-items: center; }
+          .bg-gray-100 { background-color: #f3f4f6; }
+          .space-y-1 > * + * { margin-top: 0.25rem; }
+          .space-y-2 > * + * { margin-top: 0.5rem; }
+          .grid { display: grid; }
+          .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .gap-4 { gap: 1rem; }
         </style>
       </head>
       <body>
-        <!-- Letterhead -->
-        <div class="letterhead">
-          ${hospital.logo ? `<img src="${hospital.logo}" alt="${hospital.name}">` : ''}
-          <h1>${hospital.name}</h1>
-          <p>${hospital.address}</p>
-          <p>Phone: ${hospital.phone} | Email: ${hospital.email}</p>
-          <p>${hospital.gst} | ${hospital.registration}</p>
-        </div>
+        <div id="print-content"></div>
+        <script>
+          const content = document.getElementById('print-content');
+          const bill = document.createElement('div');
+          bill.innerHTML = ${JSON.stringify(ReactDOMServer.renderToString(
+            <PrintBill 
+              patient={patient} 
+              patientId={patientId} 
+              totalAmount={totalAmount}
+              demoTests={demoTests}
+            />
+          )};
+          content.appendChild(bill);
+          window.print();
+          window.onafterprint = function() {
+            window.close();
+          };
+        </script>
 
-        <!-- Bill Header -->
-        <div class="bill-header">
-          <h2>BILL RECEIPT</h2>
-          <p>Bill No: ${patientId || 'N/A'} | Date: ${new Date().toLocaleDateString()}</p>
-        </div>
-
-        <!-- Patient Info -->
-        <div class="patient-info">
-          <h3>Patient Details</h3>
-          <p><strong>Name:</strong> ${patient.name || 'N/A'}</p>
-          <p><strong>Age/Gender:</strong> ${patient.age || 'N/A'} / ${patient.gender || 'N/A'}</p>
-          <p><strong>Contact:</strong> ${patient.phone || 'N/A'}</p>
-          ${patient.doctor ? `<p><strong>Referred By:</strong> ${patient.doctor}</p>` : ''}
-        </div>
-
-        <!-- Tests Table -->
-        <h3>Tests Performed</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Test Name</th>
-              <th>Category</th>
-              <th>Price (₹)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${patient.selectedTests.map((testId, index) => {
-              const test = demoTests.find(t => t.id === testId);
-              return test ? `
-                <tr>
-                  <td>${index + 1}</td>
-                  <td>${test.name}</td>
-                  <td>${test.category}</td>
-                  <td>₹${test.price.toFixed(2)}</td>
-                </tr>
-              ` : '';
-            }).join('')}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="3" class="total">Total Amount:</td>
-              <td>₹${calculateTotal().toFixed(2)}</td>
-            </tr>
-          </tfoot>
-        </table>
-
-        <!-- Footer -->
-        <div class="footer">
-          <p>Thank you for choosing our services. For any queries, please contact us at ${hospital.phone}</p>
-          <p>This is a computer-generated receipt. No signature required.</p>
-        </div>
-
-        <div class="signature">
-          <p>Authorized Signatory</p>
-        </div>
-
-        <div class="no-print" style="margin-top: 20px; text-align: center;">
-          <button onclick="window.print()" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            Print Bill
-          </button>
-          <button onclick="window.close()" style="padding: 10px 20px; margin-left: 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            Close
-          </button>
-        </div>
-      </body>
-      </html>
-    `;
-
-    // Write content to print window
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    
-    // Auto-print after content loads
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print();
-        
-        toast({
-          title: "Bill Generated",
-          description: "The bill has been prepared for printing.",
-          variant: "default",
-        });
-      }, 500);
-    };
-  };
-
-  const handleCollectSubmit = () => {
-    if (!patientDocId) return;
-    
-    toast({
-      title: "Collecting Samples",
-      description: (
-        <div>
-          <p>Redirecting to report collection form.</p>
-          <p className="mt-1 font-medium">Patient ID: {patientId}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {new Date().toLocaleString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true
-            })}
-          </p>
-        </div>
-      ),
-      variant: "default",
-    });
-    
-    navigate(`/lab/sample-collection/${patientDocId}`);
-  };
-
+const PrintBill = React.forwardRef<HTMLDivElement>((props, ref) => {
+  const totalAmount = calculateTotal();
+  const currentDate = new Date().toLocaleDateString('en-IN');
+  const currentTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  
   return (
-    <div className="min-h-screen bg-background">
+    <div ref={ref} className="p-6 print:p-0 print:block">
+      <div className="flex justify-between items-center mb-6 border-b pb-4 print:border-b-2 print:border-gray-800">
+        <div>
+          <h2 className="text-2xl font-bold">Lab Manager Pro</h2>
+          <p className="text-sm text-gray-600">123 Lab Street, City, State</p>
+          <p className="text-sm text-gray-600">Phone: +91 1234567890</p>
       <div className="mx-auto px-2 sm:px-4 py-4 max-w-[1800px]">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -879,31 +1023,6 @@ const PatientRegistration: React.FC = () => {
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                       </div>
                     </div>
-                    {patient.selectedTests.length > 0 && (
-                      <div className="mb-2 flex flex-wrap gap-2">
-                        {patient.selectedTests.map((testId) => {
-                          const test = demoTests.find((t) => t.id === testId);
-                          if (!test) return null;
-                          return (
-                            <span
-                              key={`chip-${testId}`}
-                              className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-1 text-xs"
-                            >
-                              <span className="max-w-[180px] truncate">{test.name}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleTestSelection(testId, false)}
-                                className="hover:bg-primary/20 rounded-full p-0.5"
-                                aria-label={`Remove ${test.name}`}
-                                title="Remove"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
                     
                     <div className="border rounded-md h-48 overflow-y-auto p-2">
                       {demoTests
@@ -911,29 +1030,23 @@ const PatientRegistration: React.FC = () => {
                           test.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           test.category.toLowerCase().includes(searchQuery.toLowerCase())
                         )
-                        .map((test) => {
-                          // Create a unique key using test.id and index to prevent duplicates
-                          const uniqueKey = `test-${test.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                          return (
-                            <div key={uniqueKey} className="flex items-center justify-between space-x-2 p-1 hover:bg-muted/50 rounded">
-                              <div className="flex items-center space-x-2 flex-1">
-                                <Checkbox
-                                  id={uniqueKey}
-                                  checked={patient.selectedTests.includes(test.id)}
-                                  onCheckedChange={(checked) => handleTestSelection(test.id, checked as boolean)}
-                                />
-                                <label
-                                  htmlFor={uniqueKey}
-                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
-                                >
-                                  {test.name}
-                                  <span className="text-xs text-muted-foreground block">{test.category}</span>
-                                </label>
-                              </div>
-                              <span className="text-sm font-medium">₹{test.price}</span>
-                            </div>
-                          );
-                        })}
+                        .map((test) => (
+                          <div key={test.id} className="flex items-center space-x-2 p-1 hover:bg-muted/50 rounded">
+                            <Checkbox
+                              id={`test-${test.id}`}
+                              checked={patient.selectedTests.includes(test.id)}
+                              onCheckedChange={(checked) => handleTestSelection(test.id, checked as boolean)}
+                            />
+                            <label
+                              htmlFor={`test-${test.id}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1"
+                            >
+                              {test.name}
+                              <span className="text-xs text-muted-foreground block">{test.category}</span>
+                            </label>
+                            <span className="text-sm font-medium">₹{test.price}</span>
+                          </div>
+                        ))}
                     </div>
                   </div>
 
@@ -1007,133 +1120,54 @@ const PatientRegistration: React.FC = () => {
       </div>
 
       {/* Bill Dialog */}
-      <Dialog open={showBillDialog} onOpenChange={(open) => {
-        if (!open) {
-          // Reset form when dialog is closed
-          resetForm();
-        }
-        setShowBillDialog(open);
-      }}>
-        <DialogContent className="sm:max-w-[800px]">
+      <Dialog open={showBillDialog} onOpenChange={setShowBillDialog}>
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <DialogTitle>Test Details for {patient.name || 'Patient'}</DialogTitle>
-                <DialogDescription className="mt-1">
-                  Patient ID: {patientId || 'N/A'} | Date: {new Date().toLocaleDateString()}
-                </DialogDescription>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium">Total Amount</p>
-                <p className="text-2xl font-bold text-primary">₹{calculateTotal().toFixed(2)}</p>
-              </div>
-            </div>
+            <DialogTitle>Bill for {patient.name || 'New Patient'}</DialogTitle>
+            <DialogDescription>
+              Patient ID: {patientId || 'N/A'}
+            </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6 py-4">
-            {/* Patient Info - compact single row */}
-            <div className="rounded-lg border bg-card p-3">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-start">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground">Patient Name</p>
-                  <p className="font-medium truncate">{patient.name || 'N/A'}</p>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground">Age / Gender</p>
-                  <p className="font-medium truncate">{patient.age || 'N/A'} {patient.gender ? ` / ${patient.gender}` : ''}</p>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground">Contact</p>
-                  <p className="font-medium truncate">{patient.phone || 'N/A'}</p>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground">Referred By</p>
-                  <p className="font-medium truncate">{patient.doctor || '-'}</p>
-                </div>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Date</p>
+                <p>{new Date().toLocaleDateString()}</p>
               </div>
-            </div>
-
-            {/* Test Details */}
-            <div className="border rounded-lg overflow-hidden">
-              <div className="bg-muted/50 p-3 border-b">
-                <h3 className="font-semibold">Test Details</h3>
+              <div>
+                <p className="text-sm text-muted-foreground">Time</p>
+                <p>{new Date().toLocaleTimeString()}</p>
               </div>
-              
-              {patient.selectedTests.length > 0 ? (
-                <div className="divide-y">
-                  {/* Table Header */}
-                  <div className="grid grid-cols-12 gap-4 p-3 bg-muted/20 font-medium text-sm text-muted-foreground">
-                    <div className="col-span-1">#</div>
-                    <div className="col-span-6">Test Name</div>
-                    <div className="col-span-3 text-center">Category</div>
-                    <div className="col-span-2 text-right">Price (₹)</div>
-                  </div>
-                  
-                  {/* Test Items */}
-                  {patient.selectedTests.map((testId, index) => {
-                    const test = demoTests.find(t => t.id === testId);
-                    // Create a unique key using testId and index to prevent duplicates
-                    const uniqueKey = `selected-test-${testId}-${index}-${Date.now()}`;
-                    return test ? (
-                      <div key={uniqueKey} className="grid grid-cols-12 gap-4 p-3 items-center hover:bg-muted/10">
-                        <div className="col-span-1 text-sm text-muted-foreground">{index + 1}.</div>
-                        <div className="col-span-6">
-                          <p className="font-medium">{test.name}</p>
-                          {test.description && (
-                            <p className="text-xs text-muted-foreground mt-1">{test.description}</p>
-                          )}
-                        </div>
-                        <div className="col-span-3 text-sm text-center text-muted-foreground">
-                          {test.category}
-                        </div>
-                        <div className="col-span-2 text-right font-medium">
-                          ₹{test.price.toFixed(2)}
-                        </div>
-                      </div>
-                    ) : null;
-                  })}
-                  
-                  {/* Total */}
-                  <div className="border-t p-4 bg-muted/10">
-                    <div className="flex justify-between items-center">
-                      <div className="text-sm">
-                        <p>Total {patient.selectedTests.length} test(s)</p>
-                        <p className="text-muted-foreground text-xs">*All prices include GST</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Total Amount</p>
-                        <p className="text-xl font-bold">₹{calculateTotal().toFixed(2)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-6 text-center">
-                  <p className="text-muted-foreground">No tests selected</p>
-                </div>
-              )}
             </div>
             
-            {/* Additional Notes */}
-            <div className="text-sm text-muted-foreground">
-              <p className="font-medium mb-1">Notes:</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Report will be available within 24 hours</li>
-                <li>Please bring this receipt when collecting the report</li>
-                <li>For any queries, contact: 1800-123-4567</li>
-              </ul>
+            <div className="border-t pt-4">
+              <div className="space-y-2">
+                {patient.selectedTests.map(testId => {
+                  const test = demoTests.find(t => t.id === testId);
+                  if (!test) return null;
+                  
+                  return (
+                    <div key={testId} className="flex justify-between">
+                      <span>{test.name}</span>
+                      <span>₹{test.price}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="border-t mt-4 pt-2 flex justify-between font-medium">
+                <span>Total</span>
+                <span>₹{calculateTotal()}</span>
+              </div>
             </div>
           </div>
           
-          <DialogFooter className="sm:justify-between border-t pt-4">
-            <div className="text-xs text-muted-foreground">
-              <p>Thank you for choosing our lab services</p>
-              <p>Generated on: {new Date().toLocaleString()}</p>
-            </div>
+          <DialogFooter className="sm:justify-between">
+            <Button variant="outline" onClick={() => setShowBillDialog(false)}>
+              Close
+            </Button>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowBillDialog(false)}>
-                Close
-              </Button>
               <Button variant="outline" onClick={handlePrintBill}>
                 <Printer className="h-4 w-4 mr-2" />
                 Print Bill

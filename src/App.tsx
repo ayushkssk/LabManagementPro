@@ -3,14 +3,17 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import LoginForm from "./components/auth/LoginForm";
-import Layout from "./components/layout/Layout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import HospitalProfile from "./pages/admin/HospitalProfile";
-import LabDashboard from "./pages/lab/LabDashboard";
-import PatientRegistration from "./pages/lab/PatientRegistration";
-import NotFound from "./pages/NotFound";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import LoginForm from "@/components/auth/LoginForm";
+import Layout from "@/components/layout/Layout";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import HospitalProfile from "@/pages/admin/HospitalProfile";
+import TestManagement from "@/pages/admin/TestManagement";
+import LabDashboard from "@/pages/lab/LabDashboard";
+import PatientRegistration from "@/pages/lab/PatientRegistration";
+import SampleCollection from "@/pages/lab/SampleCollection";
+import Patients from "@/pages/patients/Patients";
+import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -53,7 +56,7 @@ const AppRoutes = () => {
       } />
       <Route path="/admin/tests" element={
         <ProtectedRoute>
-          <AdminDashboard />
+          <TestManagement />
         </ProtectedRoute>
       } />
       <Route path="/admin/settings" element={
@@ -75,7 +78,12 @@ const AppRoutes = () => {
       } />
       <Route path="/lab/patients" element={
         <ProtectedRoute>
-          <LabDashboard />
+          <Patients />
+        </ProtectedRoute>
+      } />
+      <Route path="/lab/sample-collection/:patientId" element={
+        <ProtectedRoute>
+          <SampleCollection />
         </ProtectedRoute>
       } />
       

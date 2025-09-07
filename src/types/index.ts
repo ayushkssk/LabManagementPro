@@ -11,7 +11,9 @@ export interface Hospital {
 export interface Test {
   id: string;
   name: string;
+  category: string;
   price: number;
+  description?: string;
   fields: TestField[];
 }
 

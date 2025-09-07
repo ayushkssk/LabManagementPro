@@ -15,6 +15,13 @@ import {
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
+interface NavItem {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  className?: string;
+}
+
 interface SidebarProps {
   isCollapsed: boolean;
 }
@@ -22,22 +29,35 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  
+  console.log('Current user role:', user?.role);
 
-  const adminNavItems = [
+  const adminNavItems: NavItem[] = [
     { to: '/admin', icon: BarChart3, label: 'Dashboard' },
     { to: '/admin/profile', icon: Hospital, label: 'Hospital Profile' },
     { to: '/admin/tests', icon: TestTube, label: 'Test Management' },
     { to: '/admin/settings', icon: Settings, label: 'Settings' }
   ];
 
-  const technicianNavItems = [
+  const technicianNavItems: NavItem[] = [
     { to: '/lab', icon: BarChart3, label: 'Dashboard' },
     { to: '/lab/register', icon: UserPlus, label: 'New Patient' },
-    { to: '/lab/patients', icon: Users, label: 'Patient List' }
+    { 
+      to: '/lab/patients', 
+      icon: Users, 
+      label: 'Patient List',
+      className: 'bg-primary/10 text-primary hover:bg-primary/20' 
+    }
   ];
 
-  const navItems = user?.role === 'admin' ? adminNavItems : technicianNavItems;
-
+  // Show all navigation items to admin, only technician items to technicians
+  const navSections = user?.role === 'admin'
+    ? [
+        { title: 'Admin', items: adminNavItems },
+        { title: 'Lab', items: technicianNavItems }
+      ]
+    : [{ title: '', items: technicianNavItems }];
+  
   const isActive = (path: string) => {
     if (path === '/admin' || path === '/lab') {
       return location.pathname === path;
@@ -70,25 +90,37 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
       <Separator />
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive: linkActive }) =>
-              `flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth ${
-                linkActive || isActive(item.to)
-                  ? 'bg-sidebar-accent text-sidebar-primary shadow-sm'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary'
-              }`
-            }
-            title={isCollapsed ? item.label : undefined}
-          >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
-            {!isCollapsed && <span>{item.label}</span>}
-          </NavLink>
+      <nav className="flex-1 p-4 space-y-4">
+        {navSections.map((section, sectionIndex) => (
+          <div key={sectionIndex} className="space-y-2">
+            {!isCollapsed && section.title && (
+              <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {section.title}
+              </h3>
+            )}
+            <div className="space-y-1">
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive: linkActive }) =>
+                    `flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth ${
+                      linkActive || isActive(item.to)
+                        ? 'bg-sidebar-accent text-sidebar-primary shadow-sm ' + (item.className || '')
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary ' + (item.className || '')
+                    }`
+                  }
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  {!isCollapsed && <span>{item.label}</span>}
+                </NavLink>
+              ))}
+            </div>
+            {sectionIndex < navSections.length - 1 && <Separator />}
+          </div>
         ))}
-       </nav>
+      </nav>
 
       <Separator />
 
