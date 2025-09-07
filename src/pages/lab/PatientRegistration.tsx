@@ -24,6 +24,8 @@ import { demoTests } from '@/data/demoData';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { addPatient } from '@/services/patientService';
+import { Letterhead, letterheadStyles } from '@/components/letterhead/Letterhead';
+import { useHospitalLetterhead } from '@/hooks/useHospitalLetterhead';
 
 type Gender = 'Male' | 'Female' | 'Other';
 
@@ -414,127 +416,348 @@ const PatientRegistration: React.FC = () => {
     }
   };
 
+  const { hospital: hospitalData } = useHospitalLetterhead();
+
   const handlePrintBill = () => {
     // Open print window with bill content
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    
-    // Hospital prefix - in a real app, this would come from the logged-in hospital's data
-    const hospitalPrefixValue = 'SWT';
-    const hospital = {
-      name: 'HealthCare Plus Medical Center',
-      address: '123 Medical Drive, Health City, HC 12345',
-      phone: '+1 (555) 123-4567',
-      email: 'info@healthcareplus.com',
-      logo: '/logo.png', // Update with your logo path
-      gst: 'GSTIN: 22AAAAA0000A1Z5',
-      registration: 'Reg. No.: 123456/2023'
+
+    // Use hospital data from hook or fallback to default
+    const hospital = hospitalData || {
+      name: 'SWASTHYA DIAGNOSTIC CENTRE',
+      address: 'Near Railway Station, Darbhanga, Bihar - 846004',
+      phone: '+91 9473199330',
+      email: 'swasthyadiagnostic@gmail.com',
+      gstin: '10AABCS1429B1ZX',
+      registration: 'Reg. No.: 123456/2023',
+      footerNote: 'This is a computer generated bill. No signature required.'
     };
 
-    // Format bill content with hospital letterhead
-    const printContent = `
+    // Format date and time in Indian format
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    };
+
+    const formatTime = (date: Date) => {
+      return date.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    };
+
+    const now = new Date();
+    const billContent = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Bill Receipt - ${patient.name}</title>
+        <title>Bill - ${patientId || 'Receipt'}</title>
         <style>
-          @media print {
-            @page { margin: 0; }
-            body { margin: 1.6cm; font-family: Arial, sans-serif; }
-            .no-print { display: none !important; }
+          ${letterheadStyles}
+          @page { 
+            size: A4; 
+            margin: 10mm;
           }
-          .letterhead {
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            font-size: 12px;
+            color: #333;
+            width: 210mm;
+            min-height: 287mm;
+            margin: 0 auto;
+            background: #fff;
+            position: relative;
+          }
+          .bill-content {
+            padding: 0 15px;
+          }
+          .bill-title {
             text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #1a365d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
           }
-          .letterhead img { height: 80px; margin-bottom: 10px; }
-          .letterhead h1 { margin: 5px 0; font-size: 24px; }
-          .letterhead p { margin: 3px 0; font-size: 14px; }
-          .bill-header { margin: 20px 0; }
-          .patient-info, .bill-summary { margin: 15px 0; }
-          table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f5f5f5; }
-          .total { font-weight: bold; text-align: right; }
-          .footer { margin-top: 30px; text-align: center; font-size: 12px; }
-          .signature { margin-top: 50px; text-align: right; }
+          .bill-no {
+            text-align: right;
+            margin-bottom: 8px;
+            font-size: 12px;
+          }
+          .patient-info, .bill-info { 
+            width: 100%; 
+            margin-bottom: 10px;
+            border-collapse: collapse;
+            font-size: 12px;
+          }
+          .patient-info td, .bill-info td { 
+            padding: 6px 8px; 
+            border: 1px solid #ddd;
+            vertical-align: top;
+          }
+          .patient-info th, .bill-info th { 
+            background-color: #f0f4f8; 
+            text-align: left; 
+            padding: 8px;
+            border: 1px solid #ddd;
+            color: #1a365d;
+          }
+          .tests-table { 
+            width: 100%; 
+            border-collapse: collapse;
+            margin: 10px 0;
+            page-break-inside: avoid;
+            font-size: 11px;
+          }
+          .tests-table th { 
+            background-color: #f0f4f8; 
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #ddd;
+            color: #1a365d;
+          }
+          .tests-table td { 
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            vertical-align: middle;
+          }
+          .total { 
+            text-align: right; 
+            font-weight: bold; 
+            font-size: 13px;
+          }
+          .signature {
+            margin-top: 60px;
+            text-align: right;
+            position: relative;
+          }
+          .signature::before {
+            content: "";
+            display: block;
+            width: 200px;
+            border-top: 1px solid #000;
+            margin-bottom: 5px;
+            position: absolute;
+            right: 0;
+            top: -10px;
+          }
+          .payment-info {
+            width: 45%;
+            float: right;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-collapse: collapse;
+            font-size: 12px;
+          }
+          .payment-info td, .payment-info th {
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+          }
+          .payment-info th {
+            background-color: #f0f4f8;
+            color: #1a365d;
+          }
+          .terms {
+            clear: both;
+            margin-top: 20px;
+            font-size: 10px;
+            line-height: 1.4;
+            page-break-inside: avoid;
+          }
+          .terms ol {
+            margin: 5px 0;
+            padding-left: 20px;
+          }
+          .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 80px;
+            opacity: 0.1;
+            z-index: -1;
+            white-space: nowrap;
+            pointer-events: none;
+            color: #1a365d;
+            font-weight: bold;
+          }
+          .no-print { display: none; }
+          @media print {
+            body { 
+              width: 100%; 
+              margin: 0; 
+              padding: 0; 
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .no-print { display: none !important; }
+            .watermark { display: block !important; }
+          }
         </style>
       </head>
       <body>
+        <!-- Watermark -->
+        <div class="watermark" style="display: none;">${hospital.name}</div>
+
         <!-- Letterhead -->
         <div class="letterhead">
-          ${hospital.logo ? `<img src="${hospital.logo}" alt="${hospital.name}">` : ''}
-          <h1>${hospital.name}</h1>
-          <p>${hospital.address}</p>
-          <p>Phone: ${hospital.phone} | Email: ${hospital.email}</p>
-          <p>${hospital.gst} | ${hospital.registration}</p>
+          <div class="letterhead-header">
+            <h1 class="letterhead-title">${hospital.name}</h1>
+            <p class="letterhead-address">${hospital.address}</p>
+            <div class="letterhead-contact">
+              <span>Phone: ${hospital.phone}</span>
+              <span>Email: ${hospital.email}</span>
+              <span>GSTIN: ${hospital.gstin}</span>
+              ${hospital.registration ? `<span>${hospital.registration}</span>` : ''}
+            </div>
+          </div>
         </div>
 
-        <!-- Bill Header -->
-        <div class="bill-header">
-          <h2>BILL RECEIPT</h2>
-          <p>Bill No: ${patientId || 'N/A'} | Date: ${new Date().toLocaleDateString()}</p>
-        </div>
+        <div class="bill-content">
+          <!-- Bill Title -->
+          <div class="bill-title">PATIENT BILL / RECEIPT</div>
 
-        <!-- Patient Info -->
-        <div class="patient-info">
-          <h3>Patient Details</h3>
-          <p><strong>Name:</strong> ${patient.name || 'N/A'}</p>
-          <p><strong>Age/Gender:</strong> ${patient.age || 'N/A'} / ${patient.gender || 'N/A'}</p>
-          <p><strong>Contact:</strong> ${patient.phone || 'N/A'}</p>
-          ${patient.doctor ? `<p><strong>Referred By:</strong> ${patient.doctor}</p>` : ''}
-        </div>
+          <!-- Bill Info -->
+          <div class="bill-no">
+            <strong>Bill No.:</strong> ${patientId || 'N/A'} | 
+            <strong>Date:</strong> ${formatDate(now)} | 
+            <strong>Time:</strong> ${formatTime(now)}
+          </div>
 
-        <!-- Tests Table -->
-        <h3>Tests Performed</h3>
-        <table>
-          <thead>
+          <!-- Patient Info -->
+          <table class="patient-info">
             <tr>
-              <th>#</th>
-              <th>Test Name</th>
-              <th>Category</th>
-              <th>Price (₹)</th>
+              <th colspan="4" style="background-color: #1a365d; color: white; text-align: center;">PATIENT DETAILS</th>
             </tr>
-          </thead>
-          <tbody>
-            ${patient.selectedTests.map((testId, index) => {
-              const test = demoTests.find(t => t.id === testId);
-              return test ? `
-                <tr>
-                  <td>${index + 1}</td>
-                  <td>${test.name}</td>
-                  <td>${test.category}</td>
-                  <td>₹${test.price.toFixed(2)}</td>
-                </tr>
-              ` : '';
-            }).join('')}
-          </tbody>
-          <tfoot>
             <tr>
-              <td colspan="3" class="total">Total Amount:</td>
-              <td>₹${calculateTotal().toFixed(2)}</td>
+              <td width="25%"><strong>Patient Name:</strong></td>
+              <td width="25%">${patient.name || 'N/A'}</td>
+              <td width="25%"><strong>Age/Gender:</strong></td>
+              <td width="25%">${patient.age || 'N/A'} Y / ${patient.gender || 'N/A'}</td>
             </tr>
-          </tfoot>
-        </table>
+            <tr>
+              <td><strong>Phone:</strong></td>
+              <td>${patient.phone || 'N/A'}</td>
+              <td><strong>Referred By:</strong></td>
+              <td>${patient.doctor || 'Self'}</td>
+            </tr>
+            <tr>
+              <td><strong>Address:</strong></td>
+              <td colspan="3">
+                ${patient.address || 'N/A'} 
+                ${patient.city ? ', ' + patient.city : ''} 
+                ${patient.state ? ', ' + patient.state : ''} 
+                ${patient.pincode ? ' - ' + patient.pincode : ''}
+              </td>
+            </tr>
+          </table>
+
+          <!-- Tests Table -->
+          <table class="tests-table">
+            <thead>
+              <tr>
+                <th width="5%" style="text-align: center;">S.No</th>
+                <th width="60%">Test Name</th>
+                <th width="15%" style="text-align: center;">Category</th>
+                <th width="20%" style="text-align: right;">Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${patient.selectedTests.map((testId, index) => {
+                const test = demoTests.find(t => t.id === testId);
+                return test ? `
+                  <tr>
+                    <td style="text-align: center;">${index + 1}</td>
+                    <td>${test.name}</td>
+                    <td style="text-align: center;">${test.category}</td>
+                    <td style="text-align: right;">${test.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                ` : '';
+              }).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 15px;">Total Amount:</td>
+                <td style="text-align: right; font-weight: bold; border-top: 2px solid #000;">₹${calculateTotal().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+              <tr>
+                <td colspan="4" style="text-align: right; font-size: 10px; padding-right: 15px;">(Inclusive of all applicable taxes)</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <!-- Payment Info -->
+          <table class="payment-info">
+            <tr>
+              <th colspan="2" style="text-align: center; background-color: #1a365d; color: white;">PAYMENT DETAILS</th>
+            </tr>
+            <tr>
+              <td><strong>Total Amount:</strong></td>
+              <td style="text-align: right;">₹${calculateTotal().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+            <tr>
+              <td>Discount:</td>
+              <td style="text-align: right;">₹0.00</td>
+            </tr>
+            <tr>
+              <td><strong>Net Payable:</strong></td>
+              <td style="text-align: right; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; font-weight: bold;">
+                ₹${calculateTotal().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+            </tr>
+            <tr>
+              <td>Payment Mode:</td>
+              <td style="text-align: right;">Cash</td>
+            </tr>
+            <tr>
+              <td>Amount Paid:</td>
+              <td style="text-align: right;">₹${calculateTotal().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+            <tr>
+              <td><strong>Balance:</strong></td>
+              <td style="text-align: right; font-weight: bold;">₹0.00</td>
+            </tr>
+          </table>
+
+          <!-- Terms and Conditions -->
+          <div class="terms">
+            <p><strong>Terms & Conditions:</strong></p>
+            <ol>
+              <li>Please bring this bill at the time of sample collection.</li>
+              <li>Report delivery time is subject to test type and sample collection time.</li>
+              <li>For any queries, please contact our customer care.</li>
+              <li>This is a computer generated bill, no signature required.</li>
+            </ol>
+            <p style="margin-top: 10px;">
+              <strong>Note:</strong> Please check all details at the time of sample collection. The management will not be responsible for any discrepancy later.
+            </p>
+          </div>
+
+          <div class="signature">
+            <p>Authorized Signatory</p>
+          </div>
+        </div>
 
         <!-- Footer -->
-        <div class="footer">
+        <div class="letterhead-footer">
           <p>Thank you for choosing our services. For any queries, please contact us at ${hospital.phone}</p>
-          <p>This is a computer-generated receipt. No signature required.</p>
+          <p>${hospital.footerNote || 'This is a computer generated bill. No signature required.'}</p>
         </div>
 
-        <div class="signature">
-          <p>Authorized Signatory</p>
-        </div>
-
-        <div class="no-print" style="margin-top: 20px; text-align: center;">
-          <button onclick="window.print()" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            Print Bill
+        <div class="no-print" style="margin-top: 20px; text-align: center; clear: both;">
+          <button onclick="window.print()" style="padding: 10px 20px; background: #1a365d; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px; font-weight: bold;">
+            <i class="fa fa-print" style="margin-right: 5px;"></i> Print Bill
           </button>
-          <button onclick="window.close()" style="padding: 10px 20px; margin-left: 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            Close
+          <button onclick="window.close()" style="padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px; font-weight: bold;">
+            <i class="fa fa-times" style="margin-right: 5px;"></i> Close
           </button>
         </div>
       </body>
@@ -542,14 +765,17 @@ const PatientRegistration: React.FC = () => {
     `;
 
     // Write content to print window
-    printWindow.document.write(printContent);
+    printWindow.document.write(billContent);
     printWindow.document.close();
     
     // Auto-print after content loads
     printWindow.onload = () => {
+      // Show print dialog after a short delay to ensure content is rendered
       setTimeout(() => {
+        printWindow.focus();
         printWindow.print();
         
+        // Show success message
         toast({
           title: "Bill Generated",
           description: "The bill has been prepared for printing.",
