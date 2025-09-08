@@ -1,45 +1,62 @@
-/* Hide everything by default when printing */
+/* Professional A4 print styles */
 @media print {
+  /* Hide everything by default when printing */
   body * {
     visibility: hidden;
   }
-  
+
   /* Only show the print container and its children */
   .print-container,
   .print-container * {
     visibility: visible;
   }
-  
-  /* Position the print container at the top of the page */
+
+  /* Size and position the print container for A4 */
   .print-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: auto;
+    position: static;
+    width: 210mm;
+    min-height: 297mm;
     margin: 0;
-    padding: 0;
+    padding: 10mm;
+    box-sizing: border-box;
+    background: #fff;
   }
-  
-  /* Ensure the letterhead prints properly */
+
+  /* Header block should not force a new page */
   .letterhead {
-    page-break-after: always;
+    page-break-after: avoid;
     margin: 0;
     padding: 0;
   }
-  
-  /* Hide print button when printing */
-  .print-button {
+
+  /* Hide any explicit print buttons/controls */
+  .print-button,
+  .no-print {
     display: none !important;
   }
-  
-  /* Ensure proper page breaks */
+
+  /* Page break utility */
   .page-break {
     page-break-before: always;
   }
-  
-  /* Adjust margins for printing */
+
+  /* Page setup */
   @page {
-    margin: 0.5cm;
+    size: A4;
+    margin: 10mm;
+  }
+
+  /* Ensure tables print with crisp borders */
+  .print-container table,
+  .print-container th,
+  .print-container td {
+    border: 1px solid #000 !important;
+  }
+
+  /* Try to preserve header background color on printers that support it */
+  .print-container thead {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: #eee !important;
   }
 }

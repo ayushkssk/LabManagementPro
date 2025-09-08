@@ -7,15 +7,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Eye, Save, ArrowLeft, Settings, Printer, Image, Palette, Type, MapPin, Phone, Mail, FileText, Building2 } from 'lucide-react';
+import { Upload, Eye, Save, ArrowLeft, Settings, Printer, Image, Palette, Type, MapPin, Phone, Mail, FileText, Building2, Trash2, Loader2 } from 'lucide-react';
 import { Hospital } from '@/types';
 import { demoHospital } from '@/data/demoData';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { deletePatientsByHospital } from '@/services/patientService';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import LetterheadDesigner from '@/components/letterhead/LetterheadDesigner';
  
 
 const HospitalProfile = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   // Format address object to string for display
   const formatAddress = (address: { street?: string; city?: string; state?: string; pincode?: string; country?: string }) => {
     if (!address) return '';
@@ -43,6 +58,52 @@ const HospitalProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [logoUrlInput, setLogoUrlInput] = useState('');
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const canReset = (user?.email?.toLowerCase() === 'swati@gmail.com');
+  const resolvedHospitalName = React.useMemo(() => {
+    try {
+      const saved = localStorage.getItem('labmanagerpro_hospitals');
+      if (saved && user?.email) {
+        const hospitals = JSON.parse(saved);
+        const found = hospitals.find((h: any) => h?.admin?.email?.toLowerCase() === user.email.toLowerCase());
+        if (found?.name) return found.name;
+      }
+    } catch {}
+    return hospital?.name || 'Swati Hospital';
+  }, [user?.email, hospital?.name]);
+
+  const handleResetPatients = async () => {
+    let targetHospitalId = user?.hospitalId;
+    if (!targetHospitalId) {
+      try {
+        const saved = localStorage.getItem('labmanagerpro_hospitals');
+        if (saved) {
+          const hospitals = JSON.parse(saved);
+          const found = hospitals.find((h: any) => h?.admin?.email?.toLowerCase() === user?.email?.toLowerCase());
+          if (found?.id) targetHospitalId = found.id;
+        }
+      } catch {}
+    }
+    if (!targetHospitalId) {
+      toast({ title: 'Hospital not found', description: 'Cannot determine hospital ID for deletion.' });
+      return;
+    }
+    try {
+      setIsDeleting(true);
+      const deleted = await deletePatientsByHospital(targetHospitalId);
+      toast({ title: 'Patient data reset', description: `${deleted} patient record(s) deleted for this hospital.` });
+      setResetOpen(false);
+      setConfirmText('');
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Reset failed', description: 'Could not delete patient records. Please try again.' });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Load persisted settings once
   useEffect(() => {
@@ -78,7 +139,7 @@ const HospitalProfile = () => {
       reader.onload = (e) => {
         setHospital(prev => ({
           ...prev,
-          logo: e.target?.result as string
+          logoUrl: e.target?.result as string
         }));
       };
       reader.readAsDataURL(file);
@@ -96,7 +157,7 @@ const HospitalProfile = () => {
         if (!file) continue;
         const reader = new FileReader();
         reader.onload = (ev) => {
-          setHospital(prev => ({ ...prev, logo: ev.target?.result as string }));
+          setHospital(prev => ({ ...prev, logoUrl: ev.target?.result as string }));
           toast({ title: 'Logo updated', description: 'Image pasted from clipboard.' });
         };
         reader.readAsDataURL(file);
@@ -109,7 +170,7 @@ const HospitalProfile = () => {
   const handleAddLogoUrl = () => {
     if (!isEditing) return;
     if (!logoUrlInput) return;
-    setHospital(prev => ({ ...prev, logo: logoUrlInput }));
+    setHospital(prev => ({ ...prev, logoUrl: logoUrlInput }));
     toast({ title: 'Logo updated', description: 'Logo set from URL.' });
   };
 
@@ -120,7 +181,7 @@ const HospitalProfile = () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setHospital(prev => ({ ...prev, logo: ev.target?.result as string }));
+      setHospital(prev => ({ ...prev, logoUrl: ev.target?.result as string }));
       toast({ title: 'Logo updated', description: 'Image added from drag & drop.' });
     };
     reader.readAsDataURL(file);
@@ -203,6 +264,46 @@ const HospitalProfile = () => {
             <Printer className="w-4 h-4 mr-2" />
             Print Preview
           </Button>
+          {canReset && (
+            <AlertDialog open={resetOpen} onOpenChange={setResetOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Reset Patient Data
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset all patient records?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all patient records for <strong>{resolvedHospitalName}</strong>. This action cannot be undone.
+                    To confirm, type the hospital name exactly: <strong>{resolvedHospitalName}</strong>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="mt-2">
+                  <input
+                    className="w-full border rounded-md p-2 text-sm"
+                    placeholder={resolvedHospitalName}
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                  />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={isDeleting || confirmText !== resolvedHospitalName}
+                    onClick={handleResetPatients}
+                  >
+                    {isDeleting ? (
+                      <span className="inline-flex items-center"><Loader2 className="w-4 h-4 mr-2 animate-spin" />Deleting...</span>
+                    ) : (
+                      'Delete All'
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           {isEditing ? (
             <>
               <Button variant="outline" onClick={() => setIsEditing(false)}>
@@ -224,7 +325,7 @@ const HospitalProfile = () => {
 
       {/* Tabs for different sections */}
       <Tabs defaultValue="letterhead" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="letterhead" className="flex items-center space-x-2">
             <FileText className="w-4 h-4" />
             <span>Letterhead Design</span>
@@ -236,6 +337,10 @@ const HospitalProfile = () => {
           <TabsTrigger value="print-settings" className="flex items-center space-x-2">
             <Printer className="w-4 h-4" />
             <span>Print Settings</span>
+          </TabsTrigger>
+          <TabsTrigger value="advanced-designer" className="flex items-center space-x-2">
+            <Type className="w-4 h-4" />
+            <span>Advanced Designer</span>
           </TabsTrigger>
         </TabsList>
 
@@ -421,8 +526,8 @@ const HospitalProfile = () => {
                       <Label htmlFor="design-phone">Header Phone</Label>
                       <Input
                         id="design-phone"
-                        value={hospital.phone}
-                        onChange={(e) => setHospital(prev => ({ ...prev, phone: e.target.value }))}
+                        value={hospital.phoneNumbers?.[0] || ''}
+                        onChange={(e) => setHospital(prev => ({ ...prev, phoneNumbers: [e.target.value, ...(prev.phoneNumbers?.slice(1) || [])] }))}
                         disabled={!isEditing}
                         placeholder="+91 ..."
                       />
@@ -479,10 +584,10 @@ const HospitalProfile = () => {
                         disabled={!isEditing}
                       />
                     </div>
-                    {hospital.logo && (
+                    {hospital.logoUrl && (
                       <div className="flex items-center justify-center p-2 border rounded-lg">
                         <img 
-                          src={hospital.logo} 
+                          src={hospital.logoUrl} 
                           alt="Hospital Logo" 
                           className="h-16 object-contain"
                         />
@@ -533,30 +638,30 @@ const HospitalProfile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="border rounded-lg p-8 bg-white shadow-sm" style={{ fontFamily: hospital.fontFamily || 'Arial, sans-serif' }}>
+                  <div className="border rounded-lg p-8 bg-white shadow-sm" style={{ fontFamily: hospital.settings.fontFamily || 'Arial, sans-serif' }}>
                     {/* Letterhead Design */}
-                    <div className={`${hospital.headerStyle === 'left' || hospital.headerStyle === 'withSideLogo' ? 'text-left' : 'text-center'} mb-8`}>
-                      {hospital.showLogo && hospital.logo && (
-                        <div className={`${hospital.headerStyle === 'withSideLogo' ? 'flex items-center gap-4' : 'flex justify-center'} mb-4`}>
+                    <div className={`${hospital.settings.headerStyle === 'left' || hospital.settings.headerStyle === 'withSideLogo' ? 'text-left' : 'text-center'} mb-8`}>
+                      {hospital.settings.showLogo && hospital.logoUrl && (
+                        <div className={`${hospital.settings.headerStyle === 'withSideLogo' ? 'flex items-center gap-4' : 'flex justify-center'} mb-4`}>
                           <img 
-                            src={hospital.logo} 
+                            src={hospital.logoUrl} 
                             alt="Hospital Logo" 
-                            className={`object-contain ${hospital.headerStyle === 'withSideLogo' ? 'h-16' : 'h-16'}`}
+                            className={`object-contain ${hospital.settings.headerStyle === 'withSideLogo' ? 'h-16' : 'h-16'}`}
                           />
-                          {hospital.headerStyle === 'withSideLogo' && (
+                          {hospital.settings.headerStyle === 'withSideLogo' && (
                             <div>
-                              <h1 className="text-2xl font-bold" style={{ color: hospital.primaryColor || '#2563eb' }}>{hospital.name}</h1>
-                              {hospital.showTagline && hospital.tagline && (
+                              <h1 className="text-2xl font-bold" style={{ color: hospital.settings.primaryColor || '#2563eb' }}>{hospital.name}</h1>
+                              {hospital.settings.showTagline && hospital.tagline && (
                                 <p className="text-gray-600 mt-1">{hospital.tagline}</p>
                               )}
                             </div>
                           )}
                         </div>
                       )}
-                      {hospital.headerStyle !== 'withSideLogo' && (
+                      {hospital.settings.headerStyle !== 'withSideLogo' && (
                         <>
-                          <h1 className="text-2xl font-bold" style={{ color: hospital.primaryColor || '#2563eb' }}>{hospital.name}</h1>
-                          {hospital.showTagline && hospital.tagline && (
+                          <h1 className="text-2xl font-bold" style={{ color: hospital.settings.primaryColor || '#2563eb' }}>{hospital.name}</h1>
+                          {hospital.settings.showTagline && hospital.tagline && (
                             <p className="text-gray-600 mt-1">{hospital.tagline}</p>
                           )}
                         </>
@@ -570,21 +675,21 @@ const HospitalProfile = () => {
                         <div className="flex items-center justify-center space-x-4">
                           <span className="flex items-center">
                             <Phone className="w-4 h-4 mr-1" />
-                            {hospital.phone}
+                            {hospital.phoneNumbers?.[0]}
                           </span>
                           <span className="flex items-center">
                             <Mail className="w-4 h-4 mr-1" />
                             {hospital.email}
                           </span>
                         </div>
-                        {hospital.showGst && (
+                        {hospital.settings.showGst && (
                           <div>
-                            <span>GST: {hospital.gst} | Reg. No.: {hospital.registration || 'N/A'}</span>
+                            <span>GST: {hospital.gstNumber} | Reg. No.: {hospital.registrationNumber || 'N/A'}</span>
                           </div>
                         )}
                       </div>
                       
-                      <div className="my-4" style={{ borderTop: `2px solid ${hospital.primaryColor || '#e5e7eb'}` }}></div>
+                      <div className="my-4" style={{ borderTop: `2px solid ${hospital.settings.primaryColor || '#e5e7eb'}` }}></div>
                     </div>
 
                     {/* Sample Bill Content */}
@@ -705,8 +810,8 @@ const HospitalProfile = () => {
                       <Label htmlFor="phone">Phone Number</Label>
                       <Input
                         id="phone"
-                        value={hospital.phone}
-                        onChange={(e) => setHospital(prev => ({ ...prev, phone: e.target.value }))}
+                        value={hospital.phoneNumbers?.[0] || ''}
+                        onChange={(e) => setHospital(prev => ({ ...prev, phoneNumbers: [e.target.value, ...(prev.phoneNumbers?.slice(1) || [])] }))}
                         disabled={!isEditing}
                         className={!isEditing ? 'bg-muted/30' : ''}
                       />
@@ -745,8 +850,8 @@ const HospitalProfile = () => {
                       <Label htmlFor="gst">GST Number</Label>
                       <Input
                         id="gst"
-                        value={hospital.gst}
-                        onChange={(e) => setHospital(prev => ({ ...prev, gst: e.target.value }))}
+                        value={hospital.gstNumber}
+                        onChange={(e) => setHospital(prev => ({ ...prev, gstNumber: e.target.value }))}
                         disabled={!isEditing}
                         className={!isEditing ? 'bg-muted/30' : ''}
                       />
@@ -755,8 +860,8 @@ const HospitalProfile = () => {
                       <Label htmlFor="registration">Registration Number</Label>
                       <Input
                         id="registration"
-                        value={hospital.registration || ''}
-                        onChange={(e) => setHospital(prev => ({ ...prev, registration: e.target.value }))}
+                        value={hospital.registrationNumber || ''}
+                        onChange={(e) => setHospital(prev => ({ ...prev, registrationNumber: e.target.value }))}
                         disabled={!isEditing}
                         className={!isEditing ? 'bg-muted/30' : ''}
                       />
@@ -765,18 +870,18 @@ const HospitalProfile = () => {
                 </div>
               </CardContent>
             </Card>
-            {hospital.logo && (
+            {hospital.logoUrl && (
               <div className="flex items-center space-x-4">
                 <img 
-                  src={hospital.logo} 
+                  src={hospital.logoUrl} 
                   alt="Logo" 
                   className="w-16 h-16 rounded-lg object-cover"
                 />
                 <div className="flex-1">
                   <h2 className="text-xl font-bold text-primary mb-2">{hospital.name}</h2>
                   <p className="text-sm text-muted-foreground mb-1">{formatAddress(hospital.address)}</p>
-                  <p className="text-sm text-muted-foreground mb-1">Phone: {hospital.phone}</p>
-                  <p className="text-sm text-muted-foreground">GST: {hospital.gst}</p>
+                  <p className="text-sm text-muted-foreground mb-1">Phone: {hospital.phoneNumbers?.[0]}</p>
+                  <p className="text-sm text-muted-foreground">GST: {hospital.gstNumber}</p>
                 </div>
               </div>
             )}
@@ -826,14 +931,29 @@ const HospitalProfile = () => {
                   </div>
                   <Switch
                     id="letterhead-toggle"
-                    checked={hospital.letterHeadEnabled || false}
+                    checked={hospital.settings.letterHeadEnabled || false}
                     onCheckedChange={(checked) => 
-                      setHospital(prev => ({ ...prev, letterHeadEnabled: checked }))
+                      setHospital(prev => ({ ...prev, settings: { ...prev.settings, letterHeadEnabled: checked } }))
                     }
                     disabled={!isEditing}
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Advanced Letterhead Designer Tab */}
+        <TabsContent value="advanced-designer" className="space-y-6 mt-6">
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle>Advanced Letterhead Designer</CardTitle>
+              <CardDescription>
+                Drag-and-drop elements (logo, fields, text, HTML, lines), change colors and fonts, and save multiple templates. Preview updates live.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LetterheadDesigner />
             </CardContent>
           </Card>
         </TabsContent>

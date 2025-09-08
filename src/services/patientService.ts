@@ -10,7 +10,8 @@ import {
   query, 
   where, 
   orderBy,
-  Timestamp
+  Timestamp,
+  writeBatch
 } from 'firebase/firestore';
 
 const PATIENTS_COLLECTION = 'patients';
@@ -134,6 +135,39 @@ export const searchPatients = async (searchTerm: string): Promise<PatientData[]>
     );
   } catch (error) {
     console.error('Error searching patients:', error);
+    throw error;
+  }
+};
+
+// Danger: Bulk delete all patients for a hospital
+// Uses batched writes with a limit of 500 operations per batch
+export const deletePatientsByHospital = async (hospitalId: string): Promise<number> => {
+  if (!hospitalId) throw new Error('hospitalId is required');
+  try {
+    let totalDeleted = 0;
+    // Fetch in chunks to avoid very large batches
+    const patientsQuery = query(collection(db, PATIENTS_COLLECTION), where('hospitalId', '==', hospitalId));
+    const snapshot = await getDocs(patientsQuery);
+    if (snapshot.empty) return 0;
+
+    let batch = writeBatch(db);
+    let ops = 0;
+    for (const d of snapshot.docs) {
+      batch.delete(d.ref);
+      ops++;
+      totalDeleted++;
+      if (ops === 450) { // keep margin under 500
+        await batch.commit();
+        batch = writeBatch(db);
+        ops = 0;
+      }
+    }
+    if (ops > 0) {
+      await batch.commit();
+    }
+    return totalDeleted;
+  } catch (error) {
+    console.error('Error deleting patients by hospital:', error);
     throw error;
   }
 };

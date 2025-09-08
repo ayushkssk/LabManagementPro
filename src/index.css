@@ -124,3 +124,6 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Print styles */
+@import './print-styles.css';

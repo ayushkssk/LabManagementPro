@@ -13,16 +13,25 @@ export const useHospitalLetterhead = (hospitalId?: string) => {
         const saved = localStorage.getItem('hospitalProfile');
         if (saved) {
           const s = JSON.parse(saved);
+          // Support the Hospital schema from src/types/index.ts
+          const formattedAddress = (() => {
+            const a = s.address;
+            if (!a) return '';
+            if (typeof a === 'string') return a;
+            const parts = [a.street, a.city, a.state, a.pincode, a.country].filter(Boolean);
+            return parts.join(', ');
+          })();
+
           const mapped: HospitalInfo = {
-            name: s.name || 'Hospital',
-            address: s.address || '',
-            phone: s.phone || '',
+            name: s.displayName || s.name || 'Hospital',
+            address: formattedAddress,
+            phone: (s.phoneNumbers && s.phoneNumbers[0]) || s.phone || '',
             email: s.email || '',
-            gstin: s.gst || '',
-            registration: s.registration || '',
-            logo: s.logo || undefined,
-            additionalInfo: s.additionalInfo || [],
-            footerNote: s.footerNote || 'This is a computer generated bill. No signature required.'
+            gstin: s.gstNumber || s.gst || '',
+            registration: s.registrationNumber || s.registration || '',
+            logo: s.logoUrl || s.logo || undefined,
+            additionalInfo: s.settings?.additionalInfo || s.additionalInfo || [],
+            footerNote: s.settings?.footerNote || s.footerNote || 'This is a computer generated bill. No signature required.'
           };
           setHospital(mapped);
         } else {

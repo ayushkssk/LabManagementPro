@@ -44,9 +44,12 @@ export const printTestReport = ({
   // Create a style element for print styles
   const style = document.createElement('style');
   style.textContent = `
-    @page { margin: 1cm; }
+    /* Full A4 page, no browser margins */
+    @page { size: A4 portrait; margin: 0; }
+    html, body { width: 210mm; height: 297mm; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; line-height: 1.5; color: #333; }
-    .print-container { max-width: 21cm; margin: 0 auto; }
+    /* Container that fills the printable page with internal padding */
+    .print-container { width: 210mm; min-height: 297mm; padding: 12mm; box-sizing: border-box; margin: 0; }
     .letterhead { margin-bottom: 20px; }
     .letterhead h1 { margin: 0; font-size: 24px; }
     .letterhead p { margin: 2px 0; font-size: 14px; }
@@ -81,7 +84,8 @@ export const printTestReport = ({
       color: #666;
     }
     @media print {
-      @page { margin: 1cm; }
+      @page { size: A4 portrait; margin: 0; }
+      html, body { width: 210mm; height: 297mm; }
       body { -webkit-print-color-adjust: exact; }
       .no-print { display: none !important; }
     }

@@ -81,7 +81,20 @@ const SampleCollection = () => {
   const [showPrintView, setShowPrintView] = useState(false);
   const [showPrintOptions, setShowPrintOptions] = useState(false);
   const [lastSavedTest, setLastSavedTest] = useState<Sample | null>(null);
+  const [printWithLetterhead, setPrintWithLetterhead] = useState<boolean>(true);
   const { hospital: hospitalData } = useHospitalLetterhead();
+
+  // Read letterhead enabled flag from saved profile (as set in HospitalProfile)
+  const letterheadEnabled = React.useMemo(() => {
+    try {
+      const saved = localStorage.getItem('hospitalProfile');
+      if (!saved) return true; // default enabled
+      const s = JSON.parse(saved);
+      return s?.settings?.letterHeadEnabled !== false;
+    } catch {
+      return true;
+    }
+  }, []);
 
   // Auto-select first test if none selected
   useEffect(() => {
@@ -364,6 +377,8 @@ const SampleCollection = () => {
 
   const handlePrintReport = (e: React.MouseEvent, withLetterhead: boolean = true) => {
     e.preventDefault();
+    const finalWithLetterhead = withLetterhead && letterheadEnabled && !!hospitalData;
+    setPrintWithLetterhead(finalWithLetterhead);
     setShowPrintView(true);
     setShowPrintOptions(false);
     
@@ -522,7 +537,11 @@ const SampleCollection = () => {
             <div className="space-y-3">
               <button
                 onClick={(e) => handlePrintReport(e, true)}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
+                disabled={!letterheadEnabled || !hospitalData}
+                className={`w-full py-2 px-4 rounded transition-colors ${(!letterheadEnabled || !hospitalData)
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                title={!letterheadEnabled ? 'Letterhead is disabled in settings' : (!hospitalData ? 'No letterhead data available' : 'Print with Letterhead')}
               >
                 Print with Letterhead
               </button>
@@ -547,7 +566,7 @@ const SampleCollection = () => {
       {showPrintView && patient && (
         <div className="print-section">
           <style>{printStyles}</style>
-          {hospitalData ? (
+          {printWithLetterhead && hospitalData ? (
             <Letterhead 
               hospital={hospitalData}
               className="print-only"
