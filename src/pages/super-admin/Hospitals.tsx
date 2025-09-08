@@ -31,7 +31,7 @@ const Hospitals = () => {
             <Link to={`/super-admin/hospitals/${hospital.id}`} className="block">
             <CardHeader className="flex flex-row items-center space-x-4">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={hospital.logo} alt={hospital.name} />
+                <AvatarImage src={hospital.logoUrl} alt={hospital.name} />
                 <AvatarFallback className={`bg-primary/10 text-primary text-sm ${hospital.isDemo ? 'bg-demo' : ''}`}>
                   {hospital.isDemo ? 'D' : hospital.name
                     .split(' ')
@@ -43,7 +43,7 @@ const Hospitals = () => {
                 <CardTitle className="text-base">{hospital.name}</CardTitle>
                 <CardDescription className="flex items-center flex-wrap gap-1">
                   <Badge variant={hospital.isDemo ? 'outline' : 'secondary'} className={`ml-2 ${hospital.isDemo ? 'bg-yellow-100 text-yellow-800' : ''}`}>
-                    {hospital.isDemo ? 'Demo' : hospital.status}
+                    {hospital.isDemo ? 'Demo' : hospital.isActive ? 'Active' : 'Inactive'}
                   </Badge>
                   <span className="text-xs">{new Date(hospital.registrationDate).toLocaleDateString()}</span>
                 </CardDescription>
@@ -87,7 +87,7 @@ const Hospitals = () => {
                   >
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                   </svg>
-                  {hospital.phone}
+                  {hospital.phoneNumbers[0]}
                 </div>
                 <div className="flex items-start">
                   <svg
@@ -105,7 +105,9 @@ const Hospitals = () => {
                     <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
                     <circle cx="12" cy="10" r="3" />
                   </svg>
-                  <span className="text-ellipsis line-clamp-2">{hospital.address}</span>
+                  <span className="text-ellipsis line-clamp-2">
+                    {hospital.address.street}, {hospital.address.city}, {hospital.address.state} {hospital.address.pincode}
+                  </span>
                 </div>
               </div>
               <div className="mt-3 flex justify-end space-x-1.5">

@@ -62,12 +62,15 @@ const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="flex h-16 items-center justify-between border-b bg-white px-4 dark:bg-gray-950">
       {/* Left side - Hospital Name */}
-      <div className="hidden md:block">
+      <div className="flex items-center gap-2">
         <h1 className="text-lg font-semibold">
-          {role === 'super-admin' 
-            ? 'Super Admin' 
-            : currentHospital?.name || 'Admin Dashboard'}
+          {currentHospital?.name || (role === 'super-admin' ? 'Super Admin' : 'Admin Dashboard')}
         </h1>
+        {currentHospital?.name && (
+          <span className="text-sm text-muted-foreground">
+            {role === 'admin' ? 'Admin' : role === 'technician' ? 'Technician' : ''}
+          </span>
+        )}
       </div>
       
       {/* Right side - Navigation, Date/Time and Profile */}

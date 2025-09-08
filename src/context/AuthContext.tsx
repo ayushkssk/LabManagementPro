@@ -3,6 +3,7 @@ import { auth, googleProvider } from '@/firebase';
 import { browserLocalPersistence, setPersistence, signInAnonymously, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { User } from '@/types';
 import { demoUsers } from '@/data/demoData';
+import { demoHospitals } from '@/data/demoData';
 
 interface AuthContextType {
   user: User | null;
@@ -71,9 +72,73 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Demo login - check against demo users
     const foundUser = demoUsers.find(u => u.email === email);
     
-    if (foundUser && password === 'demo123') {
-      setUser(foundUser);
-      localStorage.setItem('demo-user', JSON.stringify(foundUser));
+    if (foundUser && (password === 'demo123' || password === 'demo@123')) {
+      // If this is a demo hospital user, make sure the hospital exists
+      if (foundUser.hospitalId && foundUser.hospitalId.startsWith('demo-')) {
+        try {
+          const demoHospital = demoHospitals.find(h => h.id === foundUser.hospitalId);
+          if (demoHospital) {
+            // Get current hospitals from localStorage
+            const savedHospitals = localStorage.getItem('labmanagerpro_hospitals');
+            let hospitals = [];
+            
+            if (savedHospitals) {
+              hospitals = JSON.parse(savedHospitals);
+              // Check if demo hospital already exists
+              const hospitalExists = hospitals.some((h: any) => h.id === demoHospital.id);
+              
+              if (!hospitalExists) {
+                // Add demo hospital with current timestamps
+                const hospitalToAdd = {
+                  ...demoHospital,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  registrationDate: demoHospital.registrationDate instanceof Date 
+                    ? demoHospital.registrationDate.toISOString() 
+                    : new Date(demoHospital.registrationDate).toISOString(),
+                  admin: {
+                    ...demoHospital.admin,
+                    createdAt: new Date().toISOString(),
+                    lastLogin: new Date().toISOString()
+                  }
+                };
+                
+                hospitals.push(hospitalToAdd);
+                localStorage.setItem('labmanagerpro_hospitals', JSON.stringify(hospitals));
+              }
+            } else {
+              // No hospitals exist yet, create with demo hospital
+              const hospitalToAdd = {
+                ...demoHospital,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                registrationDate: demoHospital.registrationDate instanceof Date 
+                  ? demoHospital.registrationDate.toISOString() 
+                  : new Date(demoHospital.registrationDate).toISOString(),
+                admin: {
+                  ...demoHospital.admin,
+                  createdAt: new Date().toISOString(),
+                  lastLogin: new Date().toISOString()
+                }
+              };
+              
+              localStorage.setItem('labmanagerpro_hospitals', JSON.stringify([hospitalToAdd]));
+            }
+          }
+        } catch (error) {
+          console.error('Error ensuring demo hospital exists:', error);
+          // Continue with login even if there's an error with hospital setup
+        }
+      }
+      
+      // Update user's last login time
+      const userToSave = {
+        ...foundUser,
+        lastLogin: new Date().toISOString()
+      };
+      
+      setUser(userToSave);
+      localStorage.setItem('demo-user', JSON.stringify(userToSave));
       setIsLoading(false);
       return true;
     }

@@ -40,15 +40,73 @@ export const demoPatients: Patient[] = [
   }
 ];
 
-export const demoHospital: Hospital = {
-  id: 'hospital-1',
-  name: 'HealthCare Plus Medical Center',
-  address: '123 Medical Drive, Health City, HC 12345',
-  phone: '+1 (555) 123-4567',
-  gst: 'GST123456789',
-  logo: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=200&h=200&fit=crop&crop=center',
-  letterHeadEnabled: true
-};
+// Demo hospital data
+export const demoHospitals: Hospital[] = [
+  {
+    id: 'demo-hospital-1',
+    name: 'Demo Healthcare Hospital',
+    displayName: 'Demo Healthcare',
+    type: 'hospital',
+    registrationNumber: 'DEMO12345',
+    gstNumber: 'DEMO987654321',
+    address: {
+      street: '123 Demo Street',
+      city: 'Demo City',
+      state: 'Demo State',
+      pincode: '123456',
+      country: 'India'
+    },
+    phoneNumbers: ['+911234567890'],
+    email: 'info@demohealthcare.com',
+    website: 'https://demohealthcare.com',
+    tagline: 'Quality Healthcare Services',
+    description: 'A demo hospital for testing and demonstration purposes',
+    logoUrl: '/logo.png',
+    coverImageUrl: '/cover.jpg',
+    isActive: true,
+    isVerified: true,
+    isDemo: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    registrationDate: new Date('2023-01-01'),
+    metadata: {},
+    settings: {
+      primaryColor: '#3b82f6',
+      secondaryColor: '#1d4ed8',
+      fontFamily: 'Arial, sans-serif',
+      headerStyle: 'centered',
+      showLogo: true,
+      showTagline: true,
+      showGst: true,
+      letterHeadEnabled: true,
+      footerNote: 'Thank you for choosing Demo Healthcare',
+      timezone: 'Asia/Kolkata',
+      dateFormat: 'DD/MM/YYYY',
+      currency: 'INR',
+      additionalInfo: []
+    },
+    letterhead: {
+      logoUrl: '/logo.png',
+      showHospitalName: true,
+      showAddress: true,
+      showContact: true,
+      showEmail: true,
+      showWebsite: true,
+      showGst: true,
+      showRegistration: true
+    },
+    admin: {
+      id: 'demo-admin-1',
+      name: 'Demo Admin',
+      email: 'admin@demohealthcare.com',
+      phone: '+911234567890',
+      role: 'admin',
+      createdAt: new Date(),
+      lastLogin: new Date()
+    },
+    staff: []
+  }
+];
 
 // Helper function to generate unique IDs
 let fieldId = 1;
@@ -746,7 +804,92 @@ export const demoReports: Report[] = [
   }
 ];
 
+// Demo hospital data
+export const demoHospital: Hospital = {
+  id: 'demo-hospital-1',
+  name: 'Demo Healthcare Hospital',
+  displayName: 'Demo Healthcare',
+  type: 'hospital',
+  registrationNumber: 'DEMO12345',
+  gstNumber: 'DEMO987654321',
+  address: {
+    street: '123 Demo Street',
+    city: 'Demo City',
+    state: 'Demo State',
+    pincode: '123456',
+    country: 'India'
+  },
+  phoneNumbers: ['+911234567890'],
+  email: 'info@demohealthcare.com',
+  website: 'https://demohealthcare.com',
+  tagline: 'Quality Healthcare Services',
+  description: 'A demo hospital for testing and demonstration purposes',
+  logoUrl: '/logo.png',
+  coverImageUrl: '/cover.jpg',
+  isActive: true,
+  isVerified: true,
+  isDemo: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  registrationDate: new Date('2023-01-01'),
+  metadata: {},
+  settings: {
+    primaryColor: '#3b82f6',
+    secondaryColor: '#1d4ed8',
+    fontFamily: 'Arial, sans-serif',
+    headerStyle: 'centered',
+    showLogo: true,
+    showTagline: true,
+    showGst: true,
+    letterHeadEnabled: true,
+    footerNote: 'Thank you for choosing Demo Healthcare',
+    timezone: 'Asia/Kolkata',
+    dateFormat: 'DD/MM/YYYY',
+    currency: 'INR'
+  },
+  letterhead: {
+    logoUrl: '/logo.png',
+    showHospitalName: true,
+    showAddress: true,
+    showContact: true,
+    showEmail: true,
+    showWebsite: true,
+    showGst: true,
+    showRegistration: true
+  },
+  admin: {
+    id: 'demo-admin-1',
+    name: 'Demo Admin',
+    email: 'admin@demohealthcare.com',
+    phone: '+911234567890',
+    role: 'admin',
+    createdAt: new Date(),
+    lastLogin: new Date()
+  }
+};
+
 export const demoUsers: User[] = [
+  // Demo Hospital Admin
+  {
+    id: 'demo-admin-1',
+    email: 'admin@demohealthcare.com',
+    name: 'Demo Admin',
+    role: 'admin',
+    hospitalId: 'demo-hospital-1',
+    photoURL: '',
+    createdAt: new Date().toISOString()
+  },
+  // Demo Hospital Technician
+  {
+    id: 'demo-tech-1',
+    email: 'tech@demohealthcare.com',
+    name: 'Demo Technician',
+    role: 'technician',
+    hospitalId: 'demo-hospital-1',
+    photoURL: '',
+    createdAt: new Date().toISOString()
+  },
+  // Original demo user
   {
     id: 'user-1',
     email: 'admin@healthcare.com',

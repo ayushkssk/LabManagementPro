@@ -379,39 +379,127 @@ const SampleCollection = () => {
   const printStyles = `
     @page {
       size: A4;
-      margin: 0;
+      margin: 15mm 15mm 20mm 15mm;
     }
+    
     @media print {
+      body {
+        margin: 0;
+        padding: 0;
+        background: white;
+        font-family: Arial, sans-serif;
+        font-size: 11pt;
+        line-height: 1.5;
+        color: #000;
+      }
+      
       body * {
         visibility: hidden;
       }
-      .print-section, .print-section * {
+      
+      .print-section,
+      .print-section * {
         visibility: visible;
       }
+      
       .print-section {
-        position: absolute;
-        left: 0;
-        top: 0;
+        position: relative;
         width: 100%;
+        max-width: 210mm;
+        margin: 0 auto;
         padding: 0;
-        margin: 0;
+        background: white;
+        box-shadow: none;
       }
+      
+      .print-only {
+        display: block !important;
+      }
+      
       .no-print {
         display: none !important;
       }
-      .letterhead {
-        padding: 0;
-        margin: 0;
-        border: none;
-      }
-      .letterhead-header {
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-      }
+      
       .report-content {
-        padding: 0 1.5rem;
+        padding: 10mm;
+        margin: 0 auto;
+        max-width: 180mm;
+      }
+      
+      h1 {
+        font-size: 18pt !important;
+        margin: 5mm 0 3mm 0 !important;
+        color: #1a1a1a;
+        text-align: center;
+      }
+      
+      h2 {
+        font-size: 14pt !important;
+        margin: 4mm 0 3mm 0 !important;
+        color: #2c3e50;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 2mm;
+      }
+      
+      p, td, th, span, div {
+        font-size: 10pt !important;
+        color: #333;
+      }
+      
+      table {
+        width: 100% !important;
+        margin: 3mm 0 !important;
+        border-collapse: collapse;
+        page-break-inside: avoid;
+      }
+      
+      th, td {
+        padding: 2mm 3mm !important;
+        border: 1px solid #ddd !important;
+        vertical-align: top;
+      }
+      
+      th {
+        background-color: #f8f9fa !important;
+        font-weight: 600;
+        text-align: left;
+      }
+      
+      .signature-section {
+        margin-top: 10mm;
+        page-break-inside: avoid;
+        display: flex;
+        justify-content: space-between;
+      }
+      
+      .signature-box {
+        width: 45%;
+        margin-top: 15mm;
+        text-align: center;
+      }
+      
+      .signature-line {
+        border-top: 1px solid #000;
+        width: 80%;
+        margin: 15mm auto 2mm;
+        text-align: center;
+      }
+      
+      .page-break {
+        page-break-after: always;
+      }
+      
+      @page :first {
+        margin-top: 0;
+      }
+      
+      @media print {
+        html, body {
+          height: 99%;
+        }
       }
     }
+    
     ${letterheadStyles}
   `;
 

@@ -1,23 +1,99 @@
-export interface Hospital {
-  id: string;
-  name: string;
-  address: string;
-  phone: string;
-  email?: string;
-  website?: string;
-  gst: string;
-  registration?: string;
-  tagline?: string;
-  logo?: string;
+export interface Address {
+  street: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country: string;
+}
+
+export interface HospitalSettings {
+  primaryColor: string;
+  secondaryColor: string;
+  fontFamily: string;
+  headerStyle: 'centered' | 'left' | 'withSideLogo';
+  showLogo: boolean;
+  showTagline: boolean;
+  showGst: boolean;
   letterHeadEnabled: boolean;
   footerNote?: string;
   additionalInfo?: string[];
-  primaryColor?: string;
-  fontFamily?: string;
-  headerStyle?: 'centered' | 'left' | 'withSideLogo';
-  showLogo?: boolean;
-  showTagline?: boolean;
-  showGst?: boolean;
+  timezone: string;
+  dateFormat: string;
+  currency: string;
+}
+
+export interface LetterheadSettings {
+  logoUrl: string;
+  headerImage?: string;
+  footerImage?: string;
+  showHospitalName: boolean;
+  showAddress: boolean;
+  showContact: boolean;
+  showEmail: boolean;
+  showWebsite: boolean;
+  showGst: boolean;
+  showRegistration: boolean;
+  customCss?: string;
+}
+
+export interface HospitalAdmin {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: 'admin' | 'super-admin';
+  createdAt: Date;
+  lastLogin?: Date;
+}
+
+export interface Hospital {
+  // Basic Information
+  id: string;
+  name: string;
+  displayName: string;
+  type: 'hospital' | 'clinic' | 'diagnostic-center' | 'multi-specialty';
+  registrationNumber: string;
+  gstNumber: string;
+  
+  // Contact Information
+  address: Address;
+  phoneNumbers: string[];
+  email: string;
+  website?: string;
+  emergencyNumber?: string;
+  
+  // About
+  tagline?: string;
+  description?: string;
+  specialties?: string[];
+  
+  // Media
+  logoUrl: string;
+  coverImageUrl?: string;
+  gallery?: string[];
+  
+  // Settings
+  settings: HospitalSettings;
+  letterhead: LetterheadSettings;
+  
+  // Admin & Access
+  admin: HospitalAdmin;
+  staff?: User[]; // Array of users associated with this hospital
+  
+  // Status
+  isActive: boolean;
+  isVerified: boolean;
+  isDemo: boolean;
+  
+  // Timestamps
+  createdAt: Date;
+  updatedAt: Date;
+  registrationDate: Date;
+  
+  // Metadata
+  metadata?: {
+    [key: string]: any;
+  }
 }
 
 export interface Test {
