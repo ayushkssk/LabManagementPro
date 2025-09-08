@@ -1,0 +1,45 @@
+/* Hide everything by default when printing */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Only show the print container and its children */
+  .print-container,
+  .print-container * {
+    visibility: visible;
+  }
+  
+  /* Position the print container at the top of the page */
+  .print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Ensure the letterhead prints properly */
+  .letterhead {
+    page-break-after: always;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Hide print button when printing */
+  .print-button {
+    display: none !important;
+  }
+  
+  /* Ensure proper page breaks */
+  .page-break {
+    page-break-before: always;
+  }
+  
+  /* Adjust margins for printing */
+  @page {
+    margin: 0.5cm;
+  }
+}

@@ -1,17 +1,24 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Development mode: Allow all read/write access
+    // WARNING: This is not secure for production
+    match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Production-ready rules (commented out for now)
+    /*
     // Tests collection:
-    // - allow public read (useful for catalog viewing / demo)
-    // - allow write only for authenticated users
     match /tests/{docId} {
       allow read: if true;
       allow write: if request.auth != null;
     }
 
-    // Patients collection: allow authenticated users to read/write
+    // Patients collection
     match /patients/{docId} {
       allow read, write: if request.auth != null;
     }
+    */
   }
 }

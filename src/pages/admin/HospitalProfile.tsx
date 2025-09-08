@@ -16,20 +16,29 @@ import { toast } from '@/hooks/use-toast';
 
 const HospitalProfile = () => {
   const navigate = useNavigate();
+  // Format address object to string for display
+  const formatAddress = (address: { street?: string; city?: string; state?: string; pincode?: string; country?: string }) => {
+    if (!address) return '';
+    const { street, city, state, pincode, country } = address;
+    return [street, city, state, pincode, country].filter(Boolean).join(', ');
+  };
+
   const [hospital, setHospital] = useState<Hospital>({
     ...demoHospital,
     email: '',
     website: '',
-    registration: '',
+    registrationNumber: '',
     tagline: '',
-    footerNote: 'This is a computer generated bill. No signature required.',
-    additionalInfo: [],
-    primaryColor: '#2563eb',
-    fontFamily: 'Arial, sans-serif',
-    headerStyle: 'centered',
-    showLogo: true,
-    showTagline: true,
-    showGst: true
+    settings: {
+      ...demoHospital.settings,
+      primaryColor: '#2563eb',
+      fontFamily: 'Arial, sans-serif',
+      headerStyle: 'centered',
+      showLogo: true,
+      showTagline: true,
+      showGst: true,
+      footerNote: 'This is a computer generated bill. No signature required.'
+    }
   });
   const [isEditing, setIsEditing] = useState(false);
   const [logoUrlInput, setLogoUrlInput] = useState('');
@@ -248,8 +257,14 @@ const HospitalProfile = () => {
                       <Label>Header Style</Label>
                       <select 
                         className="border rounded-md p-2 text-sm w-40"
-                        value={hospital.headerStyle || 'centered'}
-                        onChange={(e) => setHospital(prev => ({ ...prev, headerStyle: (e.target.value as Hospital['headerStyle']) || 'centered' }))}
+                        value={hospital.settings.headerStyle || 'centered'}
+                        onChange={(e) => setHospital(prev => ({
+                          ...prev,
+                          settings: {
+                            ...prev.settings,
+                            headerStyle: (e.target.value as 'centered' | 'left' | 'withSideLogo') || 'centered'
+                          }
+                        }))}
                         disabled={!isEditing}
                       >
                         <option value="centered">Centered</option>
@@ -263,13 +278,19 @@ const HospitalProfile = () => {
                       <div className="flex items-center space-x-2">
                         <input
                           type="color"
-                          value={hospital.primaryColor || '#2563eb'}
-                          onChange={(e) => setHospital(prev => ({ ...prev, primaryColor: e.target.value }))}
+                          value={hospital.settings.primaryColor || '#2563eb'}
+                          onChange={(e) => setHospital(prev => ({
+                            ...prev,
+                            settings: {
+                              ...prev.settings,
+                              primaryColor: e.target.value
+                            }
+                          }))}
                           disabled={!isEditing}
                           className="w-8 h-8 p-0 border rounded cursor-pointer"
                         />
                         {isEditing && (
-                          <span className="text-xs text-muted-foreground">{hospital.primaryColor}</span>
+                          <span className="text-xs text-muted-foreground">{hospital.settings.primaryColor}</span>
                         )}
                       </div>
                     </div>
@@ -278,8 +299,14 @@ const HospitalProfile = () => {
                       <Label>Font Family</Label>
                       <select 
                         className="border rounded-md p-2 text-sm w-48"
-                        value={hospital.fontFamily || 'Arial, sans-serif'}
-                        onChange={(e) => setHospital(prev => ({ ...prev, fontFamily: e.target.value }))}
+                        value={hospital.settings.fontFamily || 'Arial, sans-serif'}
+                        onChange={(e) => setHospital(prev => ({ 
+                          ...prev, 
+                          settings: {
+                            ...prev.settings,
+                            fontFamily: e.target.value
+                          } 
+                        }))}
                         disabled={!isEditing}
                       >
                         <option value="Arial, sans-serif">Arial, sans-serif</option>
@@ -300,8 +327,14 @@ const HospitalProfile = () => {
                           type="checkbox" 
                           id="show-logo" 
                           className="rounded border-gray-300"
-                          checked={!!hospital.showLogo}
-                          onChange={(e) => setHospital(prev => ({ ...prev, showLogo: e.target.checked }))}
+                          checked={!!hospital.settings.showLogo}
+                          onChange={(e) => setHospital(prev => ({ 
+                            ...prev, 
+                            settings: {
+                              ...prev.settings,
+                              showLogo: e.target.checked 
+                            }
+                          }))}
                           disabled={!isEditing}
                         />
                         <Label htmlFor="show-logo" className="text-sm font-normal">Show Logo</Label>
@@ -311,8 +344,14 @@ const HospitalProfile = () => {
                           type="checkbox" 
                           id="show-tagline" 
                           className="rounded border-gray-300"
-                          checked={!!hospital.showTagline}
-                          onChange={(e) => setHospital(prev => ({ ...prev, showTagline: e.target.checked }))}
+                          checked={!!hospital.settings.showTagline}
+                          onChange={(e) => setHospital(prev => ({
+                            ...prev,
+                            settings: {
+                              ...prev.settings,
+                              showTagline: e.target.checked
+                            }
+                          }))}
                           disabled={!isEditing}
                         />
                         <Label htmlFor="show-tagline" className="text-sm font-normal">Show Tagline</Label>
@@ -322,8 +361,14 @@ const HospitalProfile = () => {
                           type="checkbox" 
                           id="show-gst" 
                           className="rounded border-gray-300"
-                          checked={!!hospital.showGst}
-                          onChange={(e) => setHospital(prev => ({ ...prev, showGst: e.target.checked }))}
+                          checked={!!hospital.settings.showGst}
+                          onChange={(e) => setHospital(prev => ({
+                            ...prev,
+                            settings: {
+                              ...prev.settings,
+                              showGst: e.target.checked
+                            }
+                          }))}
                           disabled={!isEditing}
                         />
                         <Label htmlFor="show-gst" className="text-sm font-normal">Show GST Number</Label>
@@ -350,11 +395,24 @@ const HospitalProfile = () => {
                     <Label htmlFor="design-address">Header Address</Label>
                     <Textarea
                       id="design-address"
-                      value={hospital.address}
-                      onChange={(e) => setHospital(prev => ({ ...prev, address: e.target.value }))}
+                      value={formatAddress(hospital.address)}
+                      onChange={(e) => {
+                        // Convert string back to address object
+                        const addressParts = e.target.value.split(',').map(part => part.trim());
+                        setHospital(prev => ({
+                          ...prev,
+                          address: {
+                            street: addressParts[0] || '',
+                            city: addressParts[1] || '',
+                            state: addressParts[2] || '',
+                            pincode: addressParts[3] || '',
+                            country: addressParts[4] || ''
+                          }
+                        }));
+                      }}
                       disabled={!isEditing}
                       rows={3}
-                      placeholder="Enter full address for letterhead"
+                      placeholder="Enter full address for letterhead (street, city, state, pincode, country)"
                     />
                   </div>
 
@@ -507,7 +565,7 @@ const HospitalProfile = () => {
                       <div className="mt-4 text-sm text-gray-500 space-y-1">
                         <div className="flex items-center justify-center space-x-2">
                           <MapPin className="w-4 h-4" />
-                          <span>{hospital.address}</span>
+                          <span>{formatAddress(hospital.address)}</span>
                         </div>
                         <div className="flex items-center justify-center space-x-4">
                           <span className="flex items-center">
@@ -615,11 +673,25 @@ const HospitalProfile = () => {
                     <Label htmlFor="address">Full Address</Label>
                     <Textarea
                       id="address"
-                      value={hospital.address}
-                      onChange={(e) => setHospital(prev => ({ ...prev, address: e.target.value }))}
+                      value={formatAddress(hospital.address)}
+                      onChange={(e) => {
+                        // Convert string back to address object
+                        const addressParts = e.target.value.split(',').map(part => part.trim());
+                        setHospital(prev => ({
+                          ...prev,
+                          address: {
+                            street: addressParts[0] || '',
+                            city: addressParts[1] || '',
+                            state: addressParts[2] || '',
+                            pincode: addressParts[3] || '',
+                            country: addressParts[4] || ''
+                          }
+                        }));
+                      }}
                       disabled={!isEditing}
                       className={!isEditing ? 'bg-muted/30' : ''}
                       rows={3}
+                      placeholder="street, city, state, pincode, country"
                     />
                   </div>
                 </div>
@@ -702,7 +774,7 @@ const HospitalProfile = () => {
                 />
                 <div className="flex-1">
                   <h2 className="text-xl font-bold text-primary mb-2">{hospital.name}</h2>
-                  <p className="text-sm text-muted-foreground mb-1">{hospital.address}</p>
+                  <p className="text-sm text-muted-foreground mb-1">{formatAddress(hospital.address)}</p>
                   <p className="text-sm text-muted-foreground mb-1">Phone: {hospital.phone}</p>
                   <p className="text-sm text-muted-foreground">GST: {hospital.gst}</p>
                 </div>

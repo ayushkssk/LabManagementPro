@@ -173,6 +173,8 @@ export interface User {
   name: string;
   role: 'admin' | 'technician' | 'super-admin';
   hospitalId: string;
-  createdAt: string;
   photoURL?: string;
+  createdAt: string | Date;
+  password?: string;
+  lastLogin?: Date;
 }

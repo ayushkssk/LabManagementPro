@@ -9,9 +9,66 @@ import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Trash2, Plus, Upload, Download, Pencil, Loader2 } from "lucide-react";
-import type { Test as TestType, TestField } from "@/types";
+import { Trash2, Plus, Upload, Download, Pencil, Loader2, Printer } from "lucide-react";
+import type { Test as TestType, TestField, Hospital, TestResult, FieldResult } from "@/types";
 import { addTest, deleteTest, getTests, updateTest, assignTestCodes, type TestData } from "@/services/testService";
+import { printTestReport } from "@/utils/printUtils";
+// Using a mock hospital since the context doesn't expose the current hospital directly
+const MOCK_HOSPITAL: Hospital = {
+  id: 'mock-hospital-id',
+  name: 'Demo Hospital',
+  displayName: 'Demo Hospital',
+  type: 'hospital',
+  registrationNumber: 'REG12345',
+  gstNumber: 'GST12345',
+  address: {
+    street: '123 Medical St',
+    city: 'Medical City',
+    state: 'Medical State',
+    pincode: '123456',
+    country: 'Medical Country'
+  },
+  phoneNumbers: ['+1234567890'],
+  email: 'info@demohospital.com',
+  logoUrl: '/logo.png',
+  settings: {
+    primaryColor: '#3b82f6',
+    secondaryColor: '#1d4ed8',
+    fontFamily: 'Arial, sans-serif',
+    headerStyle: 'centered',
+    showLogo: true,
+    showTagline: true,
+    showGst: true,
+    letterHeadEnabled: true,
+    timezone: 'UTC',
+    dateFormat: 'DD/MM/YYYY',
+    currency: 'USD'
+  },
+  letterhead: {
+    logoUrl: '/logo.png',
+    showHospitalName: true,
+    showAddress: true,
+    showContact: true,
+    showEmail: true,
+    showWebsite: true,
+    showGst: true,
+    showRegistration: true
+  },
+  admin: {
+    id: 'admin-1',
+    name: 'Admin User',
+    email: 'admin@demohospital.com',
+    phone: '+1234567890',
+    role: 'admin',
+    createdAt: new Date()
+  },
+  isActive: true,
+  isVerified: true,
+  isDemo: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  registrationDate: new Date()
+};
 
 const useXLSX = () => {
   const [xlsx, setXLSX] = useState<any>(null);
@@ -61,6 +118,17 @@ const TestManagement: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<{ id?: string; data: Omit<TestType, "id"> } | null>(null);
+  // Using mock hospital data for the print functionality
+  const hospital = MOCK_HOSPITAL;
+  
+  // Mock patient data for testing print
+  const mockPatient = {
+    name: "John Doe",
+    age: 35,
+    gender: "Male",
+    doctor: "Dr. Smith",
+    date: new Date().toLocaleDateString()
+  };
 
   type LoadedTest = TestData & { id: string; code?: string; };
   const { data: tests = [], isLoading } = useQuery<LoadedTest[]>({ queryKey: ["tests"], queryFn: getTests as any });
@@ -489,10 +557,53 @@ const TestManagement: React.FC = () => {
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => openEdit(t)}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => {
+                              const testResult: TestResult = {
+                                testId: t.id || `temp-${Date.now()}`,
+                                testName: t.name,
+                                fields: t.fields?.map(f => ({
+                                  fieldId: f.id || `field-${Date.now()}`,
+                                  fieldName: f.name,
+                                  value: '',
+                                  unit: 'unit' in f ? String(f.unit) : undefined,
+                                  normalRange: 'normalRange' in f ? String(f.normalRange) : undefined
+                                } as FieldResult)) || []
+                              };
+                              
+                              printTestReport({
+                                hospital,
+                                testName: t.name,
+                                testFields: testResult.fields.map(f => ({
+                                  fieldName: f.fieldName,
+                                  value: f.value,
+                                  unit: f.unit,
+                                  normalRange: f.normalRange
+                                })),
+                                patientInfo: mockPatient,
+                                hospitalId: hospital.id
+                              });
+                            }}
+                            className="text-blue-600 hover:bg-blue-50"
+                          >
+                            <Printer className="w-4 h-4 mr-1" /> Print
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => openEdit(t)}
+                            className="text-yellow-600 hover:bg-yellow-50"
+                          >
                             <Pencil className="w-4 h-4 mr-1" /> Edit
                           </Button>
-                          <Button variant="destructive" size="sm" onClick={() => delMut.mutate(t.id!)}>
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            onClick={() => delMut.mutate(t.id!)}
+                            className="text-red-600 hover:bg-red-50"
+                          >
                             <Trash2 className="w-4 h-4 mr-1" /> Delete
                           </Button>
                         </div>

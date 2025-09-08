@@ -70,7 +70,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     // Demo login - check against demo users
-    const foundUser = demoUsers.find(u => u.email === email);
+    const foundUser = demoUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+    
+    // Check for Swati admin user
+    if (email.toLowerCase() === 'swati@gmail.com' && password === 'Swati@123') {
+      const swatiUser = demoUsers.find(u => u.email.toLowerCase() === 'swati@gmail.com');
+      if (swatiUser) {
+        setUser(swatiUser);
+        localStorage.setItem('demo-user', JSON.stringify(swatiUser));
+        setIsLoading(false);
+        return true;
+      }
+    }
     
     if (foundUser && (password === 'demo123' || password === 'demo@123')) {
       // If this is a demo hospital user, make sure the hospital exists
@@ -134,7 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Update user's last login time
       const userToSave = {
         ...foundUser,
-        lastLogin: new Date().toISOString()
+        lastLogin: new Date()
       };
       
       setUser(userToSave);

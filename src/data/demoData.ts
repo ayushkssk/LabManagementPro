@@ -42,6 +42,72 @@ export const demoPatients: Patient[] = [
 
 // Demo hospital data
 export const demoHospitals: Hospital[] = [
+  // Swati Hospital
+  {
+    id: 'swati-hospital-1',
+    name: 'Swati Hospital',
+    displayName: 'Swati Hospital',
+    type: 'hospital',
+    registrationNumber: 'SWATI12345',
+    gstNumber: 'SWATI987654321',
+    address: {
+      street: '123 Swati Nagar',
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      pincode: '400001',
+      country: 'India'
+    },
+    phoneNumbers: ['+912234567890'],
+    email: 'info@swatihospital.com',
+    website: 'https://swatihospital.com',
+    tagline: 'Quality Healthcare with Compassion',
+    description: 'A leading healthcare provider in Mumbai',
+    logoUrl: '/logo.png',
+    coverImageUrl: '/cover.jpg',
+    isActive: true,
+    isVerified: true,
+    isDemo: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    registrationDate: new Date('2020-01-01'),
+    metadata: {},
+    settings: {
+      primaryColor: '#4f46e5',
+      secondaryColor: '#4338ca',
+      fontFamily: 'Arial, sans-serif',
+      headerStyle: 'centered',
+      showLogo: true,
+      showTagline: true,
+      showGst: true,
+      letterHeadEnabled: true,
+      footerNote: 'Thank you for choosing Swati Hospital',
+      timezone: 'Asia/Kolkata',
+      dateFormat: 'DD/MM/YYYY',
+      currency: 'INR',
+      additionalInfo: []
+    },
+    letterhead: {
+      logoUrl: '/logo.png',
+      showHospitalName: true,
+      showAddress: true,
+      showContact: true,
+      showEmail: true,
+      showWebsite: true,
+      showGst: true,
+      showRegistration: true
+    },
+    admin: {
+      id: 'swati-admin-1',
+      name: 'Swati Hospital Admin',
+      email: 'swati@gmail.com',
+      phone: '+912234567890',
+      role: 'admin',
+      createdAt: new Date(),
+      lastLogin: new Date()
+    },
+    staff: []
+  },
+  // Demo Hospital
   {
     id: 'demo-hospital-1',
     name: 'Demo Healthcare Hospital',
@@ -869,6 +935,17 @@ export const demoHospital: Hospital = {
 };
 
 export const demoUsers: User[] = [
+  // Swati Hospital Admin
+  {
+    id: 'swati-admin-1',
+    email: 'swati@gmail.com',
+    name: 'Swati Hospital Admin',
+    role: 'admin',
+    hospitalId: 'swati-hospital-1',
+    photoURL: '',
+    createdAt: new Date().toISOString(),
+    password: 'Swati@123'
+  },
   // Demo Hospital Admin
   {
     id: 'demo-admin-1',

@@ -95,6 +95,9 @@ const AppRoutes = () => {
           <AdminDashboard />
         </ProtectedRoute>
       } />
+      <Route path="/settings" element={
+        <Navigate to="/admin/profile" replace />
+      } />
       <Route path="/admin/profile" element={
         <ProtectedRoute requiredRole={['admin']}>
           <HospitalProfile />
