@@ -9,10 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { ArrowLeft, CheckCircle, ClipboardList, XCircle, Printer } from 'lucide-react';
+import TestForm from '@/modules/tests/TestForm';
+import { sampleTests as extSampleTests, testConfigurations as extTestConfigs, testConfigByTestId as extConfigMap } from '@/modules/tests/config';
 import { Loader2 } from 'lucide-react';
 import { getPatient, PatientData } from '@/services/patientService';
-import { Letterhead } from '@/components/letterhead/Letterhead';
+import { demoTests } from '@/data/demoData';
+import { Letterhead, letterheadStyles } from '@/components/letterhead/Letterhead';
 import { useHospitalLetterhead } from '@/hooks/useHospitalLetterhead';
+
+// Use shared tests meta from reusable module
+const sampleTests = extSampleTests;
 
 interface Sample {
   testId: string;
@@ -62,7 +68,6 @@ const SampleCollection = () => {
   // Hooks must be called unconditionally at the top level
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
-  const { hospital: hospitalData } = useHospitalLetterhead();
 
   // State hooks
   const [samples, setSamples] = useState<Sample[]>([]);
@@ -75,15 +80,15 @@ const SampleCollection = () => {
   const [testValues, setTestValues] = useState<Record<string, string>>({});
   const [showPrintView, setShowPrintView] = useState(false);
   const [showPrintOptions, setShowPrintOptions] = useState(false);
-  const [hasSavedResults, setHasSavedResults] = useState(false);
-  const [printWithLetterhead, setPrintWithLetterhead] = useState(true);
+  const [lastSavedTest, setLastSavedTest] = useState<Sample | null>(null);
+  const { hospital: hospitalData } = useHospitalLetterhead();
 
   // Auto-select first test if none selected
   useEffect(() => {
     if (samples.length > 0 && !selectedTestId) {
       setSelectedTestId(samples[0].testId);
     }
-  }, [samples, selectedTestId]);
+  }, [samples, selectedTestId]);;
 
   // Derived state
   const selectedTest = selectedTestId ? samples.find(test => test.testId === selectedTestId) : null;
@@ -94,16 +99,14 @@ const SampleCollection = () => {
     )
     : samples;
 
-  // Initialize with empty samples - will be populated from patient data
-  useEffect(() => {
-    setIsLoading(false);
-  }, []);
+  // Type guards
   const isSelectField = (field: FieldConfig): field is SelectField => field.type === 'select';
   const isNumberField = (field: FieldConfig): field is NumberField => field.type === 'number';
-  const isDateTimeField = (field: FieldConfig): field is DateTimeField => field.type === 'datetime-local';
+  const isDateTimeField = (field: FieldConfig): field is DateTimeField => field.type === 'datetime-local';;
 
   // Real patient fetched from Firestore using the document ID in the route
   const [patient, setPatient] = useState<PatientData | null>(null);
+
 
   // Initialize samples from patient data
   useEffect(() => {
@@ -119,53 +122,30 @@ const SampleCollection = () => {
 
         const selectedIds = p.tests || [];
 
-        // Build ordered samples for ALL selected IDs
-        const testData = [
-          {
-            id: 'cbc',
-            name: 'Complete Blood Count',
-            sampleType: 'Blood',
-            container: 'Lavender Top',
-            instructions: 'Fasting required'
-          },
-          {
-            id: 'bmp',
-            name: 'Basic Metabolic Panel',
-            sampleType: 'Serum',
-            container: 'SST',
-            instructions: 'Fasting required'
-          },
-          {
-            id: 'lipid',
-            name: 'Lipid Panel',
-            sampleType: 'Serum',
-            container: 'SST',
-            instructions: '12-hour fasting required'
-          }
-        ];
-
+        // Build ordered samples for ALL selected IDs.
         const orderedSamples = selectedIds.map(testId => {
-          // Find test data by ID
-          const test = testData.find(t => t.id === testId);
-          if (test) {
+          // Try to find rich meta first (with sampleType/container/instructions)
+          const rich = sampleTests.find(t => t.id === testId);
+          if (rich) {
             return {
-              testId: test.id,
-              testName: test.name,
-              sampleType: test.sampleType,
-              container: test.container,
-              instructions: test.instructions,
+              testId: rich.id,
+              testName: rich.name,
+              sampleType: rich.sampleType,
+              container: rich.container,
+              instructions: rich.instructions,
               collected: false,
               notes: ''
             } as Sample;
           }
-          
-          // Fallback for unknown tests
+
+          // Fallback: find in demoTests to at least get the name
+          const fallback = demoTests.find(t => t.id === testId);
           return {
             testId,
-            testName: testId,
-            sampleType: 'Unknown',
-            container: 'N/A',
-            instructions: 'Please collect sample',
+            testName: fallback?.name || `Test ${testId}`,
+            sampleType: 'Blood',
+            container: 'Standard',
+            instructions: '',
             collected: false,
             notes: ''
           } as Sample;
@@ -301,19 +281,6 @@ const SampleCollection = () => {
     }
   };
 
-  const handlePrintReport = (withLetterhead: boolean) => {
-    setPrintWithLetterhead(withLetterhead);
-    setShowPrintView(true);
-    setShowPrintOptions(false);
-    
-    // Trigger print after a small delay to ensure the content is rendered
-    setTimeout(() => {
-      window.print();
-      // Reset print view after printing
-      setTimeout(() => setShowPrintView(false), 1000);
-    }, 100);
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -322,38 +289,13 @@ const SampleCollection = () => {
     );
   }
 
-  // Test configurations with type safety
-  const testConfigurations: TestConfiguration = {
-    // Add your test configurations here
-    cbc: {
-      fields: [
-        {
-          id: 'wbc',
-          label: 'White Blood Cells',
-          type: 'number',
-          unit: 'x10^9/L',
-          refRange: '4.5 - 11.0',
-          required: true
-        },
-        {
-          id: 'rbc',
-          label: 'Red Blood Cells',
-          type: 'number',
-          unit: 'x10^12/L',
-          refRange: '4.5 - 5.9',
-          required: true
-        }
-      ]
-    }
-  };
+  // Use shared test configurations from module
+  const testConfigurations = extTestConfigs;
 
-  const configMap: Record<string, keyof typeof testConfigurations> = {
-    '1': 'cbc',
-    '2': 'cbc',
-    '3': 'cbc'
-  };
+  // Map selected demo test IDs to the corresponding configuration keys above
+  const testConfigByTestId = extConfigMap;
 
-  // Build a generic fallback configuration
+  // Build a generic fallback configuration if a test does not have a specific config mapping
   const buildGenericConfig = (testName: string): { fields: FieldConfig[] } => ({
     fields: [
       {
@@ -377,175 +319,330 @@ const SampleCollection = () => {
         type: 'datetime-local',
         required: false,
       },
-    ],
+    ] as FieldConfig[],
   });
 
   // Get current test configuration using the mapping, or generic fallback
-  const currentTestConfig = selectedTestId
+  const currentTestConfig = selectedTest
     ? (testConfigurations[
-        configMap[selectedTestId] as keyof typeof testConfigurations
-      ] || buildGenericConfig(samples.find((s) => s.testId === selectedTestId)?.testName || ''))
+        testConfigByTestId[selectedTest.testId] as keyof typeof testConfigurations
+      ] || buildGenericConfig(selectedTest.testName))
     : null;
 
   const handleTestValueChange = (fieldId: string, value: any) => {
-    setTestValues((prev) => ({ ...prev, [fieldId]: value }));
+    setTestValues(prev => ({
+      ...prev,
+      [fieldId]: value
+    }));
   };
 
-  const handleSaveTest = async () => {
-    if (!selectedTestId) return;
+  const handleSaveTest = () => {
+    if (!selectedTest) return;
 
-    try {
-      setIsSubmitting(true);
+    // Mark test as collected
+    toggleSampleCollected(selectedTest.testId);
+    setLastSavedTest(selectedTest);
 
-      // In a real app, you would submit this data to your API
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Reset form
+    setTestValues({});
 
-      // Save the test results
-      toggleSampleCollected(selectedTestId);
-      setTestValues({});
-      setHasSavedResults(true);
+    // Show print options
+    setShowPrintOptions(true);
 
-      // Move to next test
-      const currentIndex = samples.findIndex((test) => test.testId === selectedTestId);
-      if (currentIndex < samples.length - 1) {
-        setSelectedTestId(samples[currentIndex + 1].testId);
-      }
-
-      toast({
-        title: 'Test Saved',
-        description: `Results for ${samples.find((s) => s.testId === selectedTestId)?.testName} have been saved.`,
-        variant: 'default',
-      });
-    } catch (error) {
-      console.error('Error saving test:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save test results. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
+    // Move to next test if available
+    const currentIndex = samples.findIndex(test => test.testId === selectedTestId);
+    if (currentIndex < samples.length - 1) {
+      setSelectedTestId(samples[currentIndex + 1].testId);
     }
+
+    toast({
+      title: 'Test Saved',
+      description: `Results for ${selectedTest.testName} have been saved.`,
+      variant: 'default',
+    });
   };
 
-  // Test form component
-  const TestForm = ({ fields, values, onChange }: { fields: FieldConfig[]; values: Record<string, string>; onChange: (id: string, value: string) => void }) => (
-    <div className="space-y-4">
-      {fields.map((field) => (
-        <div key={field.id} className="space-y-2">
-          <Label htmlFor={field.id}>
-            {field.label} {field.required && <span className="text-destructive">*</span>}
-          </Label>
-          {isSelectField(field) ? (
-            <Select onValueChange={(value) => onChange(field.id, value)} value={values[field.id] || ''}>
-              <SelectTrigger>
-                <SelectValue placeholder={`Select ${field.label}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {field.options.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input
-              id={field.id}
-              type={field.type}
-              value={values[field.id] || ''}
-              onChange={(e) => onChange(field.id, e.target.value)}
-              min={isNumberField(field) ? field.min : undefined}
-              max={isNumberField(field) ? field.max : undefined}
-              step={isNumberField(field) ? field.step : undefined}
-              required={field.required}
-            />
-          )}
-          {field.unit && <p className="text-sm text-muted-foreground">Unit: {field.unit}</p>}
-          {field.refRange && <p className="text-sm text-muted-foreground">Ref. Range: {field.refRange}</p>}
-        </div>
-      ))}
-    </div>
-  );
+  const handlePrintReport = (e: React.MouseEvent, withLetterhead: boolean = true) => {
+    e.preventDefault();
+    setShowPrintView(true);
+    setShowPrintOptions(false);
+    
+    // Add a small delay to ensure the print view is rendered
+    setTimeout(() => {
+      window.print();
+      // Reset after a short delay to allow print dialog to appear
+      setTimeout(() => setShowPrintView(false), 1000);
+    }, 100);
+  };
+
+  // Print styles
+  const printStyles = `
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      .print-section, .print-section * {
+        visibility: visible;
+      }
+      .print-section {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .letterhead {
+        padding: 0;
+        margin: 0;
+        border: none;
+      }
+      .letterhead-header {
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+      }
+      .report-content {
+        padding: 0 1.5rem;
+      }
+    }
+    ${letterheadStyles}
+  `;
 
   return (
     <div className="mx-auto p-0 max-w-full space-y-4">
-      {/* Print Options Dialog */}
-      {showPrintOptions && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      {/* Print Options Modal */}
+      {showPrintOptions && lastSavedTest && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Print Options</h3>
-            <p className="text-sm text-muted-foreground mb-6">Choose how you want to print the report</p>
-
-            <div className="space-y-3">
-              <Button onClick={() => handlePrintReport(true)} className="w-full justify-start" variant="outline">
-                <Printer className="h-4 w-4 mr-2" />
-                Print with Letterhead
-              </Button>
-
-              <Button onClick={() => handlePrintReport(false)} className="w-full justify-start" variant="outline">
-                <Printer className="h-4 w-4 mr-2" />
-                Print without Letterhead
-              </Button>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Print Options</h3>
+              <button 
+                onClick={() => setShowPrintOptions(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
             </div>
-
-            <div className="mt-6 flex justify-end">
-              <Button onClick={() => setShowPrintOptions(false)} variant="ghost">
+            <p className="mb-4">How would you like to print the report for <strong>{lastSavedTest.testName}</strong>?</p>
+            <div className="space-y-3">
+              <button
+                onClick={(e) => handlePrintReport(e, true)}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
+              >
+                Print with Letterhead
+              </button>
+              <button
+                onClick={(e) => handlePrintReport(e, false)}
+                className="w-full border border-gray-300 py-2 px-4 rounded hover:bg-gray-50 transition-colors"
+              >
+                Print without Letterhead
+              </button>
+              <button
+                onClick={() => setShowPrintOptions(false)}
+                className="w-full text-gray-600 py-2 px-4 rounded hover:bg-gray-100 transition-colors"
+              >
                 Cancel
-              </Button>
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {/* Print View */}
-      {showPrintView && patient && hospitalData && (
+      {showPrintView && patient && (
         <div className="print-section">
-          <style>
-            {`
-              @media print {
-                body * {
-                  visibility: hidden;
-                }
-                .print-section, .print-section * {
-                  visibility: visible;
-                }
-                .print-section {
-                  position: absolute;
-                  left: 0;
-                  top: 0;
-                  width: 100%;
-                }
-                .no-print {
-                  display: none !important;
-                }
-              }
-            `}
-          </style>
-          {printWithLetterhead ? (
-            <Letterhead hospital={hospitalData} className="print-only">
+          <style>{printStyles}</style>
+          {hospitalData ? (
+            <Letterhead 
+              hospital={hospitalData}
+              className="print-only"
+            >
               <div className="report-content">
                 <div className="text-center mb-6">
                   <h1 className="text-2xl font-bold">Laboratory Test Report</h1>
                   <p className="text-muted-foreground">Report Date: {new Date().toLocaleDateString()}</p>
                 </div>
-                <ReportContent samples={samples} testValues={testValues} patient={patient} hospitalData={hospitalData} />
+                <div className="grid grid-cols-2 gap-6 mb-8">
+                  <div>
+                    <h2 className="text-lg font-semibold mb-2 border-b pb-1">Patient Details</h2>
+                    <div className="space-y-1">
+                      <p><span className="font-medium">Name:</span> {patient.name}</p>
+                      <p><span className="font-medium">Patient ID:</span> {patient.hospitalId || patient.id}</p>
+                      <p><span className="font-medium">Age/Gender:</span> {patient.age} years / {patient.gender}</p>
+                      <p><span className="font-medium">Referred By:</span> {(patient as any)?.doctor || 'N/A'}</p>
+                      <p><span className="font-medium">Collection Date:</span> {new Date().toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h2 className="text-lg font-semibold mb-2 border-b pb-1">Report Information</h2>
+                    <div className="space-y-1">
+                      <p><span className="font-medium">Report ID:</span> RPT-{new Date().getFullYear()}-{String(Math.floor(Math.random() * 10000)).padStart(4, '0')}</p>
+                      <p><span className="font-medium">Collection Time:</span> {new Date().toLocaleTimeString()}</p>
+                      <p><span className="font-medium">Report Status:</span> Final</p>
+                      <p><span className="font-medium">Tests Performed:</span> {samples.filter(s => s.collected).length} of {samples.length}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden mb-6">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference Range</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {samples.map((sample, index) => (
+                      <tr key={index} className={sample.collected ? '' : 'opacity-70'}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="font-medium">{sample.testName}</div>
+                          <div className="text-sm text-gray-500">{sample.sampleType} • {sample.container}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {sample.collected ? (testValues[`${sample.testId}_result`] || 'Pending') : 'Not Collected'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {testValues[`${sample.testId}_refRange`] || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            ${sample.collected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            {sample.collected ? 'Completed' : 'Pending'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-8 pt-4 border-t">
+                <div className="flex justify-between">
+                  <div>
+                    <p className="font-medium">Technician:</p>
+                    <p className="mt-2">_______________________</p>
+                    <p className="text-sm text-muted-foreground">Signature & Stamp</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Authorized By:</p>
+                    <p className="mt-2">_______________________</p>
+                    <p className="text-sm text-muted-foreground">Lab Incharge</p>
+                  </div>
+                </div>
+                <div className="mt-8 text-center text-sm text-muted-foreground">
+                  <p>This is a computer generated report. No signature is required.</p>
+                  <p className="mt-1">© {new Date().getFullYear()} {hospitalData?.name || 'Laboratory'}. All rights reserved.</p>
+                </div>
               </div>
             </Letterhead>
           ) : (
-            <div className="p-6">
-              <div className="text-center mb-6">
-                <h1 className="text-2xl font-bold">Laboratory Test Report</h1>
-                <p className="text-muted-foreground">Report Date: {new Date().toLocaleDateString()}</p>
+            <div className="print-only">
+              <div className="report-content">
+                <div className="text-center mb-6">
+                  <h1 className="text-2xl font-bold">Laboratory Test Report</h1>
+                  <p className="text-muted-foreground">Report Date: {new Date().toLocaleDateString()}</p>
+                </div>
+                {/* Rest of the report content without letterhead */}
+                {patient && (
+                  <div className="grid grid-cols-2 gap-6 mb-8">
+                    <div>
+                      <h2 className="text-lg font-semibold mb-2 border-b pb-1">Patient Details</h2>
+                      <div className="space-y-1">
+                        <p><span className="font-medium">Name:</span> {patient.name}</p>
+                        <p><span className="font-medium">Patient ID:</span> {patient.hospitalId || patient.id}</p>
+                        <p><span className="font-medium">Age/Gender:</span> {patient.age} years / {patient.gender}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold mb-2 border-b pb-1">Report Information</h2>
+                      <div className="space-y-1">
+                        <p><span className="font-medium">Report ID:</span> RPT-{new Date().getFullYear()}-{String(Math.floor(Math.random() * 10000)).padStart(4, '0')}</p>
+                        <p><span className="font-medium">Collection Time:</span> {new Date().toLocaleTimeString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Add the rest of the report content here */}
               </div>
-              <ReportContent samples={samples} testValues={testValues} patient={patient} hospitalData={hospitalData} />
             </div>
           )}
         </div>
       )}
+      {/* Patient Info Header */}
+      <div className="bg-white shadow-sm rounded-none p-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center space-x-3">
+            <div className="bg-primary/10 p-2 rounded-lg">
+              <ClipboardList className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">{patient?.name || 'Patient'}</h3>
+              <p className="text-sm text-muted-foreground">Patient ID: {patient?.hospitalId || patient?.id}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-6">
+            <div className="text-center">
+              <p className="text-sm font-medium text-muted-foreground">Age / Gender</p>
+              <p className="font-medium">{patient?.age ?? '-'} years / {patient?.gender ?? '-'}</p>
+            </div>
+            <div className="h-8 w-px bg-gray-200" />
+            <div className="text-center">
+              <p className="text-sm font-medium text-muted-foreground">Referred By</p>
+              <p className="font-medium">{(patient as any)?.doctor || '-'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Main Content */}
-      <div className="no-print">
+      <div className="space-y-4">
+        {/* Header Section */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-bold">Sample Collection</h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Button variant="outline" onClick={clearAllSamples} disabled={isSubmitting}>
+              <XCircle className="h-4 w-4 mr-2" />
+              Clear All
+            </Button>
+            <Button 
+              onClick={autoFillAllSamples} 
+              disabled={isSubmitting || isAutoFilled}
+              className="no-print"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Auto-Fill All
+            </Button>
+            <Button 
+              onClick={handlePrintReport}
+              disabled={samples.every(s => !s.collected)}
+              variant="outline"
+              className="no-print"
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Print Report
+            </Button>
+          </div>
+        </div>
+
+        {/* Card Section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
           {/* Left Sidebar - Test List - More compact */}
           <div className="lg:col-span-2 w-full">
@@ -560,11 +657,10 @@ const SampleCollection = () => {
                     <div
                       key={sample.testId}
                       onClick={() => setSelectedTestId(sample.testId)}
-                      className={`p-1.5 rounded-md cursor-pointer transition-colors text-xs ${
-                        selectedTestId === sample.testId
+                      className={`p-1.5 rounded-md cursor-pointer transition-colors text-xs ${selectedTestId === sample.testId
                           ? 'bg-primary/10 border border-primary/20'
                           : 'hover:bg-muted/50'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -586,22 +682,25 @@ const SampleCollection = () => {
 
           {/* Right Side - Test Details - Larger Card */}
           <div className="lg:col-span-10 space-y-4">
-            {selectedTestId ? (
+            {selectedTest ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>{samples.find((s) => s.testId === selectedTestId)?.testName}</CardTitle>
+                  <CardTitle>{selectedTest.testName}</CardTitle>
                   <CardDescription>
-                    {samples.find((s) => s.testId === selectedTestId)?.sampleType} •{' '}
-                    {samples.find((s) => s.testId === selectedTestId)?.container}
-                    {samples.find((s) => s.testId === selectedTestId)?.instructions && (
-                      <span> • {samples.find((s) => s.testId === selectedTestId)?.instructions}</span>
+                    {selectedTest.sampleType} • {selectedTest.container}
+                    {selectedTest.instructions && (
+                      <span> • {selectedTest.instructions}</span>
                     )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-1.5">
                   {currentTestConfig ? (
                     <div className="space-y-2">
-                      <TestForm fields={currentTestConfig.fields} values={testValues} onChange={handleTestValueChange} />
+                      <TestForm
+                        fields={currentTestConfig.fields}
+                        values={testValues}
+                        onChange={handleTestValueChange}
+                      />
 
                       <div className="pt-3 border-t mt-3">
                         <Label htmlFor="notes" className="text-sm font-medium">
@@ -617,11 +716,18 @@ const SampleCollection = () => {
                       </div>
 
                       <div className="flex justify-end gap-2 pt-3">
-                        <Button type="button" variant="outline" onClick={() => setTestValues({})}>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setTestValues({})}
+                        >
                           Clear
                         </Button>
-                        <Button type="button" onClick={handleSaveTest}>
-                          {samples.find((s) => s.testId === selectedTestId)?.collected ? 'Update Results' : 'Save Results'}
+                        <Button
+                          type="button"
+                          onClick={handleSaveTest}
+                        >
+                          {selectedTest.collected ? 'Update Results' : 'Save Results'}
                         </Button>
                       </div>
                     </div>
@@ -648,217 +754,6 @@ const SampleCollection = () => {
       </div>
     </div>
   );
-
-  // Print styles
-  const printStyles = `
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      .print-section, .print-section * {
-        visibility: visible;
-      }
-      .print-section {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-      }
-      .no-print {
-        display: none !important;
-      }
-    }
-  `;
-
-  return (
-    <div className="mx-auto p-0 max-w-full space-y-4">
-      {/* Print Options Dialog */}
-      {showPrintOptions && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Print Options</h3>
-            <p className="text-sm text-muted-foreground mb-6">Choose how you want to print the report</p>
-            
-            <div className="space-y-3">
-              <Button 
-                onClick={() => handlePrintReport(true)}
-                className="w-full justify-start"
-                variant="outline"
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Print with Letterhead
-              </Button>
-              
-              <Button 
-                onClick={() => handlePrintReport(false)}
-                className="w-full justify-start"
-                variant="outline"
-              >
-                <Printer className="h-4 w-4 mr-2" />
-                Print without Letterhead
-              </Button>
-            </div>
-            
-            <div className="mt-6 flex justify-end">
-              <Button 
-                onClick={() => setShowPrintOptions(false)}
-                variant="ghost"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Print View */}
-      {showPrintView && patient && hospitalData && (
-        <div className="print-section">
-          <style>{printStyles}</style>
-          {printWithLetterhead ? (
-            <Letterhead 
-              hospital={hospitalData}
-              className="print-only"
-            >
-              <div className="report-content">
-                <div className="text-center mb-6">
-                  <h1 className="text-2xl font-bold">Laboratory Test Report</h1>
-                  <p className="text-muted-foreground">Report Date: {new Date().toLocaleDateString()}</p>
-                </div>
-                <ReportContent 
-                  samples={samples}
-                  testValues={testValues}
-                  patient={patient}
-                  hospitalData={hospitalData}
-                />
-              </div>
-            </Letterhead>
-          ) : (
-            <div className="p-6">
-              <div className="text-center mb-6">
-                <h1 className="text-2xl font-bold">Laboratory Test Report</h1>
-                <p className="text-muted-foreground">Report Date: {new Date().toLocaleDateString()}</p>
-              </div>
-              <ReportContent 
-                samples={samples}
-                testValues={testValues}
-                patient={patient}
-                hospitalData={hospitalData}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className="no-print">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
-          {/* Left Sidebar - Test List */}
-          <div className="lg:col-span-2 w-full">
-            {/* Test list content */}
-          </div>
-          
-          {/* Right Side - Test Details */}
-          <div className="lg:col-span-10 space-y-4">
-            {/* Test details content */}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 };
 
-// ReportContent component for displaying the test report
-const ReportContent = ({ 
-  samples, 
-  testValues, 
-  patient, 
-  hospitalData 
-}: {
-  samples: Sample[];
-  testValues: Record<string, string>;
-  patient: PatientData | null;
-  hospitalData: any;
-}) => (
-  <>
-    <div className="grid grid-cols-2 gap-6 mb-8">
-      <div>
-        <h2 className="text-lg font-semibold mb-2 border-b pb-1">Patient Details</h2>
-        <div className="space-y-1">
-          <p><span className="font-medium">Name:</span> {patient?.name}</p>
-          <p><span className="font-medium">Patient ID:</span> {patient?.hospitalId || patient?.id}</p>
-          <p><span className="font-medium">Age/Gender:</span> {patient?.age} years / {patient?.gender}</p>
-          <p><span className="font-medium">Referred By:</span> {(patient as any)?.doctor || 'N/A'}</p>
-          <p><span className="font-medium">Collection Date:</span> {new Date().toLocaleDateString()}</p>
-        </div>
-      </div>
-      
-      <div>
-        <h2 className="text-lg font-semibold mb-2 border-b pb-1">Report Information</h2>
-        <div className="space-y-1">
-          <p><span className="font-medium">Report ID:</span> RPT-{new Date().getFullYear()}-{String(Math.floor(Math.random() * 10000)).padStart(4, '0')}</p>
-          <p><span className="font-medium">Collection Time:</span> {new Date().toLocaleTimeString()}</p>
-          <p><span className="font-medium">Report Status:</span> Final</p>
-          <p><span className="font-medium">Tests Performed:</span> {samples.filter(s => s.collected).length} of {samples.length}</p>
-        </div>
-      </div>
-    </div>
-
-    <div className="border rounded-lg overflow-hidden mb-6">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test Name</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference Range</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {samples.map((sample, index) => (
-            <tr key={index} className={sample.collected ? '' : 'opacity-70'}>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="font-medium">{sample.testName}</div>
-                <div className="text-sm text-gray-500">{sample.sampleType} • {sample.container}</div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                {sample.collected ? (testValues[`${sample.testId}_result`] || 'Pending') : 'Not Collected'}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {testValues[`${sample.testId}_refRange`] || 'N/A'}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                  ${sample.collected ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                  {sample.collected ? 'Completed' : 'Pending'}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-
-    <div className="mt-8 pt-4 border-t">
-      <div className="flex justify-between">
-        <div>
-          <p className="font-medium">Technician:</p>
-          <p className="mt-2">_______________________</p>
-          <p className="text-sm text-muted-foreground">Signature & Stamp</p>
-        </div>
-        <div>
-          <p className="font-medium">Authorized By:</p>
-          <p className="mt-2">_______________________</p>
-          <p className="text-sm text-muted-foreground">Lab Incharge</p>
-        </div>
-      </div>
-      <div className="mt-8 text-center text-sm text-muted-foreground">
-        <p>This is a computer generated report. No signature is required.</p>
-        <p className="mt-1">© {new Date().getFullYear()} {hospitalData?.name || 'LabManagerPro'}. All rights reserved.</p>
-      </div>
-    </div>
-  </>
-);
-
-export { ReportContent };
 export default SampleCollection;
