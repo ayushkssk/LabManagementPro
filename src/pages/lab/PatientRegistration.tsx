@@ -24,8 +24,8 @@ import { demoTests } from '@/data/demoData';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { addPatient } from '@/services/patientService';
-import { Letterhead, letterheadStyles } from '@/components/letterhead/Letterhead';
-import { useHospitalLetterhead } from '@/hooks/useHospitalLetterhead';
+import { PdfLetterhead } from '@/components/print/PdfLetterhead';
+import { InvoiceTemplate } from '@/components/billing/InvoiceTemplates';
 
 type Gender = 'Male' | 'Female' | 'Other';
 
@@ -421,15 +421,15 @@ const PatientRegistration: React.FC = () => {
     }
   };
 
-  const { hospital: hospitalData } = useHospitalLetterhead();
+  // Hospital data will be retrieved from context or props
 
   const handlePrintBill = () => {
-    // Open print window with bill content
-    const printWindow = window.open('', '_blank');
+    // Create a new window for PDF letterhead with bill overlay
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
     if (!printWindow) return;
 
-    // Use hospital data from hook or fallback to default
-    const hospital = hospitalData || {
+    // Use default hospital data
+    const hospital = {
       name: 'SWASTHYA DIAGNOSTIC CENTRE',
       address: 'Near Railway Station, Darbhanga, Bihar - 846004',
       phone: '+91 9473199330',
@@ -474,31 +474,34 @@ const PatientRegistration: React.FC = () => {
       <head>
         <title>Bill - ${patientId || 'Receipt'}</title>
         <style>
-          ${letterheadStyles}
-          /* Overrides from admin Design Settings */
-          body { font-family: ${fontFamily}; }
-          .letterhead-header { border-bottom: 2px solid ${primaryColor}; }
-          .letterhead-title { color: ${primaryColor}; }
-          .bill-title { color: ${primaryColor}; }
-          .patient-info th, .bill-info th, .tests-table th, .payment-info th { color: ${primaryColor}; }
-          @page { 
-            size: A4; 
-            margin: 10mm;
-          }
           body { 
-            font-family: Arial, sans-serif; 
+            font-family: ${fontFamily}; 
             margin: 0; 
             padding: 0; 
             font-size: 12px;
             color: #333;
-            width: 210mm;
-            min-height: 287mm;
-            margin: 0 auto;
-            background: #fff;
             position: relative;
+            height: 100vh;
+          }
+          .pdf-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+          }
+          .pdf-background iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
           }
           .bill-content {
-            padding: 0 15px;
+            position: relative;
+            z-index: 1;
+            padding: 20px;
+            margin-top: 200px; /* Space for PDF letterhead */
+            background: transparent;
           }
           .bill-title {
             text-align: center;
@@ -626,24 +629,13 @@ const PatientRegistration: React.FC = () => {
         </style>
       </head>
       <body>
+        <!-- PDF Letterhead Background -->
+        <div class="pdf-background">
+          <iframe src="/letterheadgreen.pdf" title="Letterhead Background"></iframe>
+        </div>
+
         <!-- Watermark -->
         <div class="watermark" style="display: none;">${hospital.name}</div>
-
-        <!-- Letterhead -->
-        <div class="letterhead">
-          <div class="letterhead-header" style="text-align: center;">
-            ${showLogo && logo ? `<img src="${logo}" alt="${hospital.name}" class="letterhead-logo" />` : ''}
-            <h1 class="letterhead-title">${hospital.name}</h1>
-            ${showTagline && tagline ? `<p class="letterhead-address">${tagline}</p>` : ''}
-            <p class="letterhead-address">${hospital.address}</p>
-            <div class="letterhead-contact">
-              <span>Phone: ${hospital.phone}</span>
-              <span>Email: ${hospital.email}</span>
-              ${showGst ? `<span>GSTIN: ${hospital.gstin}</span>` : ''}
-              ${hospital.registration ? `<span>${hospital.registration}</span>` : ''}
-            </div>
-          </div>
-        </div>
 
         <div class="bill-content">
           <!-- Bill Title -->
@@ -1232,48 +1224,38 @@ const PatientRegistration: React.FC = () => {
                     No tests selected yet. Select tests from the form.
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {patient.selectedTests.map(testId => {
-                      const test = demoTests.find(t => t.id === testId);
-                      if (!test) return null;
-                      
-                      return (
-                        <div key={testId} className="flex justify-between items-center text-sm">
-                          <span className="line-clamp-1">{test.name}</span>
-                          <span className="font-medium">₹{test.price}</span>
-                        </div>
-                      );
-                    })}
-                    <div className="border-t mt-3 pt-2 flex justify-between font-medium">
-                      <span>Total</span>
-                      <span>₹{calculateTotal()}</span>
+                  <div className="space-y-4">
+                    {/* Test List */}
+                    <div className="space-y-2">
+                      {patient.selectedTests.map(testId => {
+                        const test = demoTests.find(t => t.id === testId);
+                        if (!test) return null;
+                        
+                        return (
+                          <div key={testId} className="flex justify-between items-center text-sm">
+                            <span className="line-clamp-1">{test.name}</span>
+                            <span className="font-medium">₹{test.price}</span>
+                          </div>
+                        );
+                      })}
+                      <div className="border-t mt-3 pt-2 flex justify-between font-medium">
+                        <span>Total</span>
+                        <span>₹{calculateTotal()}</span>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
 
-      {/* Bill Dialog */}
-      <Dialog open={showBillDialog} onOpenChange={(open) => {
-        if (!open) {
-          // Reset form when dialog is closed
-          resetForm();
-        }
-        setShowBillDialog(open);
-      }}>
-        <DialogContent className="sm:max-w-[800px]">
-          <DialogHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <DialogTitle>Test Details for {patient.name || 'Patient'}</DialogTitle>
-                <DialogDescription className="mt-1">
-                  Patient ID: {patientId || 'N/A'} | Date: {new Date().toLocaleDateString()}
-                </DialogDescription>
-              </div>
-              <div className="text-right">
+                    {/* PDF Preview */}
+                    <div className="border-t pt-4">
+                      <h4 className="text-xs font-medium text-muted-foreground mb-2">Bill Preview</h4>
+                      <div className="border rounded-lg overflow-auto bg-white relative h-[800px] w-full">
+                        {/* PDF Letterhead Background */}
+                        <div className="absolute inset-0 z-0">
+                          <iframe
+                            src="/letterheadgreen.pdf"
+                            title="Letterhead Background"
+                            className="w-full border-none"
+                            style={{ height: '100%', minHeight: '800px' }}
+                          />
                 <p className="text-sm font-medium">Total Amount</p>
                 <p className="text-2xl font-bold text-primary">₹{calculateTotal().toFixed(2)}</p>
               </div>

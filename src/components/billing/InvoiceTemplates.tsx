@@ -1,5 +1,75 @@
 import React from 'react';
 import { Hospital, Bill, Patient } from '@/types';
+import { PdfLetterhead } from '@/components/print/PdfLetterhead';
+
+// Print-specific CSS for A4 full page layout
+const printStyles = `
+  @media print {
+    * {
+      -webkit-print-color-adjust: exact !important;
+      color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    @page {
+      size: A4;
+      margin: 0mm !important;
+    }
+    
+    html {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 210mm !important;
+      height: 297mm !important;
+    }
+    
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 210mm !important;
+      min-height: 297mm !important;
+      font-size: 11px !important;
+      line-height: 1.3 !important;
+      background: white !important;
+    }
+    
+    .print-container {
+      width: 210mm !important;
+      min-height: 297mm !important;
+      margin: 0 !important;
+      padding: 10mm !important;
+      box-sizing: border-box !important;
+      background: white !important;
+      page-break-inside: avoid !important;
+    }
+    
+    .print-letterhead-container {
+      width: 210mm !important;
+      min-height: 297mm !important;
+      margin: 0 !important;
+      padding: 5mm !important;
+      box-sizing: border-box !important;
+      background: white !important;
+      page-break-inside: avoid !important;
+    }
+    
+    .print-content {
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    
+    /* Ensure tables don't break */
+    table {
+      page-break-inside: avoid !important;
+      width: 100% !important;
+    }
+    
+    /* Prevent content from being cut off */
+    .no-break {
+      page-break-inside: avoid !important;
+    }
+  }
+`;
 
 interface InvoiceTemplateProps {
   template: 'classic' | 'modern' | 'minimal' | 'colorful' | 'professional' | 'elegant';
@@ -107,8 +177,13 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({
 
   const styles = getTemplateStyles();
 
-  return (
-    <div className={styles.container}>
+  // Always use PDF letterhead when withLetterhead is true
+  const usePdfLetterhead = withLetterhead;
+
+  const content = (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: printStyles }} />
+      <div className={usePdfLetterhead ? "print-letterhead-container bg-transparent" : "print-container bg-white"}>
       {/* Custom Header */}
       {customHeader && (
         <div className={`mb-6 ${alignmentClasses[headerAlign]}`}>
@@ -116,92 +191,126 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({
         </div>
       )}
 
-      {/* Header with Hospital Info */}
-      {withLetterhead && (
-        <div className={styles.header}>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center space-x-4">
-              {hospital.logo && (
-                <img 
-                  src={hospital.logo} 
-                  alt="Hospital Logo" 
-                  className="w-16 h-16 object-cover rounded"
-                />
-              )}
-              <div>
-                <h1 className={styles.title}>{hospital.name}</h1>
-                <p className="text-sm text-gray-600 mt-1">{hospital.address}</p>
-                <p className="text-sm text-gray-600">Phone: {hospital.phone}</p>
-                <p className="text-sm text-gray-600">GST: {hospital.gst}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <h2 className={`${styles.title} text-lg`}>Invoice</h2>
-              <p className="text-sm text-gray-600">#{bill.id}</p>
-              <p className="text-sm text-gray-600">{new Date(bill.date).toLocaleDateString()}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Never show HTML letterhead when withLetterhead is true */}
 
-      {/* Without Letterhead - Simple Header */}
-      {!withLetterhead && (
-        <div className={styles.header}>
+      {/* Simple header for PDF letterhead or no letterhead */}
+      {(!withLetterhead || usePdfLetterhead) && (
+        <div className={usePdfLetterhead ? "pt-32 pb-4" : styles.header}>
           <div className="flex justify-between items-center">
-            <h1 className={styles.title}>Invoice</h1>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">#{bill.id}</p>
-              <p className="text-sm text-gray-600">{new Date(bill.date).toLocaleDateString()}</p>
+            <h1 className={usePdfLetterhead ? "text-xl font-bold text-gray-800 text-center flex-1" : styles.title}>
+              {usePdfLetterhead ? "PATIENT BILL / RECEIPT" : "Invoice"}
+            </h1>
+            <div className="text-right text-xs">
+              <p className="text-gray-600">Bill No.: {bill.id}</p>
+              <p className="text-gray-600">Date: {new Date(bill.date).toLocaleDateString()}</p>
+              <p className="text-gray-600">Time: {new Date(bill.date).toLocaleTimeString()}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Patient Information */}
-      <div className="mb-6">
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <h3 className="font-semibold text-gray-700 mb-2">Billed To:</h3>
-            <p className="text-gray-600">{patient.name}</p>
-            <p className="text-gray-600">Age: {patient.age}</p>
-            <p className="text-gray-600">Phone: {patient.phone}</p>
+      {/* Patient Information - Compact 2 rows */}
+      <div className={usePdfLetterhead ? "mb-3" : "mb-4"}>
+        <h3 className={usePdfLetterhead ? "font-semibold text-gray-700 mb-2 text-sm bg-blue-600 text-white p-2 text-center" : "font-semibold text-gray-700 mb-2 bg-blue-600 text-white p-2 text-center"}>PATIENT DETAILS</h3>
+        <div className="grid grid-cols-4 gap-2 text-xs border border-gray-400">
+          {/* Row 1 */}
+          <div className="p-2 border-r border-gray-400">
+            <span className="font-medium">Patient Name:</span>
+            <div className="text-gray-700">{patient.name}</div>
           </div>
-          <div>
-            <h3 className="font-semibold text-gray-700 mb-2">Doctor Reference:</h3>
-            <p className="text-gray-600">{patient.doctor}</p>
+          <div className="p-2 border-r border-gray-400">
+            <span className="font-medium">Age/Gender:</span>
+            <div className="text-gray-700">{patient.age} Y / {patient.gender || 'N/A'}</div>
+          </div>
+          <div className="p-2 border-r border-gray-400">
+            <span className="font-medium">Phone:</span>
+            <div className="text-gray-700">{patient.phone}</div>
+          </div>
+          <div className="p-2">
+            <span className="font-medium">Referred By:</span>
+            <div className="text-gray-700">{patient.doctor || 'Self'}</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 text-xs border-l border-r border-b border-gray-400">
+          {/* Row 2 */}
+          <div className="p-2">
+            <span className="font-medium">Address:</span>
+            <div className="text-gray-700">
+              {patient.address || 'N/A'}
+              {patient.city ? ', ' + patient.city : ''}
+              {patient.state ? ', ' + patient.state : ''}
+              {patient.pincode ? ' - ' + patient.pincode : ''}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Invoice Table */}
-      <table className={styles.table}>
+      <div className="no-break">
+      <table className={usePdfLetterhead ? "w-full border-collapse border border-gray-400 text-xs" : styles.table}>
         <thead>
           <tr>
-            <th className={styles.tableHeader}>Test Name</th>
-            <th className={styles.tableHeader}>Quantity</th>
-            <th className={styles.tableHeader}>Rate</th>
-            <th className={styles.tableHeader}>Amount</th>
+            <th className={usePdfLetterhead ? "bg-blue-600 text-white font-semibold p-2 border border-gray-400 text-xs" : styles.tableHeader}>S.No</th>
+            <th className={usePdfLetterhead ? "bg-blue-600 text-white font-semibold p-2 border border-gray-400 text-xs" : styles.tableHeader}>Test Name</th>
+            <th className={usePdfLetterhead ? "bg-blue-600 text-white font-semibold p-2 border border-gray-400 text-xs" : styles.tableHeader}>Category</th>
+            <th className={usePdfLetterhead ? "bg-blue-600 text-white font-semibold p-2 border border-gray-400 text-xs" : styles.tableHeader}>Amount (₹)</th>
           </tr>
         </thead>
         <tbody>
           {bill.tests.map((test, index) => (
             <tr key={index}>
-              <td className={styles.tableCell}>{test.name}</td>
-              <td className={styles.tableCell}>1</td>
-              <td className={styles.tableCell}>₹{test.price}</td>
-              <td className={styles.tableCell}>₹{test.price}</td>
+              <td className={usePdfLetterhead ? "p-2 border border-gray-400 text-center" : styles.tableCell}>{index + 1}</td>
+              <td className={usePdfLetterhead ? "p-2 border border-gray-400" : styles.tableCell}>{test.name}</td>
+              <td className={usePdfLetterhead ? "p-2 border border-gray-400 text-center" : styles.tableCell}>{test.category || 'General'}</td>
+              <td className={usePdfLetterhead ? "p-2 border border-gray-400 text-right" : styles.tableCell}>₹{test.price}</td>
             </tr>
           ))}
           <tr>
-            <td colSpan={3} className={`${styles.tableCell} ${styles.total} text-right`}>
+            <td colSpan={3} className={usePdfLetterhead ? "p-2 border border-gray-400 bg-gray-100 font-bold text-right text-xs" : `${styles.tableCell} ${styles.total} text-right`}>
               Total Amount:
             </td>
-            <td className={`${styles.tableCell} ${styles.total}`}>
+            <td className={usePdfLetterhead ? "p-2 border border-gray-400 bg-gray-100 font-bold text-right text-xs" : `${styles.tableCell} ${styles.total}`}>
               ₹{bill.totalAmount}
             </td>
           </tr>
         </tbody>
       </table>
+      </div>
+
+      {/* Payment Details for PDF Letterhead */}
+      {usePdfLetterhead && (
+        <div className="mt-4">
+          <h3 className="font-semibold text-gray-700 mb-1 bg-blue-600 text-white p-2 text-xs">PAYMENT DETAILS</h3>
+          <div className="grid grid-cols-2 gap-2 border border-gray-400 p-3 text-xs">
+            <div>
+              <p className="mb-1"><strong>Total Amount:</strong> ₹{bill.totalAmount}</p>
+              <p className="mb-1"><strong>Discount:</strong> ₹0.00</p>
+              <p className="mb-1"><strong>Net Payable:</strong> ₹{bill.totalAmount}</p>
+            </div>
+            <div>
+              <p className="mb-1"><strong>Payment Mode:</strong> {bill.paymentMode || 'Cash'}</p>
+              <p className="mb-1"><strong>Amount Paid:</strong> ₹{bill.totalAmount}</p>
+              <p className="mb-1"><strong>Balance:</strong> ₹0.00</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Terms & Conditions for PDF Letterhead */}
+      {usePdfLetterhead && (
+        <div className="mt-4">
+          <h4 className="font-semibold text-gray-700 mb-1 text-sm">Terms & Conditions:</h4>
+          <div className="text-xs text-gray-600 space-y-1">
+            <p>1. Please bring this bill at the time of sample collection.</p>
+            <p>2. Report delivery time is subject to test type and sample collection time.</p>
+            <p>3. For any queries, please contact our customer care.</p>
+            <p>4. This is a computer generated bill, no signature required.</p>
+          </div>
+          <div className="mt-2 text-xs text-gray-600">
+            <p><strong>Note:</strong> Please check all details at the time of sample collection. The management will not be responsible for any discrepancy later.</p>
+          </div>
+        </div>
+      )}
 
       {/* Custom Footer */}
       {customFooter && (
@@ -211,11 +320,27 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({
       )}
 
       {/* Default Footer */}
-      <div className="mt-6 text-center text-sm text-gray-500">
-        <p>Thank you for choosing our services!</p>
+      {!usePdfLetterhead && (
+        <div className="mt-6 text-center text-sm text-gray-500">
+          <p>Thank you for choosing our services!</p>
+        </div>
+      )}
+
+      {/* Authorized Signatory for PDF Letterhead */}
+      {usePdfLetterhead && (
+        <div className="mt-6 text-right">
+          <div className="border-t border-gray-400 pt-2 inline-block">
+            <p className="text-xs font-semibold">Authorized Signatory</p>
+          </div>
+        </div>
+      )}
       </div>
-    </div>
+    </>
   );
+
+  // For PDF letterhead, return content without wrapper to avoid iframe issues
+  // The PDF letterhead should be handled at print level
+  return content;
 };
 
 export const templateOptions = [

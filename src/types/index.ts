@@ -121,6 +121,10 @@ export interface Patient {
   gender: 'Male' | 'Female' | 'Other';
   phone: string;
   doctor: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
   testsSelected: string[];
   billId?: string;
   reportId?: string;
@@ -136,12 +140,17 @@ export interface Bill {
   totalAmount: number;
   date: Date;
   hospitalId: string;
+  paymentMode?: 'Cash' | 'Card' | 'UPI' | 'Net Banking' | 'Cheque';
+  paymentStatus?: 'Paid' | 'Pending' | 'Partial';
+  discount?: number;
+  amountPaid?: number;
 }
 
 export interface BillTest {
   id: string;
   name: string;
   price: number;
+  category?: string;
 }
 
 export interface Report {

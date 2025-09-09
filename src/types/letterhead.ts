@@ -15,7 +15,10 @@ export interface LHStyle {
   fontFamily?: string;
   fontSize?: number; // px
   fontWeight?: number | 'bold' | 'normal';
+  fontStyle?: 'normal' | 'italic' | 'oblique';
   textAlign?: 'left' | 'center' | 'right';
+  width?: string;
+  zIndex?: number;
 }
 
 export interface LHElementBase {
@@ -68,17 +71,38 @@ export type LHElement =
   | LHLineElement
   | LHFieldElement;
 
+export interface LetterheadSection {
+  height: number;
+  showOnFirstPage: boolean;
+  showOnOtherPages: boolean;
+  elements: LHElement[];
+}
+
 export interface LetterheadTemplate {
   id: string;
   name: string;
   description?: string;
+  type?: LetterheadType;
+  isDefault?: boolean;
+  isPdf?: boolean;
+  pdfUrl?: string;
   createdAt: string;
   updatedAt: string;
+  pageSize?: string;
+  orientation?: 'portrait' | 'landscape';
+  header?: LetterheadSection;
+  footer?: LetterheadSection;
+  body?: LetterheadSection;
+  content?: LHElement[];
   settings: {
     primaryColor?: string;
     fontFamily?: string;
     backgroundColor?: string;
     showFooter?: boolean;
+    showPageNumbers?: boolean;
+    pageNumberFormat?: string;
+    printBackground?: boolean;
+    scale?: number;
     watermark?: {
       text?: string; // watermark text
       color?: string; // rgba recommended e.g. rgba(0,0,0,.06)
@@ -86,5 +110,25 @@ export interface LetterheadTemplate {
       opacity?: number; // 0..1
     };
   };
-  elements: LHElement[];
+  styles?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    fontFamily?: string;
+    baseFontSize?: string;
+    lineHeight?: number;
+    textColor?: string;
+    linkColor?: string;
+    borderColor?: string;
+  };
+  margins?: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+    header: number;
+    footer: number;
+  };
+  elements?: LHElement[];
 }
+
+export type LetterheadType = 'billing' | 'report' | 'prescription' | 'general';
