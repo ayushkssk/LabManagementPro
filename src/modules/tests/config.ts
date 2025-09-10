@@ -10,6 +10,8 @@ export const sampleTests: SampleTestMeta[] = [
   { id: 'test-7', name: 'Coagulation Profile', category: 'Hematology', sampleType: 'Blood', container: 'Blue Top', instructions: 'Fasting not required' },
   { id: 'test-8', name: 'Blood Sugar Tests', category: 'Biochemistry', sampleType: 'Blood', container: 'Gray Top', instructions: 'Fasting required (8-12 hours)' },
   { id: 'test-10', name: 'Liver Function Test (LFT)', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting required (8-12 hours)' },
+  { id: 'test-11', name: 'Renal Function Test (RFT)', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting preferred' },
+  { id: 'test-12', name: 'Kidney Function Test (KFT)', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting preferred' },
   { id: 'test-37', name: 'Male Hormone Profile', category: 'Hormone', sampleType: 'Blood', container: 'Red Top', instructions: 'Morning sample preferred' },
   { id: 'test-22', name: 'VDRL (Syphilis)', category: 'Serology', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
 ];
@@ -17,42 +19,55 @@ export const sampleTests: SampleTestMeta[] = [
 export const testConfigurations: TestConfigurationMap = {
   blood_cbc: {
     fields: [
-      { id: 'hemoglobin', label: 'Hemoglobin', type: 'number', unit: 'g/dL', refRange: 'M: 13.5-17.5, F: 12.0-15.0', required: true },
-      { id: 'rbc', label: 'RBC Count', type: 'number', unit: 'million/μL', refRange: 'M: 4.5-5.9, F: 4.0-5.2', required: true },
-      { id: 'wbc', label: 'WBC Count', type: 'number', unit: 'cells/μL', refRange: '4,000 - 11,000', required: true },
-      { id: 'platelets', label: 'Platelet Count', type: 'number', unit: 'lakhs/μL', refRange: '1.5 - 4.5', required: true },
-      { id: 'hct', label: 'Hematocrit (HCT)', type: 'number', unit: '%', refRange: 'M: 40-50, F: 36-46', required: true },
-      { id: 'mcv', label: 'MCV', type: 'number', unit: 'fL', refRange: '80 - 100', required: true },
-      { id: 'mch', label: 'MCH', type: 'number', unit: 'pg', refRange: '27 - 32', required: true },
-      { id: 'mchc', label: 'MCHC', type: 'number', unit: 'g/dL', refRange: '32 - 36', required: true },
-      { id: 'rdw_cv', label: 'RDW-CV', type: 'number', unit: '%', refRange: '11.5 - 14.5', required: true },
-      { id: 'rdw_sd', label: 'RDW-SD', type: 'number', unit: 'fL', refRange: '39 - 46', required: true },
+      // Erythrocytes Group
+      { id: 'hb', label: 'Hemoglobin (HB)', type: 'number', unit: 'g/dL', refRange: 'M: 13.5-17.5, F: 12.0-15.5', required: true, group: 'Erythrocytes' },
+      { id: 'rbc', label: 'Total Red Blood Cell Count (RBC)', type: 'number', unit: '10^6/μL', refRange: 'M: 4.5-5.9, F: 4.0-5.2', required: true, group: 'Erythrocytes' },
+      { id: 'hct', label: 'Hematocrit (HCT)', type: 'number', unit: '%', refRange: 'M: 40-50, F: 36-46', required: true, group: 'Erythrocytes' },
+      { id: 'mcv', label: 'Mean Corpuscular Volume (MCV)', type: 'number', unit: 'fL', refRange: '80-100', required: true, group: 'Erythrocytes' },
+      { id: 'mch', label: 'Mean Corpuscular Hemoglobin (MCH)', type: 'number', unit: 'pg', refRange: '27-34', required: true, group: 'Erythrocytes' },
+      { id: 'mchc', label: 'Mean Corpuscular Hemoglobin Concentration (MCHC)', type: 'number', unit: 'g/dL', refRange: '32-36', required: true, group: 'Erythrocytes' },
+      { id: 'rdw_cv', label: 'Red Cell Distribution Width - CV (RDW-CV)', type: 'number', unit: '%', refRange: '11.5-14.5', required: true, group: 'Erythrocytes' },
+      { id: 'rdw_sd', label: 'Red Cell Distribution Width - SD (RDW-SD)', type: 'number', unit: 'fL', refRange: '39-46', required: true, group: 'Erythrocytes' },
       
-      // Differential Count
-      { id: 'neutrophils', label: 'Neutrophils', type: 'number', unit: '%', refRange: '40 - 70', required: true },
-      { id: 'lymphocytes', label: 'Lymphocytes', type: 'number', unit: '%', refRange: '20 - 40', required: true },
-      { id: 'monocytes', label: 'Monocytes', type: 'number', unit: '%', refRange: '2 - 10', required: true },
-      { id: 'eosinophils', label: 'Eosinophils', type: 'number', unit: '%', refRange: '1 - 6', required: true },
-      { id: 'basophils', label: 'Basophils', type: 'number', unit: '%', refRange: '0 - 1', required: true },
+      // Leucocytes Group
+      { id: 'tlc', label: 'Total Leukocyte Count (TLC)', type: 'number', unit: '10^3/μL', refRange: '4.5-11.0', required: true, group: 'Leucocytes' },
       
-      // Platelet Indices
-      { id: 'mpv', label: 'MPV', type: 'number', unit: 'fL', refRange: '7.5 - 12.5', required: true },
-      { id: 'pdw', label: 'PDW', type: 'number', unit: 'fL', refRange: '9.0 - 14.0', required: true },
-      { id: 'p_lcr', label: 'P-LCR', type: 'number', unit: '%', refRange: '13 - 43', required: true },
-      { id: 'pct', label: 'PCT', type: 'number', unit: '%', refRange: '0.17 - 0.35', required: true },
+      // DIFFERENTIAL LEUCOCYTE COUNT (DLC) Group
+      { id: 'neutrophils_pct', label: 'Neutrophils (NEUT%)', type: 'number', unit: '%', refRange: '40-80', required: true, group: 'DIFFERENTIAL LEUCOCYTE COUNT (DLC)' },
+      { id: 'lymphocytes_pct', label: 'Lymphocytes (LYMPH%)', type: 'number', unit: '%', refRange: '20-40', required: true, group: 'DIFFERENTIAL LEUCOCYTE COUNT (DLC)' },
+      { id: 'monocytes_pct', label: 'Monocytes (MONO%)', type: 'number', unit: '%', refRange: '2-10', required: true, group: 'DIFFERENTIAL LEUCOCYTE COUNT (DLC)' },
+      { id: 'eosinophils_pct', label: 'Eosinophils (EOS%)', type: 'number', unit: '%', refRange: '1-6', required: true, group: 'DIFFERENTIAL LEUCOCYTE COUNT (DLC)' },
+      { id: 'basophils_pct', label: 'Basophils (BASO%)', type: 'number', unit: '%', refRange: '0-2', required: true, group: 'DIFFERENTIAL LEUCOCYTE COUNT (DLC)' },
       
-      // Absolute counts
-      { id: 'abs_neutrophils', label: 'Neutrophils (Abs.)', type: 'number', unit: 'cells/μL', refRange: '2000 - 7000', required: true },
-      { id: 'abs_lymphocytes', label: 'Lymphocytes (Abs.)', type: 'number', unit: 'cells/μL', refRange: '1000 - 3000', required: true },
-      { id: 'abs_monocytes', label: 'Monocytes (Abs.)', type: 'number', unit: 'cells/μL', refRange: '200 - 1000', required: true },
-      { id: 'abs_eosinophils', label: 'Eosinophils (Abs.)', type: 'number', unit: 'cells/μL', refRange: '20 - 500', required: true },
-      { id: 'abs_basophils', label: 'Basophils (Abs.)', type: 'number', unit: 'cells/μL', refRange: '0 - 100', required: true },
+      // ABSOLUTE COUNT Group
+      { id: 'neutrophils_abs', label: 'Neutrophils - Absolute Count (NEUT#)', type: 'number', unit: '10^3/μL', refRange: '2.0-7.5', required: true, group: 'ABSOLUTE COUNT' },
+      { id: 'lymphocytes_abs', label: 'Lymphocytes - Absolute Count (LYMPH#)', type: 'number', unit: '10^3/μL', refRange: '1.0-4.0', required: true, group: 'ABSOLUTE COUNT' },
+      { id: 'monocytes_abs', label: 'Monocytes - Absolute Count (MONO#)', type: 'number', unit: '10^3/μL', refRange: '0.2-1.0', required: true, group: 'ABSOLUTE COUNT' },
+      { id: 'eosinophils_abs', label: 'Eosinophils - Absolute Count (EOS#)', type: 'number', unit: '10^3/μL', refRange: '0.02-0.5', required: true, group: 'ABSOLUTE COUNT' },
+      { id: 'basophils_abs', label: 'Basophils - Absolute Count (BASO#)', type: 'number', unit: '10^3/μL', refRange: '0.02-0.1', required: true, group: 'ABSOLUTE COUNT' },
       
-      // Additional parameters
-      { id: 'esr', label: 'ESR', type: 'number', unit: 'mm/hr', refRange: 'M: 0-15, F: 0-20', required: false },
-      { id: 'peripheral_smear', label: 'Peripheral Smear', type: 'select', options: ['Normal', 'Abnormal'], required: false },
-      { id: 'nucleated_rbc', label: 'Nucleated RBCs', type: 'number', unit: '/100 WBCs', refRange: '0', required: false },
-      { id: 'remarks', label: 'Remarks', type: 'textarea', required: false }
+      // Platelets Group
+      { id: 'platelet_count', label: 'Platelet Count (PLT)', type: 'number', unit: '10^3/μL', refRange: '150-450', required: true, group: 'Platelets' },
+      { id: 'mpv', label: 'Mean Platelet Volume (MPV)', type: 'number', unit: 'fL', refRange: '7.5-11.5', required: true, group: 'Platelets' },
+      { id: 'pdw', label: 'Platelet Distribution Width (PDW)', type: 'number', unit: 'fL', refRange: '9-17', required: true, group: 'Platelets' },
+      { id: 'p_lcr', label: 'Platelet Large Cell Ratio (P-LCR)', type: 'number', unit: '%', refRange: '15-45', required: true, group: 'Platelets' },
+      { id: 'pct', label: 'Plateletcrit (PCT)', type: 'number', unit: '%', refRange: '0.15-0.35', required: true, group: 'Platelets' },
+      
+      // CELLS Group
+      { id: 'rbc_morph', label: 'RBC Morphology', type: 'textarea', required: false, group: 'CELLS' },
+      { id: 'wbc_morph', label: 'WBC Morphology', type: 'textarea', required: false, group: 'CELLS' },
+      { id: 'platelet_morph', label: 'Platelet Morphology', type: 'textarea', required: false, group: 'CELLS' },
+      
+      // Other Parameters
+      { id: 'esr', label: 'Erythrocyte Sedimentation Rate (ESR)', type: 'number', unit: 'mm/hr', refRange: 'M: 0-15, F: 0-20', required: false },
+      { id: 'pcv', label: 'Packed Cell Volume (PCV)', type: 'number', unit: '%', refRange: 'M: 40-50, F: 36-46', required: false },
+      { id: 'retics', label: 'Reticulocyte Count (RETIC)', type: 'number', unit: '%', refRange: '0.5 - 2.0', required: false },
+      { id: 'aniso', label: 'Anisocytosis (ANISO)', type: 'textarea', required: false },
+      { id: 'poikilo', label: 'Poikilocytosis (POIKILO)', type: 'textarea', required: false },
+      
+      // Comments
+      { id: 'comments', label: 'Laboratory Comments', type: 'textarea', required: false },
+      { id: 'impression', label: 'Clinical Impression', type: 'textarea', required: false }
     ],
   },
   differential_leukocyte: {
@@ -102,12 +117,31 @@ export const testConfigurations: TestConfigurationMap = {
   },
   liver_function: {
     fields: [
-      { id: 'bilirubin_total', label: 'Bilirubin - Total', type: 'number', unit: 'mg/dL', refRange: '0.2 - 1.2', required: true },
-      { id: 'bilirubin_direct', label: 'Bilirubin - Direct', type: 'number', unit: 'mg/dL', refRange: '0.0 - 0.3', required: false },
-      { id: 'sgot_ast', label: 'SGOT/AST', type: 'number', unit: 'U/L', refRange: '0 - 40', required: true },
-      { id: 'sgpt_alt', label: 'SGPT/ALT', type: 'number', unit: 'U/L', refRange: '0 - 41', required: true },
-      { id: 'alk_phos', label: 'Alkaline Phosphatase', type: 'number', unit: 'U/L', refRange: '44 - 147', required: false },
-      { id: 'albumin', label: 'Albumin', type: 'number', unit: 'g/dL', refRange: '3.4 - 5.4', required: false },
+      { id: 'bilirubin_total', label: 'TOTAL BILIRUBIN', type: 'number', unit: 'mg/dL', refRange: '0.2 - 1.2', required: true },
+      { id: 'bilirubin_direct', label: 'DIRECT BILIRUBIN', type: 'number', unit: 'mg/dL', refRange: '0.1 - 0.4', required: false },
+      { id: 'bilirubin_indirect', label: 'INDIRECT BILIRUBIN', type: 'number', unit: 'mg/dL', refRange: '0.2 - 0.8', required: false },
+      { id: 'sgpt_alt', label: 'S.G.P.T (ALT)', type: 'number', unit: 'U/L', refRange: '1 - 40', required: true },
+      { id: 'sgot_ast', label: 'S.G.O.T (AST)', type: 'number', unit: 'U/L', refRange: '1 - 40', required: true },
+      { id: 'alk_phos', label: 'ALKALINE PHOSPHATASE (ALP)', type: 'number', unit: 'U/L', refRange: '40 - 120', required: false },
+      { id: 'total_protein', label: 'TOTAL PROTEIN', type: 'number', unit: 'g/dL', refRange: '5.5 - 8.5', required: false },
+      { id: 'albumin', label: 'ALBUMIN', type: 'number', unit: 'g/dL', refRange: '3.5 - 5.5', required: false },
+      { id: 'globulin', label: 'GLOBULIN', type: 'number', unit: 'g/dL', refRange: '2.3 - 4.5', required: false },
+      { id: 'ag_ratio', label: 'ALBUMIN/GLOBULIN RATIO', type: 'number', unit: 'Ratio', refRange: '0 - 2', required: false },
+      { id: 'ggt', label: 'GAMMA GLUTAMYL TRANSFERASE (GGT)', type: 'number', unit: 'U/L', refRange: '6 - 42', required: false },
+      { id: 'sgot_sgpt_ratio', label: 'SGOT/SGPT RATIO', type: 'number', unit: 'Ratio', refRange: '0 - 5', required: false },
+    ],
+  },
+  renal_function: {
+    fields: [
+      { id: 'blood_urea', label: 'BLOOD UREA', type: 'number', unit: 'mg/dL', refRange: '21 - 40', required: true },
+      { id: 'serum_creatinine', label: 'SERUM CREATININE', type: 'number', unit: 'mg/dL', refRange: '0.6 - 1.1', required: true },
+      { id: 'uric_acid', label: 'URIC ACID', type: 'number', unit: 'mg/dL', refRange: '2.4 - 5.7', required: false },
+      { id: 'sodium', label: 'SODIUM (Na+)', type: 'number', unit: 'mmol/L', refRange: '130 - 150', required: false },
+      { id: 'potassium', label: 'POTASSIUM', type: 'number', unit: 'mmol/L', refRange: '3.7 - 5.5', required: false },
+      { id: 'chloride', label: 'CHLORIDE (Cl-)', type: 'number', unit: 'mmol/L', refRange: '96 - 106', required: false },
+      { id: 'bun', label: 'BLOOD UREA NITROGEN (BUN)', type: 'number', unit: 'mg/dL', refRange: '6 - 20', required: false },
+      { id: 'bun_creatinine_ratio', label: 'BUN/CREATININE RATIO', type: 'number', unit: 'Ratio', refRange: '10 - 20', required: false },
+      { id: 'calcium', label: 'CALCIUM', type: 'number', unit: 'mg/dL', refRange: '8.6 - 10.3', required: false },
     ],
   },
   blood_glucose: {
@@ -153,6 +187,23 @@ export const testConfigurations: TestConfigurationMap = {
       { id: 'sample_time', label: 'Sample Collection Time', type: 'datetime-local', required: false },
     ],
   },
+  kidney_function: {
+    fields: [
+      { id: 'blood_urea', label: 'Blood Urea', type: 'number', unit: 'mg/dL', refRange: '15-45', required: true },
+      { id: 'serum_creatinine', label: 'Serum Creatinine', type: 'number', unit: 'mg/dL', refRange: '0.7-1.3', required: true },
+      { id: 'uric_acid', label: 'Uric Acid', type: 'number', unit: 'mg/dL', refRange: '2.4-5.7', required: true },
+      { id: 'sodium', label: 'Sodium (Na+)', type: 'number', unit: 'mEq/L', refRange: '135-145', required: true },
+      { id: 'potassium', label: 'Potassium (K+)', type: 'number', unit: 'mEq/L', refRange: '3.5-5.1', required: true },
+      { id: 'chloride', label: 'Chloride (Cl-)', type: 'number', unit: 'mEq/L', refRange: '98-107', required: true },
+      { id: 'calcium', label: 'Calcium', type: 'number', unit: 'mg/dL', refRange: '8.5-10.2', required: true },
+      { id: 'phosphorus', label: 'Phosphorus', type: 'number', unit: 'mg/dL', refRange: '2.5-4.5', required: true },
+      { id: 'magnesium', label: 'Magnesium', type: 'number', unit: 'mg/dL', refRange: '1.8-2.6', required: true },
+      { id: 'bun', label: 'Blood Urea Nitrogen (BUN)', type: 'number', unit: 'mg/dL', refRange: '6-20', required: true },
+      { id: 'bun_creatinine_ratio', label: 'BUN/Creatinine Ratio', type: 'number', unit: '', refRange: '10-20', required: true },
+      { id: 'egfr', label: 'eGFR', type: 'number', unit: 'mL/min/1.73m²', refRange: '>60', required: true },
+      { id: 'sample_time', label: 'Sample Collection Time', type: 'datetime-local', required: false },
+    ],
+  },
 };
 
 export const testConfigByTestId: Record<string, keyof typeof testConfigurations> = {
@@ -165,6 +216,8 @@ export const testConfigByTestId: Record<string, keyof typeof testConfigurations>
   'test-7': 'coagulation_profile',
   'test-8': 'blood_glucose',
   'test-10': 'liver_function',
+  'test-11': 'renal_function',
+  'test-12': 'kidney_function',
   'test-37': 'male_hormone_profile',
   'test-22': 'vdrl',
 };

@@ -322,6 +322,41 @@ export const demoTests: Test[] = [
   {
     id: 'test-11',
     category: 'Biochemistry',
+    name: 'Renal Function Test (RFT)',
+    price: 900,
+    fields: [
+      { id: getFieldId(), name: 'Blood Urea', type: 'number', unit: 'mg/dL', normalRange: '21-40' },
+      { id: getFieldId(), name: 'Serum Creatinine', type: 'number', unit: 'mg/dL', normalRange: '0.6-1.1' },
+      { id: getFieldId(), name: 'Uric Acid', type: 'number', unit: 'mg/dL', normalRange: '2.4-5.7' },
+      { id: getFieldId(), name: 'Sodium (Na+)', type: 'number', unit: 'mmol/L', normalRange: '130-150' },
+      { id: getFieldId(), name: 'Potassium (K+)', type: 'number', unit: 'mmol/L', normalRange: '3.7-5.5' },
+      { id: getFieldId(), name: 'Chloride (Cl-)', type: 'number', unit: 'mmol/L', normalRange: '96-106' },
+      { id: getFieldId(), name: 'Blood Urea Nitrogen (BUN)', type: 'number', unit: 'mg/dL', normalRange: '6-20' },
+      { id: getFieldId(), name: 'BUN/Creatinine Ratio', type: 'number', unit: '', normalRange: '10-20' },
+      { id: getFieldId(), name: 'Calcium', type: 'number', unit: 'mg/dL', normalRange: '8.6-10.3' }
+    ]
+  },
+  {
+    id: 'test-52',
+    category: 'Biochemistry',
+    name: 'Kidney Function Test (KFT)',
+    price: 1000,
+    fields: [
+      { id: getFieldId(), name: 'Blood Urea', type: 'number', unit: 'mg/dL', normalRange: '15-45' },
+      { id: getFieldId(), name: 'Serum Creatinine', type: 'number', unit: 'mg/dL', normalRange: '0.7-1.3' },
+      { id: getFieldId(), name: 'Uric Acid', type: 'number', unit: 'mg/dL', normalRange: '2.4-5.7' },
+      { id: getFieldId(), name: 'Sodium (Na+)', type: 'number', unit: 'mEq/L', normalRange: '135-145' },
+      { id: getFieldId(), name: 'Potassium (K+)', type: 'number', unit: 'mEq/L', normalRange: '3.5-5.1' },
+      { id: getFieldId(), name: 'Chloride (Cl-)', type: 'number', unit: 'mEq/L', normalRange: '98-107' },
+      { id: getFieldId(), name: 'Calcium', type: 'number', unit: 'mg/dL', normalRange: '8.5-10.2' },
+      { id: getFieldId(), name: 'Phosphorus', type: 'number', unit: 'mg/dL', normalRange: '2.5-4.5' },
+      { id: getFieldId(), name: 'Magnesium', type: 'number', unit: 'mg/dL', normalRange: '1.8-2.6' },
+      { id: getFieldId(), name: 'eGFR', type: 'number', unit: 'mL/min/1.73m²', normalRange: '>60' }
+    ]
+  },
+  {
+    id: 'test-51',
+    category: 'Biochemistry',
     name: 'Lipid Profile',
     price: 800,
     fields: [

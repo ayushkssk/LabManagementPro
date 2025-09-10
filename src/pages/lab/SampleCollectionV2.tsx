@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { TestParameterTable } from '@/components/tests/TestParameterTable';
 import { demoTests } from '@/data/demoData';
 import { Letterhead, letterheadStyles } from '@/components/letterhead/Letterhead';
 import { useHospitalLetterhead } from '@/hooks/useHospitalLetterhead';
+import { useReactToPrint } from 'react-to-print';
 
 // Types
 interface Sample {
@@ -77,7 +78,7 @@ const SampleCollectionV2: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPrintView, setShowPrintView] = useState(false);
   const [showPrintOptions, setShowPrintOptions] = useState(false);
-  const [printWithLetterhead, setPrintWithLetterhead] = useState(true);
+  const [printWithLetterhead, setPrintWithLetterhead] = useState(false);
   const { hospital: hospitalData } = useHospitalLetterhead();
 
   // Derived state
@@ -250,6 +251,30 @@ const SampleCollectionV2: React.FC = () => {
     }
   }, [technicianName]);
 
+  // Add a ref for the content to be printed
+  const printRef = useRef<HTMLDivElement>(null);
+
+  // Handle print with custom styles
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    pageStyle: `
+      @page { 
+        size: A4;
+        margin: 10mm;
+      }
+      body { 
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        background: white !important;
+      }
+      .print-content {
+        background: white !important;
+        color: black !important;
+      }
+    `,
+    removeAfterPrint: true
+  });
+
   // Loading state
   if (isLoading) {
     return (
@@ -306,7 +331,11 @@ const SampleCollectionV2: React.FC = () => {
                 ID: {patient.hospitalId || patient.id} • {patient.age} years • {patient.gender}
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handlePrint}
+            >
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
@@ -376,12 +405,6 @@ const SampleCollectionV2: React.FC = () => {
                         [id]: { ...prev[id], [field]: value }
                       }));
                     }}
-                    onNotesChange={(id, notes) => {
-                      setParameters(prev => ({
-                        ...prev,
-                        [id]: { ...prev[id], notes }
-                      }));
-                    }}
                     className="compact-table"
                     rowHeight={32}
                     headerHeight={36}
@@ -406,6 +429,20 @@ const SampleCollectionV2: React.FC = () => {
               </CardHeader>
             </Card>
           )}
+        </div>
+      </div>
+
+      {/* Wrap the content to be printed */}
+      <div className="hidden">
+        <div ref={printRef} className="print-content p-8">
+          {/* Add the content you want to print here */}
+          <h2 className="text-xl font-bold mb-4">Test Report</h2>
+          <p><strong>Patient Name:</strong> {patient.name}</p>
+          <p><strong>Patient ID:</strong> {patient.hospitalId || patient.id}</p>
+          <p><strong>Age:</strong> {patient.age} years</p>
+          <p><strong>Gender:</strong> {patient.gender}</p>
+          
+          {/* Add test results or other content here */}
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ export interface BaseField {
   required: boolean;
   unit?: string;
   refRange?: string;
+  group?: string;
 }
 
 export interface NumberField extends BaseField {
