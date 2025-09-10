@@ -79,6 +79,8 @@ const SampleCollectionV2: React.FC = () => {
   const [showPrintView, setShowPrintView] = useState(false);
   const [showPrintOptions, setShowPrintOptions] = useState(false);
   const [printWithLetterhead, setPrintWithLetterhead] = useState(false);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [currentTest, setCurrentTest] = useState<Sample | null>(null);
   const { hospital: hospitalData } = useHospitalLetterhead();
 
   // Derived state
@@ -189,30 +191,47 @@ const SampleCollectionV2: React.FC = () => {
 
   // Toggle sample collected status
   const toggleSampleCollected = useCallback((testId: string) => {
-    setSamples(prevSamples =>
-      prevSamples.map(sample =>
+    setSamples(prevSamples => {
+      const updatedSamples = prevSamples.map(sample =>
         sample.testId === testId
           ? {
               ...sample,
               collected: !sample.collected,
-              collectedAt: !sample.collected ? new Date() : undefined,
-              collectedBy: !sample.collected ? technicianName : undefined,
+              collectedAt: sample.collected ? undefined : new Date(),
+              collectedBy: sample.collected ? undefined : technicianName || 'System',
               notes: !sample.collected && !sample.notes ? 'Sample collected' : sample.notes
             }
           : sample
-      )
-    );
+      );
+      
+      // Update selectedTest if it's the one being toggled
+      if (selectedTest?.testId === testId) {
+        const updatedTest = updatedSamples.find(s => s.testId === testId);
+        if (updatedTest) {
+          setCurrentTest(updatedTest);
+        }
+      }
+      
+      return updatedSamples;
+    });
     
-    // If marking as collected, show a success message
     const test = samples.find(s => s.testId === testId);
     if (test && !test.collected) {
+      setCurrentTest({
+        ...test,
+        collected: true,
+        collectedAt: new Date(),
+        collectedBy: technicianName || 'System',
+        notes: 'Sample collected'
+      });
+      
       toast({
         title: 'Sample Collected',
         description: `${test.testName} has been marked as collected.`,
         variant: 'default',
       });
     }
-  }, [technicianName, samples]);
+  }, [technicianName, samples, selectedTest]);
 
   // Handle form submission
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -256,7 +275,36 @@ const SampleCollectionV2: React.FC = () => {
 
   // Handle print with custom styles
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    content: () => {
+      try {
+        // Clone the print content to ensure it's fresh
+        const content = printRef.current;
+        if (!content) {
+          console.error('Print content not found');
+          return null;
+        }
+        
+        // Create a new div to hold the print content
+        const printContainer = document.createElement('div');
+        printContainer.className = 'temp-print-container';
+        printContainer.style.visibility = 'hidden';
+        
+        // Clone the content of the print dialog
+        const printContent = document.querySelector('.print-dialog-content');
+        if (!printContent) {
+          console.error('Print dialog content not found');
+          return null;
+        }
+        
+        printContainer.innerHTML = printContent.innerHTML;
+        document.body.appendChild(printContainer);
+        
+        return printContainer;
+      } catch (error) {
+        console.error('Error preparing print content:', error);
+        return null;
+      }
+    },
     pageStyle: `
       @page { 
         size: A4;
@@ -266,14 +314,233 @@ const SampleCollectionV2: React.FC = () => {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
         background: white !important;
+        color: black !important;
+        font-family: Arial, sans-serif;
+        line-height: 1.5;
       }
       .print-content {
         background: white !important;
         color: black !important;
+        padding: 20px;
+      }
+      .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 1.5rem;
+      }
+      @media print {
+        .print-header {
+          position: relative;
+          width: 100%;
+          margin: 0 auto;
+          padding: 0;
+        }
+        .print-header img {
+          max-width: 100%;
+          height: auto;
+        }
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+      }
+      th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      th {
+        background-color: #f5f5f5;
+      }
+      h1, h2, h3 {
+        color: #333;
       }
     `,
-    removeAfterPrint: true
+    removeAfterPrint: true,
+    onAfterPrint: () => {
+      // Clean up any temporary elements
+      const tempElements = document.querySelectorAll('.temp-print-container');
+      tempElements.forEach(el => el.remove());
+      setShowPrintDialog(false);
+    }
   });
+  
+  // Function to handle the Save & Print action
+  const handleSaveAndPrint = useCallback((testId: string) => {
+    try {
+      const test = samples.find(s => s.testId === testId);
+      if (!test) {
+        console.error('Test not found');
+        return;
+      }
+
+      // Update the current test with the latest data
+      const updatedTest = {
+        ...test,
+        collected: true,
+        collectedAt: test.collectedAt || new Date(),
+        collectedBy: test.collectedBy || technicianName || 'System',
+        notes: test.notes || 'Sample collected'
+      };
+      
+      // Update the current test state
+      setCurrentTest(updatedTest);
+      
+      // Update the samples array to keep it in sync
+      setSamples(prevSamples => 
+        prevSamples.map(s => 
+          s.testId === test.testId ? updatedTest : s
+        )
+      );
+      
+      // Show the print dialog after a small delay to ensure state is updated
+      setTimeout(() => {
+        try {
+          setShowPrintDialog(true);
+        } catch (error) {
+          console.error('Error showing print dialog:', error);
+          // Optionally show an error message to the user
+          // You can use a toast notification here if you have one
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Error in save and print:', error);
+      // Optionally show an error message to the user
+      // You can use a toast notification here if you have one
+    }
+  }, [samples, technicianName]);
+  
+  // Function to handle the print button in the dialog
+  const handlePrintFromDialog = useCallback(() => {
+    try {
+      // Small delay to ensure the dialog is fully rendered
+      setTimeout(() => {
+        try {
+          if (!printRef.current) {
+            console.error('Print content not found');
+            return;
+          }
+          handlePrint();
+        } catch (error) {
+          console.error('Error during printing:', error);
+          // Optionally show an error message to the user
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Error in print dialog:', error);
+      // Optionally show an error message to the user
+    }
+  }, [handlePrint]);
+
+  // Get test configurations from the external module
+  const testConfigurations = extTestConfigs;
+  
+  // Print dialog component
+  const PrintDialog = () => {
+    if (!showPrintDialog || !currentTest) return null;
+
+    // Get the current test configuration
+    const testConfig = testConfigurations[currentTest.testId as keyof typeof testConfigurations];
+    const testParameters = parameters;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+          <div className="p-4 border-b flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Print Test Report</h3>
+            <button 
+              onClick={() => setShowPrintDialog(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <XCircle className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="p-6 overflow-auto flex-1 print-dialog-content">
+            <div ref={printRef} className="bg-white p-6 print:p-0">
+              <div className="print-header mb-6">
+                <img 
+                  src="/letetrheadheader.png" 
+                  alt="Hospital Letterhead" 
+                  className="w-full h-auto max-h-32 object-contain print:max-h-40 print:mb-4"
+                />
+              </div>
+              <Letterhead hospital={hospitalData}>
+                <div className="space-y-6">
+                  <div className="text-center mb-6">
+                    <h1 className="text-2xl font-bold">Laboratory Test Report</h1>
+                    <p className="text-sm text-gray-600">Date: {new Date().toLocaleDateString()}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                      <h3 className="font-semibold">Patient Details</h3>
+                      <p>Name: {patient?.name}</p>
+                      <p>Age: {patient?.age} {patient?.gender}</p>
+                      <p>ID: {patient?.id}</p>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Test Information</h3>
+                      <p>Test: {currentTest.testName}</p>
+                      <p>Collected By: {currentTest.collectedBy}</p>
+                      <p>Collected At: {currentTest.collectedAt?.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t border-b py-4 my-4">
+                    <h3 className="font-semibold mb-2">Test Results</h3>
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border p-2 text-left">Parameter</th>
+                          <th className="border p-2 text-left">Result</th>
+                          <th className="border p-2 text-left">Unit</th>
+                          <th className="border p-2 text-left">Reference Range</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {testConfig?.fields?.map((field: any) => {
+                          const param = Object.values(testParameters).find(p => p.id === field.id);
+                          return (
+                            <tr key={field.id} className="border-b">
+                              <td className="border p-2">{field.label}</td>
+                              <td className="border p-2">{param?.value || '-'}</td>
+                              <td className="border p-2">{field.unit || '-'}</td>
+                              <td className="border p-2">{field.refRange || '-'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <div className="mt-6 text-sm text-gray-600">
+                    <p>Notes: {currentTest.notes || 'No additional notes'}</p>
+                    <p className="mt-4">This is a computer-generated report and does not require a signature.</p>
+                  </div>
+                </div>
+              </Letterhead>
+            </div>
+          </div>
+          <div className="p-4 border-t flex justify-end space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowPrintDialog(false)}
+            >
+              Close
+            </Button>
+            <Button 
+              onClick={handlePrintFromDialog}
+              className="bg-primary"
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Print Report
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Loading state
   if (isLoading) {
@@ -410,14 +677,24 @@ const SampleCollectionV2: React.FC = () => {
                     headerHeight={36}
                   />
                 </div>
-                <div className="mt-6">
+                <div className="mt-6 flex flex-col sm:flex-row gap-2">
                   <Button
                     onClick={() => toggleSampleCollected(selectedTest.testId)}
                     variant={selectedTest.collected ? 'outline' : 'default'}
-                    className="w-full"
+                    className="flex-1"
                   >
                     {selectedTest.collected ? 'Mark as Not Collected' : 'Mark as Collected'}
                   </Button>
+                  {selectedTest.collected && (
+                    <Button
+                      onClick={() => handleSaveAndPrint(selectedTest.testId)}
+                      variant="default"
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                    >
+                      <Printer className="mr-2 h-4 w-4" />
+                      Save & Print
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -432,10 +709,10 @@ const SampleCollectionV2: React.FC = () => {
         </div>
       </div>
 
-      {/* Wrap the content to be printed */}
+      {/* Print content */}
       <div className="hidden">
         <div ref={printRef} className="print-content p-8">
-          {/* Add the content you want to print here */}
+          {/* Print content will be rendered by the PrintDialog component */}
           <h2 className="text-xl font-bold mb-4">Test Report</h2>
           <p><strong>Patient Name:</strong> {patient.name}</p>
           <p><strong>Patient ID:</strong> {patient.hospitalId || patient.id}</p>
