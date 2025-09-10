@@ -22,7 +22,11 @@ export interface DateTimeField extends BaseField {
   type: 'datetime-local';
 }
 
-export type FieldConfig = NumberField | SelectField | DateTimeField;
+export interface TextareaField extends BaseField {
+  type: 'textarea';
+}
+
+export type FieldConfig = NumberField | SelectField | DateTimeField | TextareaField;
 
 export interface TestConfigurationMap {
   [key: string]: {

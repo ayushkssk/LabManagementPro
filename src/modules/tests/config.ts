@@ -17,12 +17,42 @@ export const sampleTests: SampleTestMeta[] = [
 export const testConfigurations: TestConfigurationMap = {
   blood_cbc: {
     fields: [
-      { id: 'hemoglobin', label: 'Hemoglobin', type: 'number', unit: 'g/dL', refRange: '12.0 - 17.5', required: true },
-      { id: 'rbc', label: 'RBC Count', type: 'number', unit: 'million/μL', refRange: '4.5 - 5.9', required: true },
+      { id: 'hemoglobin', label: 'Hemoglobin', type: 'number', unit: 'g/dL', refRange: 'M: 13.5-17.5, F: 12.0-15.0', required: true },
+      { id: 'rbc', label: 'RBC Count', type: 'number', unit: 'million/μL', refRange: 'M: 4.5-5.9, F: 4.0-5.2', required: true },
       { id: 'wbc', label: 'WBC Count', type: 'number', unit: 'cells/μL', refRange: '4,000 - 11,000', required: true },
       { id: 'platelets', label: 'Platelet Count', type: 'number', unit: 'lakhs/μL', refRange: '1.5 - 4.5', required: true },
-      { id: 'hct', label: 'Hematocrit', type: 'number', unit: '%', refRange: '36 - 48', required: false },
-      { id: 'mcv', label: 'MCV', type: 'number', unit: 'fL', refRange: '80 - 100', required: false },
+      { id: 'hct', label: 'Hematocrit (HCT)', type: 'number', unit: '%', refRange: 'M: 40-50, F: 36-46', required: true },
+      { id: 'mcv', label: 'MCV', type: 'number', unit: 'fL', refRange: '80 - 100', required: true },
+      { id: 'mch', label: 'MCH', type: 'number', unit: 'pg', refRange: '27 - 32', required: true },
+      { id: 'mchc', label: 'MCHC', type: 'number', unit: 'g/dL', refRange: '32 - 36', required: true },
+      { id: 'rdw_cv', label: 'RDW-CV', type: 'number', unit: '%', refRange: '11.5 - 14.5', required: true },
+      { id: 'rdw_sd', label: 'RDW-SD', type: 'number', unit: 'fL', refRange: '39 - 46', required: true },
+      
+      // Differential Count
+      { id: 'neutrophils', label: 'Neutrophils', type: 'number', unit: '%', refRange: '40 - 70', required: true },
+      { id: 'lymphocytes', label: 'Lymphocytes', type: 'number', unit: '%', refRange: '20 - 40', required: true },
+      { id: 'monocytes', label: 'Monocytes', type: 'number', unit: '%', refRange: '2 - 10', required: true },
+      { id: 'eosinophils', label: 'Eosinophils', type: 'number', unit: '%', refRange: '1 - 6', required: true },
+      { id: 'basophils', label: 'Basophils', type: 'number', unit: '%', refRange: '0 - 1', required: true },
+      
+      // Platelet Indices
+      { id: 'mpv', label: 'MPV', type: 'number', unit: 'fL', refRange: '7.5 - 12.5', required: true },
+      { id: 'pdw', label: 'PDW', type: 'number', unit: 'fL', refRange: '9.0 - 14.0', required: true },
+      { id: 'p_lcr', label: 'P-LCR', type: 'number', unit: '%', refRange: '13 - 43', required: true },
+      { id: 'pct', label: 'PCT', type: 'number', unit: '%', refRange: '0.17 - 0.35', required: true },
+      
+      // Absolute counts
+      { id: 'abs_neutrophils', label: 'Neutrophils (Abs.)', type: 'number', unit: 'cells/μL', refRange: '2000 - 7000', required: true },
+      { id: 'abs_lymphocytes', label: 'Lymphocytes (Abs.)', type: 'number', unit: 'cells/μL', refRange: '1000 - 3000', required: true },
+      { id: 'abs_monocytes', label: 'Monocytes (Abs.)', type: 'number', unit: 'cells/μL', refRange: '200 - 1000', required: true },
+      { id: 'abs_eosinophils', label: 'Eosinophils (Abs.)', type: 'number', unit: 'cells/μL', refRange: '20 - 500', required: true },
+      { id: 'abs_basophils', label: 'Basophils (Abs.)', type: 'number', unit: 'cells/μL', refRange: '0 - 100', required: true },
+      
+      // Additional parameters
+      { id: 'esr', label: 'ESR', type: 'number', unit: 'mm/hr', refRange: 'M: 0-15, F: 0-20', required: false },
+      { id: 'peripheral_smear', label: 'Peripheral Smear', type: 'select', options: ['Normal', 'Abnormal'], required: false },
+      { id: 'nucleated_rbc', label: 'Nucleated RBCs', type: 'number', unit: '/100 WBCs', refRange: '0', required: false },
+      { id: 'remarks', label: 'Remarks', type: 'textarea', required: false }
     ],
   },
   differential_leukocyte: {

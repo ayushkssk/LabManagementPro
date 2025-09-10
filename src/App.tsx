@@ -12,7 +12,7 @@ import HospitalProfile from "@/pages/admin/HospitalProfile";
 import TestManagement from "@/pages/admin/TestManagement";
 import LabDashboard from "@/pages/lab/LabDashboard";
 import PatientRegistration from "@/pages/lab/PatientRegistration";
-import SampleCollection from "@/pages/lab/SampleCollection";
+import SampleCollectionV2 from "@/pages/lab/SampleCollectionV2";
 import Patients from "@/pages/patients/Patients";
 import TestsList from "@/pages/tests/TestsList";
 import NotFound from "@/pages/NotFound";
@@ -140,7 +140,7 @@ const AppRoutes = () => {
       } />
       <Route path="/lab/sample-collection/:patientId" element={
         <ProtectedRoute requiredRole={['admin', 'technician']}>
-          <SampleCollection />
+          <SampleCollectionV2 />
         </ProtectedRoute>
       } />
       <Route path="/unauthorized" element={

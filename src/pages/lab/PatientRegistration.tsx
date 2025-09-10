@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Search } from 'lucide-react';
+import { Printer, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -16,7 +16,6 @@ import {
   X, 
   Check, 
   ChevronsUpDown, 
-  Printer, 
   ChevronDown, 
   Loader2 
 } from 'lucide-react';
@@ -801,31 +800,73 @@ const PatientRegistration: React.FC = () => {
     };
   };
 
-  const handleCollectSubmit = () => {
-    if (!patientDocId) return;
-    
-    toast({
-      title: "Collecting Samples",
-      description: (
-        <div>
-          <p>Redirecting to report collection form.</p>
-          <p className="mt-1 font-medium">Patient ID: {patientId}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {new Date().toLocaleString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true
-            })}
-          </p>
-        </div>
-      ),
-      variant: "default",
-    });
-    
-    navigate(`/lab/sample-collection/${patientDocId}`);
+  const handleCollectSubmit = async () => {
+    try {
+      let docId = patientDocId;
+
+      // If patient is not yet saved (e.g., bill generated without save), save now
+      if (!docId) {
+        if (!patient.name || !patient.gender) {
+          toast({
+            title: 'Missing Details',
+            description: 'Please enter patient name and gender before collecting sample.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const patientData = {
+          hospitalId: patientId,
+          name: patient.name,
+          age: parseInt(patient.age) || 0,
+          gender: patient.gender as Gender,
+          phone: patient.phone,
+          address: patient.address,
+          city: patient.city,
+          state: patient.state,
+          pincode: patient.pincode,
+          doctor: patient.doctor,
+          registrationDate: new Date(),
+          lastVisit: new Date(),
+          balance: 0 as const,
+          status: 'active' as const,
+          tests: patient.selectedTests,
+        };
+
+        docId = await addPatient(patientData);
+        setPatientDocId(docId);
+      }
+
+      toast({
+        title: 'Collecting Samples',
+        description: (
+          <div>
+            <p>Redirecting to report collection form.</p>
+            <p className="mt-1 font-medium">Patient ID: {patientId}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {new Date().toLocaleString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              })}
+            </p>
+          </div>
+        ),
+        variant: 'default',
+      });
+
+      navigate(`/lab/sample-collection/${docId}`);
+    } catch (err) {
+      console.error('Failed to navigate to sample collection:', err);
+      toast({
+        title: 'Error',
+        description: 'Could not proceed to sample collection. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -1244,18 +1285,158 @@ const PatientRegistration: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* PDF Preview */}
+                    {/* Bill Preview */}
                     <div className="border-t pt-4">
-                      <h4 className="text-xs font-medium text-muted-foreground mb-2">Bill Preview</h4>
-                      <div className="border rounded-lg overflow-auto bg-white relative h-[800px] w-full">
-                        {/* PDF Letterhead Background */}
-                        <div className="absolute inset-0 z-0">
-                          <iframe
-                            src="/letterheadgreen.pdf"
-                            title="Letterhead Background"
-                            className="w-full border-none"
-                            style={{ height: '100%', minHeight: '800px' }}
-                          />
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="text-xs font-medium text-muted-foreground">Bill Preview</h4>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.print()}
+                          className="print:hidden"
+                        >
+                          <Printer className="h-4 w-4 mr-2" />
+                          Print Bill
+                        </Button>
+                      </div>
+                      <div className="border rounded-lg overflow-auto bg-white p-4 print:border-0 print:p-0">
+                        <div className="w-full print:p-4" style={{ fontSize: '12px', fontFamily: 'Arial, sans-serif' }}>
+                              <InvoiceTemplate
+                                template="professional"
+                                hospital={{
+                                  id: 'demo',
+                                  name: 'SWASTHYA DIAGNOSTIC CENTRE',
+                                  displayName: 'SWASTHYA DIAGNOSTIC CENTRE',
+                                  type: 'diagnostic-center',
+                                  registrationNumber: '123456/2023',
+                                  gstNumber: '10AABCS1429B1ZX',
+                                  address: {
+                                    street: 'Near Railway Station',
+                                    city: 'Darbhanga',
+                                    state: 'Bihar',
+                                    pincode: '846004',
+                                    country: 'India'
+                                  },
+                                  phoneNumbers: ['+91 9473199330'],
+                                  email: 'swasthyadiagnostic@gmail.com',
+                                  logoUrl: '',
+                                  settings: {
+                                    primaryColor: '#1a365d',
+                                    secondaryColor: '#2d3748',
+                                    fontFamily: 'Arial, sans-serif',
+                                    headerStyle: 'centered',
+                                    showLogo: true,
+                                    showTagline: true,
+                                    showGst: true,
+                                    letterHeadEnabled: true,
+                                    timezone: 'Asia/Kolkata',
+                                    dateFormat: 'DD/MM/YYYY',
+                                    currency: 'INR'
+                                  },
+                                  letterhead: {
+                                    logoUrl: '',
+                                    showHospitalName: true,
+                                    showAddress: true,
+                                    showContact: true,
+                                    showEmail: true,
+                                    showWebsite: false,
+                                    showGst: true,
+                                    showRegistration: true
+                                  },
+                                  admin: {
+                                    id: 'admin',
+                                    name: 'Admin',
+                                    email: 'admin@swasthya.com',
+                                    phone: '+91 9473199330',
+                                    role: 'admin',
+                                    createdAt: new Date()
+                                  },
+                                  isActive: true,
+                                  isVerified: true,
+                                  isDemo: true,
+                                  createdAt: new Date(),
+                                  updatedAt: new Date(),
+                                  registrationDate: new Date()
+                                }}
+                                bill={{
+                                  id: patientId || 'SWT-250909-01',
+                                  patientId: patientId || 'demo',
+                                  patientName: patient.name || 'Sample Patient',
+                                  tests: patient.selectedTests.map(testId => {
+                                    const test = demoTests.find(t => t.id === testId);
+                                    return test
+                                      ? { id: test.id, name: test.name, price: test.price, category: test.category }
+                                      : { id: testId, name: 'Unknown Test', price: 0, category: 'General' };
+                                  }),
+                                  totalAmount: calculateTotal(),
+                                  date: new Date(),
+                                  hospitalId: 'demo',
+                                  paymentMode: 'Cash'
+                                }}
+                                patient={{
+                                  id: patientId || 'demo',
+                                  name: patient.name || 'Sample Patient',
+                                  age: parseInt(patient.age) || 25,
+                                  gender: (patient.gender as 'Male' | 'Female' | 'Other') || 'Male',
+                                  phone: patient.phone || '9999999999',
+                                  doctor: patient.doctor || 'Self',
+                                  address: patient.address || 'Sample Address',
+                                  city: patient.city,
+                                  state: patient.state,
+                                  pincode: patient.pincode,
+                                  testsSelected: patient.selectedTests,
+                                  status: 'Bill Printed',
+                                  createdAt: new Date()
+                                }}
+                                withLetterhead={true}
+                                headerAlign="center"
+                                footerAlign="center"
+                              />
+                        </div>
+                      </div>
+                    </div>
+                    <style>{`
+                      @media print {
+                        body * {
+                          visibility: hidden;
+                        }
+                        .print-content, .print-content * {
+                          visibility: visible;
+                        }
+                        .print-content {
+                          position: absolute;
+                          left: 0;
+                          top: 0;
+                          width: 100%;
+                        }
+                      }
+                    `}</style>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* Bill Dialog */}
+      <Dialog open={showBillDialog} onOpenChange={(open) => {
+        if (!open) {
+          // Reset form when dialog is closed
+          resetForm();
+        }
+        setShowBillDialog(open);
+      }}>
+        <DialogContent className="sm:max-w-[800px]">
+          <DialogHeader>
+            <div className="flex justify-between items-start">
+              <div>
+                <DialogTitle>Test Details for {patient.name || 'Patient'}</DialogTitle>
+                <DialogDescription className="mt-1">
+                  Patient ID: {patientId || 'N/A'} | Date: {new Date().toLocaleDateString()}
+                </DialogDescription>
+              </div>
+              <div className="text-right">
                 <p className="text-sm font-medium">Total Amount</p>
                 <p className="text-2xl font-bold text-primary">₹{calculateTotal().toFixed(2)}</p>
               </div>

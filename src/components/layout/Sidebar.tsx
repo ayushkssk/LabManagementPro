@@ -18,20 +18,33 @@ import {
   Activity,
   FileText,
   LayoutDashboard,
-  ChevronDown
+  ChevronDown,
+  ClipboardList
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useEffect } from 'react';
 
-interface NavItem {
-  to?: string;
+interface BaseNavItem {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   className?: string;
-  exact?: boolean;
   items?: NavItem[];
 }
+
+interface NavLinkItem extends BaseNavItem {
+  to: string;
+  exact?: boolean;
+  items?: never;
+}
+
+interface NavGroupItem extends BaseNavItem {
+  to?: never;
+  exact?: never;
+  items: NavItem[];
+}
+
+type NavItem = NavLinkItem | NavGroupItem;
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -77,67 +90,86 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
       label: 'Dashboard',
       exact: true
     },
-    { to: '/patients', icon: Users, label: 'Patients' },
-    { to: '/tests', icon: TestTube, label: 'Tests' },
-    { to: '/reports', icon: FileText, label: 'Reports' },
-    { to: '/profile', icon: UserIcon, label: 'Profile' },
-    { to: '/settings', icon: Settings, label: 'Settings' }
+    { 
+      to: '/lab/register', 
+      icon: UserPlus, 
+      label: 'Register Patient',
+      exact: true
+    },
+    { 
+      to: '/patients', 
+      icon: Users, 
+      label: 'Patients',
+      exact: true
+    },
+    { 
+      to: '/tests', 
+      icon: TestTube, 
+      label: 'Tests',
+      exact: true
+    }
+  ] as NavLinkItem[];
+
+  // Lab Operations
+  const labOperations: NavLinkItem[] = [
+    { 
+      to: '/patients',
+      icon: Users,
+      label: 'Patient List',
+      exact: true
+    },
+    { 
+      to: '/lab/register',
+      icon: UserPlus,
+      label: 'New Registration',
+      exact: true
+    },
+    { 
+      to: '/lab/sample-collection/1', // Requires patientId parameter
+      icon: TestTube,
+      label: 'Sample Collection',
+      exact: true
+    }
   ];
 
   // Admin specific navigation items
-  const adminNavItems: NavItem[] = [
+  const adminNavItems: (NavLinkItem | NavGroupItem)[] = [
     ...commonNavItems,
     {
-      icon: Building2,
-      label: 'Hospitals',
+      icon: Settings,
+      label: 'Administration',
       items: [
-        { to: '/admin/hospitals', icon: Building2, label: 'Manage Hospitals' },
-        { to: '/admin/users', icon: Users, label: 'Manage Users' },
-        { to: '/admin/roles', icon: UserCog, label: 'Roles & Permissions' }
+        { to: '/admin/profile', icon: Building2, label: 'Hospital Profile', exact: true },
+        { to: '/admin/tests', icon: TestTube, label: 'Test Management', exact: true }
       ]
     }
   ];
 
   // Super Admin specific navigation items
-  const superAdminNavItems: NavItem[] = [
-    ...commonNavItems,
+  const superAdminNavItems: (NavLinkItem | NavGroupItem)[] = [
+    { 
+      to: '/super-admin/overview', 
+      icon: LayoutDashboard, 
+      label: 'Dashboard',
+      exact: true 
+    },
     {
       icon: Building2,
       label: 'Hospitals',
       items: [
-        { to: '/super-admin/hospitals', icon: Building2, label: 'All Hospitals' },
-        { to: '/super-admin/hospitals/new', icon: UserPlus, label: 'Add New Hospital' },
-        { to: '/super-admin/hospitals/requests', icon: Activity, label: 'Pending Requests' }
+        { to: '/super-admin/hospitals', icon: Building2, label: 'All Hospitals', exact: true },
+        { to: '/super-admin/hospitals/new', icon: UserPlus, label: 'Add New Hospital', exact: true },
+        { to: '/super-admin/hospitals/1', icon: Building2, label: 'Hospital Details', exact: true }
       ]
     },
     {
-      icon: Users,
-      label: 'Users',
+      icon: TestTube,
+      label: 'Lab Operations',
       items: [
-        { to: '/super-admin/users', icon: Users, label: 'All Users' },
-        { to: '/super-admin/users/new', icon: UserPlus, label: 'Add New User' },
-        { to: '/super-admin/users/roles', icon: UserCog, label: 'Manage Roles' }
+        { to: '/patients', icon: Users, label: 'Patients', exact: true },
+        { to: '/tests', icon: TestTube, label: 'Tests', exact: true },
+        { to: '/lab/register', icon: UserPlus, label: 'New Registration', exact: true }
       ]
-    },
-    {
-      icon: Settings,
-      label: 'System',
-      items: [
-        { to: '/super-admin/roles', icon: UserCog, label: 'Roles & Permissions' },
-        { to: '/super-admin/audit', icon: FileText, label: 'Audit Logs' },
-        { to: '/super-admin/settings', icon: Settings, label: 'System Settings' }
-      ]
-    }
-  ];
-
-  // Lab Technician navigation items (only common items)
-  const technicianNavItems: NavItem[] = [
-    ...commonNavItems,
-    {
-      to: '/lab/patients',
-      icon: Users,
-      label: 'Patient List',
-      className: 'bg-primary/10 text-primary hover:bg-primary/20'
     }
   ];
 
@@ -148,23 +180,28 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
         { title: 'Navigation', items: superAdminNavItems },
       ];
     } else if (user?.role === 'admin') {
-      // For admin, we'll show both common items and admin-specific sections
       return [
-        { title: 'Navigation', items: commonNavItems },
-        { 
-          title: 'Administration', 
-          items: adminNavItems.filter(item => !commonNavItems.some(commonItem => commonItem.label === item.label))
-        }
+        { title: 'Navigation', items: adminNavItems }
       ];
     } else {
-      // Default to technician view (only common items)
+      // Lab Technician view
       return [
-        { title: 'Navigation', items: technicianNavItems },
+        { 
+          title: 'Navigation', 
+          items: [
+            ...commonNavItems,
+            {
+              icon: TestTube,
+              label: 'Lab Operations',
+              items: labOperations
+            } as NavGroupItem
+          ]
+        }
       ];
     }
   })();
 
-  const isActive = (path: string = '', exact: boolean = false) => {
+  const isActive = (path?: string, exact: boolean = false) => {
     if (!path) return false;
     
     const currentPath = location.pathname;
