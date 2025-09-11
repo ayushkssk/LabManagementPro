@@ -320,6 +320,17 @@ export const demoTests: Test[] = [
     ]
   },
   {
+    id: 'test-bilirubin',
+    category: 'Biochemistry',
+    name: 'BILIRUBIN TOTAL, DIRECT & INDIRECT',
+    price: 350,
+    fields: [
+      { id: getFieldId(), name: 'BILIRUBIN TOTAL', type: 'number', unit: 'mg/dL', normalRange: '0.2-1.1' },
+      { id: getFieldId(), name: 'BILIRUBIN DIRECT', type: 'number', unit: 'mg/dL', normalRange: '0-0.4' },
+      { id: getFieldId(), name: 'BILIRUBIN INDIRECT', type: 'number', unit: 'mg/dL', normalRange: '0.2-0.7' }
+    ]
+  },
+  {
     id: 'test-11',
     category: 'Biochemistry',
     name: 'Renal Function Test (RFT)',
@@ -436,13 +447,12 @@ export const demoTests: Test[] = [
   {
     id: 'test-16',
     category: 'SeroLOGY & INFECTIOUS DISEASE',
-    name: 'Dengue Panel',
+    name: 'Dengue Panel (NS1, IgM, IgG)',
     price: 1800,
     fields: [
-      { id: getFieldId(), name: 'Dengue NS1 Antigen', type: 'text', unit: '', normalRange: 'Negative' },
-      { id: getFieldId(), name: 'Dengue IgM', type: 'text', unit: '', normalRange: 'Negative' },
-      { id: getFieldId(), name: 'Dengue IgG', type: 'text', unit: '', normalRange: 'Negative' },
-      { id: getFieldId(), name: 'Dengue PCR', type: 'text', unit: '', normalRange: 'Not Detected' }
+      { id: getFieldId(), name: 'DENGUE NS1 ANTIGEN', type: 'text', unit: '', normalRange: 'Negative' },
+      { id: getFieldId(), name: 'DENGUE ANTIBODIES IgM', type: 'text', unit: '', normalRange: 'Negative' },
+      { id: getFieldId(), name: 'DENGUE ANTIBODIES IgG', type: 'text', unit: '', normalRange: 'Negative' }
     ]
   },
   {

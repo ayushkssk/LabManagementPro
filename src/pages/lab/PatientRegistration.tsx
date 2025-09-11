@@ -115,8 +115,8 @@ const PatientRegistration: React.FC = () => {
     phone: '',
     doctor: '',
     address: '',
-    city: '',
-    state: '',
+    city: 'Hajipur',
+    state: 'Bihar',
     pincode: '',
     selectedTests: [],
     registrationDate: new Date()
@@ -127,6 +127,46 @@ const PatientRegistration: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Handle Enter to behave like Tab within the form (skip textarea and allow submit buttons)
+  const handleFormKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter') return;
+    const target = e.target as HTMLElement;
+    if (!formRef.current) return;
+    // Allow Enter in textarea to create new line
+    if (target.tagName.toLowerCase() === 'textarea') return;
+    // Allow Enter on submit button to submit
+    if (target instanceof HTMLButtonElement && target.type === 'submit') return;
+
+    e.preventDefault();
+
+    const focusableSelectors = [
+      'input:not([type="hidden"]):not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      'button:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])'
+    ].join(',');
+
+    const focusables = Array.from(
+      formRef.current.querySelectorAll<HTMLElement>(focusableSelectors)
+    ).filter(el => !el.hasAttribute('disabled') && el.tabIndex !== -1 && el.offsetParent !== null);
+
+    const index = focusables.indexOf(target);
+    if (index > -1) {
+      const next = focusables[index + 1] || focusables[0];
+      next.focus();
+    }
+  };
+
+  // WhatsApp Support launcher
+  const handleWhatsAppSupport = () => {
+    const phone = '917766866355'; // +91 7766866355 without plus sign for wa.me
+    const text = 'IHello, I am using your Lab Management Software and would like some assistance. Could you please help me?';
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
 
   // Sample data for quick fill
   const firstNames = ['Aarav', 'Vihaan', 'Aaradhya', 'Diya', 'Advait', 'Ananya', 'Ishaan', 'Aanya', 'Vivaan', 'Anaya', 'Reyansh', 'Saanvi', 'Mohammed', 'Sai', 'Myra', 'Aarush', 'Aadhya', 'Ishita', 'Kabir', 'Anika'];
@@ -202,6 +242,7 @@ const PatientRegistration: React.FC = () => {
 
         // Update date input fields
         const [year, month, day] = dob.split('-');
+        
         setTimeout(() => {
           const dayInput = document.getElementById('day') as HTMLInputElement;
           const monthInput = document.getElementById('month') as HTMLInputElement;
@@ -239,11 +280,17 @@ const PatientRegistration: React.FC = () => {
     };
   }, []);
 
-  // Update cities when state changes
+  // Update cities when state changes, preserve city if valid; default to Hajipur for Bihar
   useEffect(() => {
     if (patient.state) {
-      setCities(cityByState[patient.state] || []);
-      setPatient(prev => ({ ...prev, city: '' }));
+      const list = cityByState[patient.state] || [];
+      setCities(list);
+      setPatient(prev => ({
+        ...prev,
+        city: prev.city && list.includes(prev.city)
+          ? prev.city
+          : (patient.state === 'Bihar' && list.includes('Hajipur') ? 'Hajipur' : '')
+      }));
     }
   }, [patient.state]);
 
@@ -271,16 +318,53 @@ const PatientRegistration: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
-    // Skip handling for date parts as they are handled by onBlur
+    // Handle Full Name - allow only letters and spaces
+    if (name === 'name') {
+      const sanitized = value.replace(/[^a-zA-Z\s]/g, '');
+      setPatient(prev => ({
+        ...prev,
+        name: sanitized
+      }));
+      return;
+    }
+    
+    // Handle date fields - allow only digits
     if (['day', 'month', 'year'].includes(name)) {
+      // Only allow digits
+      const sanitized = value.replace(/\D/g, '');
+      // Update the input value
+      if (e.target instanceof HTMLInputElement) {
+        e.target.value = sanitized;
+      }
+      return; // Skip further processing as we'll handle dates in onBlur
+    }
+    
+    // Sanitize phone input: allow only digits and limit to 10 characters
+    if (name === 'phone') {
+      const sanitized = value.replace(/\D/g, '').slice(0, 10);
+      setPatient(prev => ({
+        ...prev,
+        phone: sanitized
+      }));
+      return;
+    }
+    
+    // Sanitize pincode input: allow only digits and limit to 6 characters
+    if (name === 'pincode') {
+      const sanitized = value.replace(/\D/g, '').slice(0, 6);
+      setPatient(prev => ({
+        ...prev,
+        pincode: sanitized
+      }));
       return;
     }
     
     // If age is being updated and DOB is empty, allow manual entry
     if (name === 'age' && (isDobEmpty() || !patient.dob)) {
+      const sanitized = value.replace(/\D/g, '').slice(0, 3);
       setPatient(prev => ({
         ...prev,
-        [name]: value,
+        age: sanitized,
         dob: '' // Clear DOB when age is manually entered
       }));
       return;
@@ -342,13 +426,93 @@ const PatientRegistration: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent, isBillGenerate: boolean = false) => {
     e.preventDefault();
     
-    if (!isBillGenerate && (!patient.name || !patient.phone || !patient.gender)) {
+    // Check for required fields if not in bill generate mode
+    if (!isBillGenerate) {
+      if (!patient.name) {
+        toast({ title: 'Validation Error', description: 'Please enter patient name', variant: 'destructive' });
+        document.getElementById('name')?.focus();
+        return;
+      }
+      if (!patient.phone) {
+        toast({ title: 'Validation Error', description: 'Please enter phone number', variant: 'destructive' });
+        document.getElementById('phone')?.focus();
+        return;
+      }
+      if (!patient.gender) {
+        toast({ title: 'Validation Error', description: 'Please select gender', variant: 'destructive' });
+        return;
+      }
+    }
+    
+    // Validate date of birth if provided
+    if (patient.dob) {
+      const [year, month, day] = patient.dob.split('-').map(Number);
+      
+      // Check for valid date
+      const date = new Date(year, month - 1, day);
+      const isValidDate = date.getFullYear() === year && 
+                         date.getMonth() === month - 1 && 
+                         date.getDate() === day;
+      
+      if (!isValidDate) {
+        toast({
+          title: 'Invalid Date',
+          description: 'Please enter a valid date of birth',
+          variant: 'destructive',
+        });
+        document.getElementById('day')?.focus();
+        return;
+      }
+      
+      // Check if date is in the future
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (date > today) {
+        toast({
+          title: 'Invalid Date',
+          description: 'Date of birth cannot be in the future',
+          variant: 'destructive',
+        });
+        document.getElementById('day')?.focus();
+        return;
+      }
+    }
+    
+    // Validate 10-digit mobile number (numeric only)
+    const phoneValid = /^\d{10}$/.test(patient.phone);
+    if (!phoneValid) {
       toast({
-        title: 'Validation Error',
-        description: 'Please fill in all required fields',
+        title: 'Invalid Phone Number',
+        description: 'Please enter a valid 10-digit mobile number.',
         variant: 'destructive',
       });
       return;
+    }
+    
+    // Validate age (0-120) if provided
+    if (patient.age) {
+      const ageNum = parseInt(patient.age, 10);
+      if (isNaN(ageNum) || ageNum < 0 || ageNum > 120) {
+        toast({
+          title: 'Invalid Age',
+          description: 'Age must be a number between 0 and 120.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+    
+    // Validate pincode if provided: must be exactly 6 digits
+    if (patient.pincode) {
+      const pinValid = /^\d{6}$/.test(patient.pincode);
+      if (!pinValid) {
+        toast({
+          title: 'Invalid Pincode',
+          description: 'Please enter a valid 6-digit pincode.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
     
     if (isBillGenerate && patient.selectedTests.length === 0) {
@@ -629,7 +793,7 @@ const PatientRegistration: React.FC = () => {
       </head>
       <body>
         <!-- Watermark -->
-        <div class="watermark" style="display: none;">${hospital.name}</div>
+        <div class="watermark" style="display: block;">SWATI DIAGNOSTIC</div>
 
         <div class="bill-content">
           <!-- Bill Title -->
@@ -865,8 +1029,8 @@ const PatientRegistration: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto px-2 sm:px-4 py-4 max-w-[1800px]">
+    <div className="h-screen bg-background overflow-hidden flex flex-col">
+      <div className="mx-auto px-2 sm:px-4 py-4 max-w-[1800px] w-full h-full flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="flex items-center gap-1 h-8 px-2">
@@ -874,18 +1038,32 @@ const PatientRegistration: React.FC = () => {
             Back
           </Button>
           <h1 className="text-2xl font-bold">Patient Registration</h1>
-          <div className="w-20"></div> {/* For alignment */}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleWhatsAppSupport}
+              className="h-8 px-3 border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white"
+              title="WhatsApp Support"
+            >
+              {/* Simple WA glyph using text to avoid extra icon dependency */}
+              <span className="mr-2">🟢</span>
+              WhatsApp Support
+            </Button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-full overflow-x-hidden flex-1 min-h-0">
           {/* Patient Form */}
-          <div className="lg:col-span-2">
-            <Card className="shadow-sm border-0">
+          <div className="lg:col-span-2 min-w-0 h-full">
+            <Card className="shadow-sm border-0 min-w-0 h-full flex flex-col">
               <CardHeader className="p-4 border-b">
                 <CardTitle className="text-lg">Patient Details</CardTitle>
               </CardHeader>
-              <CardContent className="p-4">
-                <form onSubmit={(e) => handleSubmit(e, false)}>
+              {/* Left panel: fill available height and scroll internally */}
+              <CardContent className="p-4 flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+                <form ref={formRef} onKeyDown={handleFormKeyDown} onSubmit={(e) => handleSubmit(e, false)}>
                   <div className="space-y-4">
                     {/* Row 1 - Name, Age, Gender */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -897,6 +1075,8 @@ const PatientRegistration: React.FC = () => {
                           value={patient.name}
                           onChange={handleInputChange}
                           placeholder="Enter patient's full name"
+                          pattern="[A-Za-z\s]+"
+                          title="Please enter only letters and spaces"
                           required
                           className="w-full"
                         />
@@ -907,18 +1087,19 @@ const PatientRegistration: React.FC = () => {
                           <Input
                             id="day"
                             name="day"
-                            type="number"
-                            min="1"
-                            max="31"
+                            type="text"
+                            maxLength={2}
                             placeholder="DD"
                             className="w-16 text-center"
+                            inputMode="numeric"
+                            pattern="(0[1-9]|[12][0-9]|3[01])"
+                            onChange={handleInputChange}
                             onKeyDown={(e) => {
                               if (e.key === 'Tab') {
                                 e.preventDefault();
                                 if (!e.shiftKey) {
                                   document.getElementById('month')?.focus();
                                 } else {
-                                  // If shift+tab, move to previous field
                                   document.getElementById('name')?.focus();
                                 }
                               } else if (e.key === 'Enter' || e.key === ' ') {
@@ -927,10 +1108,18 @@ const PatientRegistration: React.FC = () => {
                               }
                             }}
                             onBlur={(e) => {
-                              const day = e.target.value.padStart(2, '0');
+                              let day = e.target.value.padStart(2, '0');
+                              // Validate day range (1-31)
+                              const dayNum = parseInt(day, 10) || 1;
+                              day = Math.min(31, Math.max(1, dayNum)).toString().padStart(2, '0');
+                              
                               const month = (document.getElementById('month') as HTMLInputElement)?.value.padStart(2, '0') || '01';
                               const year = (document.getElementById('year') as HTMLInputElement)?.value || new Date().getFullYear();
                               const newDate = `${year}-${month}-${day}`;
+                              
+                              // Update the input value with validated day
+                              e.target.value = day;
+                              
                               if (day && month && year) {
                                 setPatient(prev => ({
                                   ...prev,
@@ -944,11 +1133,13 @@ const PatientRegistration: React.FC = () => {
                           <Input
                             id="month"
                             name="month"
-                            type="number"
-                            min="1"
-                            max="12"
+                            type="text"
+                            maxLength={2}
                             placeholder="MM"
                             className="w-16 text-center"
+                            inputMode="numeric"
+                            pattern="(0[1-9]|1[0-2])"
+                            onChange={handleInputChange}
                             onKeyDown={(e) => {
                               if (e.key === 'Tab') {
                                 e.preventDefault();
@@ -963,10 +1154,18 @@ const PatientRegistration: React.FC = () => {
                               }
                             }}
                             onBlur={(e) => {
+                              let month = e.target.value.padStart(2, '0');
+                              // Validate month range (1-12)
+                              const monthNum = parseInt(month, 10) || 1;
+                              month = Math.min(12, Math.max(1, monthNum)).toString().padStart(2, '0');
+                              
                               const day = (document.getElementById('day') as HTMLInputElement)?.value.padStart(2, '0') || '01';
-                              const month = e.target.value.padStart(2, '0');
                               const year = (document.getElementById('year') as HTMLInputElement)?.value || new Date().getFullYear();
                               const newDate = `${year}-${month}-${day}`;
+                              
+                              // Update the input value with validated month
+                              e.target.value = month;
+                              
                               if (day && month && year) {
                                 setPatient(prev => ({
                                   ...prev,
@@ -980,11 +1179,13 @@ const PatientRegistration: React.FC = () => {
                           <Input
                             id="year"
                             name="year"
-                            type="number"
-                            min="1900"
-                            max={new Date().getFullYear()}
+                            type="text"
+                            maxLength={4}
                             placeholder="YYYY"
                             className="w-20"
+                            inputMode="numeric"
+                            pattern="(19|20)\d{2}"
+                            onChange={handleInputChange}
                             onKeyDown={(e) => {
                               if (e.key === 'Tab') {
                                 e.preventDefault();
@@ -996,10 +1197,19 @@ const PatientRegistration: React.FC = () => {
                               }
                             }}
                             onBlur={(e) => {
+                              let year = e.target.value;
+                              // Validate year range (1900-current year)
+                              const currentYear = new Date().getFullYear();
+                              const yearNum = parseInt(year, 10) || currentYear;
+                              year = Math.min(currentYear, Math.max(1900, yearNum)).toString();
+                              
                               const day = (document.getElementById('day') as HTMLInputElement)?.value.padStart(2, '0') || '01';
                               const month = (document.getElementById('month') as HTMLInputElement)?.value.padStart(2, '0') || '01';
-                              const year = e.target.value;
                               const newDate = `${year}-${month}-${day}`;
+                              
+                              // Update the input value with validated year
+                              e.target.value = year;
+                              
                               if (day && month && year) {
                                 setPatient(prev => ({
                                   ...prev,
@@ -1024,6 +1234,9 @@ const PatientRegistration: React.FC = () => {
                           placeholder={isDobEmpty() ? 'Enter age' : 'Auto-calculated'}
                           className="w-full"
                           readOnly={!isDobEmpty()}
+                          inputMode="numeric"
+                          pattern="\\d{1,3}"
+                          maxLength={3}
                           onKeyDown={(e) => {
                             if (e.key === 'Tab') {
                               e.preventDefault();
@@ -1061,7 +1274,11 @@ const PatientRegistration: React.FC = () => {
                           type="tel"
                           value={patient.phone}
                           onChange={handleInputChange}
-                          placeholder="Enter phone number"
+                          placeholder="Enter 10-digit mobile number"
+                          inputMode="numeric"
+                          pattern="[0-9]{10}"
+                          maxLength={10}
+                          minLength={10}
                           required
                           className="w-full"
                         />
@@ -1074,6 +1291,15 @@ const PatientRegistration: React.FC = () => {
                           value={patient.doctor}
                           onChange={handleInputChange}
                           placeholder="Doctor's name (if any)"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              document.getElementById('state-trigger')?.focus();
+                            } else if (e.key === 'Tab' && !e.shiftKey) {
+                              e.preventDefault();
+                              document.getElementById('state-trigger')?.focus();
+                            }
+                          }}
                           className="w-full"
                         />
                       </div>
@@ -1090,7 +1316,19 @@ const PatientRegistration: React.FC = () => {
                           value={patient.state}
                           onValueChange={(value) => handleSelectChange('state', value)}
                         >
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger
+                            id="state-trigger"
+                            className="w-full"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                document.getElementById('city-trigger')?.focus();
+                              } else if (e.key === 'Tab' && !e.shiftKey) {
+                                e.preventDefault();
+                                document.getElementById('city-trigger')?.focus();
+                              }
+                            }}
+                          >
                             <SelectValue placeholder="Select state" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1109,7 +1347,19 @@ const PatientRegistration: React.FC = () => {
                           onValueChange={(value) => handleSelectChange('city', value)}
                           disabled={!patient.state}
                         >
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger
+                            id="city-trigger"
+                            className="w-full"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                document.getElementById('pincode')?.focus();
+                              } else if (e.key === 'Tab' && !e.shiftKey) {
+                                e.preventDefault();
+                                document.getElementById('pincode')?.focus();
+                              }
+                            }}
+                          >
                             <SelectValue placeholder={patient.state ? 'Select city' : 'Select state first'} />
                           </SelectTrigger>
                           <SelectContent>
@@ -1126,6 +1376,22 @@ const PatientRegistration: React.FC = () => {
                             )}
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pincode">Pincode</Label>
+                        <Input
+                          id="pincode"
+                          name="pincode"
+                          type="tel"
+                          value={patient.pincode}
+                          onChange={handleInputChange}
+                          placeholder="Enter 6-digit pincode"
+                          inputMode="numeric"
+                          pattern="[0-9]{6}"
+                          maxLength={6}
+                          minLength={6}
+                          className="w-full"
+                        />
                       </div>
                     </div>
 
@@ -1249,145 +1515,124 @@ const PatientRegistration: React.FC = () => {
           </div>
 
           {/* Bill Preview */}
-          <div className="sticky top-4">
-            <Card className="shadow-sm border-0">
-              <CardHeader className="p-3 bg-muted/20">
-                <CardTitle className="text-sm font-medium">Selected Tests</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
+          <div className="sticky top-4 max-w-full min-w-0 h-full">
+            <Card className="shadow-sm border-0 min-w-0 h-full flex flex-col">
+              {/* <CardHeader className="p-3 bg-muted/20">
+                <CardTitle className="text-sm font-medium">Bill Preview</CardTitle>
+              </CardHeader> */}
+              {/* Bill preview panel: fill available height and scroll internally */}
+              <CardContent className="p-4 flex-1 overflow-y-auto overflow-x-hidden min-w-0">
                 {patient.selectedTests.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     No tests selected yet. Select tests from the form.
                   </p>
                 ) : (
-                  <div className="space-y-4">
-                    {/* Test List */}
-                    <div className="space-y-2">
-                      {patient.selectedTests.map(testId => {
-                        const test = demoTests.find(t => t.id === testId);
-                        if (!test) return null;
-                        
-                        return (
-                          <div key={testId} className="flex justify-between items-center text-sm">
-                            <span className="line-clamp-1">{test.name}</span>
-                            <span className="font-medium">₹{test.price}</span>
-                          </div>
-                        );
-                      })}
-                      <div className="border-t mt-3 pt-2 flex justify-between font-medium">
-                        <span>Total</span>
-                        <span>₹{calculateTotal()}</span>
-                      </div>
+                  <>
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-xs font-medium text-muted-foreground">Bill Preview</h4>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => window.print()}
+                        className="print:hidden"
+                      >
+                        <Printer className="h-4 w-4 mr-2" />
+                        Print Bill
+                      </Button>
                     </div>
-
-                    {/* Bill Preview */}
-                    <div className="border-t pt-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="text-xs font-medium text-muted-foreground">Bill Preview</h4>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.print()}
-                          className="print:hidden"
-                        >
-                          <Printer className="h-4 w-4 mr-2" />
-                          Print Bill
-                        </Button>
-                      </div>
-                      <div className="border rounded-lg overflow-auto bg-white p-4 print:border-0 print:p-0">
-                        <div className="w-full print:p-4" style={{ fontSize: '12px', fontFamily: 'Arial, sans-serif' }}>
-                              <InvoiceTemplate
-                                template="professional"
-                                hospital={{
-                                  id: 'demo',
-                                  name: 'SWASTHYA DIAGNOSTIC CENTRE',
-                                  displayName: 'SWASTHYA DIAGNOSTIC CENTRE',
-                                  type: 'diagnostic-center',
-                                  registrationNumber: '123456/2023',
-                                  gstNumber: '10AABCS1429B1ZX',
-                                  address: {
-                                    street: 'Near Railway Station',
-                                    city: 'Darbhanga',
-                                    state: 'Bihar',
-                                    pincode: '846004',
-                                    country: 'India'
-                                  },
-                                  phoneNumbers: ['+91 9473199330'],
-                                  email: 'swasthyadiagnostic@gmail.com',
+                    <div className="border rounded-lg overflow-y-auto overflow-x-hidden bg-white p-4 print:border-0 print:p-0 max-w-full">
+                      <div className="w-full max-w-full print:p-4" style={{ fontSize: '12px', fontFamily: 'Arial, sans-serif' }}>
+                            <InvoiceTemplate
+                              template="professional"
+                              hospital={{
+                                id: 'demo',
+                                name: 'SWASTHYA DIAGNOSTIC CENTRE',
+                                displayName: 'SWASTHYA DIAGNOSTIC CENTRE',
+                                type: 'diagnostic-center',
+                                registrationNumber: '123456/2023',
+                                gstNumber: '10AABCS1429B1ZX',
+                                address: {
+                                  street: 'Near Railway Station',
+                                  city: 'Darbhanga',
+                                  state: 'Bihar',
+                                  pincode: '846004',
+                                  country: 'India'
+                                },
+                                phoneNumbers: ['+91 9473199330'],
+                                email: 'swasthyadiagnostic@gmail.com',
+                                logoUrl: '',
+                                settings: {
+                                  primaryColor: '#1a365d',
+                                  secondaryColor: '#2d3748',
+                                  fontFamily: 'Arial, sans-serif',
+                                  headerStyle: 'centered',
+                                  showLogo: true,
+                                  showTagline: true,
+                                  showGst: true,
+                                  letterHeadEnabled: true,
+                                  timezone: 'Asia/Kolkata',
+                                  dateFormat: 'DD/MM/YYYY',
+                                  currency: 'INR'
+                                },
+                                letterhead: {
                                   logoUrl: '',
-                                  settings: {
-                                    primaryColor: '#1a365d',
-                                    secondaryColor: '#2d3748',
-                                    fontFamily: 'Arial, sans-serif',
-                                    headerStyle: 'centered',
-                                    showLogo: true,
-                                    showTagline: true,
-                                    showGst: true,
-                                    letterHeadEnabled: true,
-                                    timezone: 'Asia/Kolkata',
-                                    dateFormat: 'DD/MM/YYYY',
-                                    currency: 'INR'
-                                  },
-                                  letterhead: {
-                                    logoUrl: '',
-                                    showHospitalName: true,
-                                    showAddress: true,
-                                    showContact: true,
-                                    showEmail: true,
-                                    showWebsite: false,
-                                    showGst: true,
-                                    showRegistration: true
-                                  },
-                                  admin: {
-                                    id: 'admin',
-                                    name: 'Admin',
-                                    email: 'admin@swasthya.com',
-                                    phone: '+91 9473199330',
-                                    role: 'admin',
-                                    createdAt: new Date()
-                                  },
-                                  isActive: true,
-                                  isVerified: true,
-                                  isDemo: true,
-                                  createdAt: new Date(),
-                                  updatedAt: new Date(),
-                                  registrationDate: new Date()
-                                }}
-                                bill={{
-                                  id: patientId || 'SWT-250909-01',
-                                  patientId: patientId || 'demo',
-                                  patientName: patient.name || 'Sample Patient',
-                                  tests: patient.selectedTests.map(testId => {
-                                    const test = demoTests.find(t => t.id === testId);
-                                    return test
-                                      ? { id: test.id, name: test.name, price: test.price, category: test.category }
-                                      : { id: testId, name: 'Unknown Test', price: 0, category: 'General' };
-                                  }),
-                                  totalAmount: calculateTotal(),
-                                  date: new Date(),
-                                  hospitalId: 'demo',
-                                  paymentMode: 'Cash'
-                                }}
-                                patient={{
-                                  id: patientId || 'demo',
-                                  name: patient.name || 'Sample Patient',
-                                  age: parseInt(patient.age) || 25,
-                                  gender: (patient.gender as 'Male' | 'Female' | 'Other') || 'Male',
-                                  phone: patient.phone || '9999999999',
-                                  doctor: patient.doctor || 'Self',
-                                  address: patient.address || 'Sample Address',
-                                  city: patient.city,
-                                  state: patient.state,
-                                  pincode: patient.pincode,
-                                  testsSelected: patient.selectedTests,
-                                  status: 'Bill Printed',
+                                  showHospitalName: true,
+                                  showAddress: true,
+                                  showContact: true,
+                                  showEmail: true,
+                                  showWebsite: false,
+                                  showGst: true,
+                                  showRegistration: true
+                                },
+                                admin: {
+                                  id: 'admin',
+                                  name: 'Admin',
+                                  email: 'admin@swasthya.com',
+                                  phone: '+91 9473199330',
+                                  role: 'admin',
                                   createdAt: new Date()
-                                }}
-                                withLetterhead={true}
-                                headerAlign="center"
-                                footerAlign="center"
-                              />
-                        </div>
+                                },
+                                isActive: true,
+                                isVerified: true,
+                                isDemo: true,
+                                createdAt: new Date(),
+                                updatedAt: new Date(),
+                                registrationDate: new Date()
+                              }}
+                              bill={{
+                                id: patientId || 'SWT-250909-01',
+                                patientId: patientId || 'demo',
+                                patientName: patient.name || 'Sample Patient',
+                                tests: patient.selectedTests.map(testId => {
+                                  const test = demoTests.find(t => t.id === testId);
+                                  return test
+                                    ? { id: test.id, name: test.name, price: test.price, category: test.category }
+                                    : { id: testId, name: 'Unknown Test', price: 0, category: 'General' };
+                                }),
+                                totalAmount: calculateTotal(),
+                                date: new Date(),
+                                hospitalId: 'demo',
+                                paymentMode: 'Cash'
+                              }}
+                              patient={{
+                                id: patientId || 'demo',
+                                name: patient.name || 'Sample Patient',
+                                age: parseInt(patient.age) || 25,
+                                gender: (patient.gender as 'Male' | 'Female' | 'Other') || 'Male',
+                                phone: patient.phone || '9999999999',
+                                doctor: patient.doctor || 'Self',
+                                address: patient.address || 'Sample Address',
+                                city: patient.city,
+                                state: patient.state,
+                                pincode: patient.pincode,
+                                testsSelected: patient.selectedTests,
+                                status: 'Bill Printed',
+                                createdAt: new Date()
+                              }}
+                              withLetterhead={true}
+                              headerAlign="center"
+                              footerAlign="center"
+                            />
                       </div>
                     </div>
                     <style>{`
@@ -1406,7 +1651,7 @@ const PatientRegistration: React.FC = () => {
                         }
                       }
                     `}</style>
-                  </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -1422,7 +1667,11 @@ const PatientRegistration: React.FC = () => {
         }
         setShowBillDialog(open);
       }}>
-        <DialogContent className="sm:max-w-[800px]">
+        <DialogContent 
+          className="sm:max-w-[800px]"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <div className="flex justify-between items-start">
               <div>

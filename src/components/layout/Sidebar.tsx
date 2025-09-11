@@ -93,13 +93,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
     { 
       to: '/lab/register', 
       icon: UserPlus, 
-      label: 'Register Patient',
+      label: 'Register New Patient',
       exact: true
     },
     { 
       to: '/patients', 
       icon: Users, 
-      label: 'Patients',
+      label: 'Patients Records',
       exact: true
     },
     { 

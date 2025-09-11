@@ -14,8 +14,10 @@ export const sampleTests: SampleTestMeta[] = [
   { id: 'test-22', name: 'VDRL (Syphilis)', category: 'Serology', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
   { id: 'test-serum-electrolyte', name: 'Serum Electrolyte', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
   { id: 'test-18', name: 'Widal Test (Typhoid)', category: 'SeroLOGY & INFECTIOUS DISEASE', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-16', name: 'Dengue Panel (NS1, IgM, IgG)', category: 'SeroLOGY & INFECTIOUS DISEASE', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
   { id: 'test-h-pylori', name: 'H Pylori', category: 'SeroLOGY & INFECTIOUS DISEASE', sampleType: 'Stool', container: 'Stool Container', instructions: 'Fresh stool sample required' },
   { id: 'test-kft-rft', name: 'KFT/RFT (Kidney Function Test)', category: 'BIOCHEMISTRY', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting preferred' },
+  { id: 'test-bilirubin', name: 'BILIRUBIN TOTAL, DIRECT & INDIRECT', category: 'BIOCHEMISTRY', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
 ];
 
 export const testConfigurations: TestConfigurationMap = {
@@ -189,6 +191,13 @@ export const testConfigurations: TestConfigurationMap = {
       { id: 'sample_time', label: 'Sample Collection Time', type: 'datetime-local', required: false },
     ],
   },
+  bilirubin_test: {
+    fields: [
+      { id: 'bilirubin_total', label: 'BILIRUBIN TOTAL', type: 'number', unit: 'mg/dL', refRange: '0.2-1.1', required: true },
+      { id: 'bilirubin_direct', label: 'BILIRUBIN DIRECT', type: 'number', unit: 'mg/dL', refRange: '0-0.4', required: true },
+      { id: 'bilirubin_indirect', label: 'BILIRUBIN INDIRECT', type: 'number', unit: 'mg/dL', refRange: '0.2-0.7', required: true },
+    ],
+  },
   kidney_function: {
     fields: [
       { id: 'blood_urea', label: 'Blood Urea', type: 'number', unit: 'mg/dL', refRange: '15-45', required: true },
@@ -239,6 +248,13 @@ export const testConfigurations: TestConfigurationMap = {
       { id: 'calcium', label: 'Calcium', type: 'number', unit: 'mg/dl', refRange: '8.6-10.3', required: true },
     ],
   },
+  dengue_panel: {
+    fields: [
+      { id: 'dengue_ns1', label: 'DENGUE NS1 ANTIGEN', type: 'select', unit: '', refRange: 'Negative', options: ['Negative', 'Positive'], required: true },
+      { id: 'dengue_igm', label: 'DENGUE ANTIBODIES IgM', type: 'select', unit: '', refRange: 'Negative', options: ['Negative', 'Positive'], required: true },
+      { id: 'dengue_igg', label: 'DENGUE ANTIBODIES IgG', type: 'select', unit: '', refRange: 'Negative', options: ['Negative', 'Positive'], required: true },
+    ],
+  },
 };
 
 export const testConfigByTestId: Record<string, keyof typeof testConfigurations> = {
@@ -255,6 +271,8 @@ export const testConfigByTestId: Record<string, keyof typeof testConfigurations>
   'test-22': 'vdrl',
   'test-serum-electrolyte': 'serum_electrolyte',
   'test-18': 'widal_test',
+  'test-16': 'dengue_panel',
   'test-h-pylori': 'h_pylori',
   'test-kft-rft': 'kft_rft',
+  'test-bilirubin': 'bilirubin_test',
 };

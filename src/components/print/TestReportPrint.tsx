@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Hospital, TestResult } from '@/types';
 import { PdfLetterhead } from './PdfLetterhead';
 
@@ -21,7 +21,7 @@ interface TestReportPrintProps {
   };
 }
 
-export const TestReportPrint: React.FC<TestReportPrintProps> = ({ hospital, testResult, patientInfo }) => {
+export const TestReportPrint = forwardRef<HTMLDivElement, TestReportPrintProps>(({ hospital, testResult, patientInfo }, ref) => {
   const primary = hospital.settings?.primaryColor || '#000';
   
   const styles = {
@@ -40,19 +40,20 @@ export const TestReportPrint: React.FC<TestReportPrintProps> = ({ hospital, test
   };
 
   return (
-    <PdfLetterhead>
-      <div style={{ padding: '2cm' }}>
-        <div style={styles.section}>
-          <div style={styles.centerBlock}>
-            <h2 style={styles.title}>TEST REPORT</h2>
-            <div style={styles.divider} />
-          </div>
-
-          <div style={styles.grid}>
-            <div>
-              <p><strong>Patient Name:</strong> {patientInfo.name}</p>
-              <p><strong>Age/Gender:</strong> {patientInfo.age} / {patientInfo.gender}</p>
-              <p><strong>Doctor:</strong> {patientInfo.doctor || 'Not specified'}</p>
+    <div ref={ref} className="print-root">
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-root { width: 210mm !important; min-height: 297mm !important; background: white !important; }
+          .print-root > * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+      `}</style>
+      <PdfLetterhead>
+        <div style={{ padding: '12mm' }}>
+          <div style={styles.section}>
+            <div style={styles.centerBlock}>
+              <h2 style={styles.title}>TEST REPORT</h2>
+              <div style={styles.divider} />
             </div>
             <div style={styles.right}>
               <p><strong>Report ID:</strong> {testResult.id || 'N/A'}</p>
@@ -91,9 +92,9 @@ export const TestReportPrint: React.FC<TestReportPrintProps> = ({ hospital, test
             <p>Generated on: {new Date().toLocaleString()}</p>
           </div>
         </div>
-      </div>
-    </PdfLetterhead>
+      </PdfLetterhead>
+    </div>
   );
-};
+});
 
 export default TestReportPrint;

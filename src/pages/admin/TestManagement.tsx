@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Trash2, Plus, Upload, Download, Pencil, Loader2, Printer } from "lucide-react";
 import type { Test as TestType, TestField, Hospital, TestResult, FieldResult } from "@/types";
-import { addTest, deleteTest, getTests, updateTest, assignTestCodes, type TestData } from "@/services/testService";
+import { addTest, deleteTest, getTests, updateTest, assignTestCodes, reloadDefaultTests, type TestData } from "@/services/testService";
+import { getUnits, addUnit, reloadDefaultUnits, type UnitData } from "@/services/unitService";
 import { printTestReport } from "@/utils/printUtils";
 // Using a mock hospital since the context doesn't expose the current hospital directly
 const MOCK_HOSPITAL: Hospital = {
@@ -132,6 +133,24 @@ const TestManagement: React.FC = () => {
 
   type LoadedTest = TestData & { id: string; code?: string; };
   const { data: tests = [], isLoading } = useQuery<LoadedTest[]>({ queryKey: ["tests"], queryFn: getTests as any });
+  const { data: units = [], refetch: refetchUnits } = useQuery<UnitData[]>({ queryKey: ["units"], queryFn: getUnits as any });
+
+  // Auto-seed units from hardcoded catalog if none exist
+  useEffect(() => {
+    const seed = async () => {
+      try {
+        if (!units || units.length === 0) {
+          const count = await reloadDefaultUnits();
+          if (count > 0) await refetchUnits();
+        }
+      } catch (e) {
+        // non-blocking
+        console.warn("Unit auto-seed failed", e);
+      }
+    };
+    seed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [units?.length]);
 
   const getErrorMessage = (e: unknown) => {
     if (e && typeof e === "object" && 'message' in e) return String((e as any).message);
@@ -227,6 +246,17 @@ const TestManagement: React.FC = () => {
 
     const payload = cleanTestPayload(raw);
 
+    // Persist any new units used in fields
+    try {
+      const unitSet = Array.from(new Set(payload.fields.map((f) => (f.unit || "").trim()).filter(Boolean)));
+      if (unitSet.length) {
+        await Promise.all(unitSet.map((u) => addUnit(u)));
+        await refetchUnits();
+      }
+    } catch (e) {
+      console.warn("Failed to persist units:", e);
+    }
+
     try {
       if (editing.id) {
         await updMut.mutateAsync({ id: editing.id, patch: payload });
@@ -246,14 +276,35 @@ const TestManagement: React.FC = () => {
       const XLSX = await loadXLSX();
       if (!XLSX) return;
       
-      const rows = tests.map((t) => ({
-        Name: t.name,
-        Category: t.category,
-        Price: t.price,
-        Fields: t.fields?.map((f) => `${f.name} (${f.unit || ""})`).join(", "),
-        "Normal Ranges": t.fields?.map((f) => f.normalRange || "").join(", "),
-      }));
+      // Flatten: one row per parameter. First row for a test carries Test info; subsequent rows leave those cells blank
+      const rows: any[] = [];
+      tests.forEach((t) => {
+        const fields = t.fields || [];
+        if (fields.length === 0) {
+          rows.push({
+            "Test Name": t.name,
+            Parameter: "",
+            Unit: "",
+            "Normal Range": "",
+            Category: t.category,
+            Price: t.price,
+          });
+          return;
+        }
+        fields.forEach((f, idx) => {
+          rows.push({
+            "Test Name": idx === 0 ? t.name : "",
+            Parameter: f.name,
+            Unit: (f as any).unit || "",
+            "Normal Range": (f as any).normalRange || "",
+            Category: idx === 0 ? t.category : "",
+            Price: idx === 0 ? t.price : "",
+          });
+        });
+      });
 
+      // Debug: verify full export size
+      console.log('Export rows:', rows.length, 'Total tests merged:', tests.length);
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Tests");
@@ -304,6 +355,7 @@ const TestManagement: React.FC = () => {
 
       // Expect columns: Name, Category, Price, Description, Fields
       let count = 0;
+      const unitsToPersist = new Set<string>();
       for (const r of rows) {
         const name = String(r.Name || "").trim();
         const category = String(r.Category || "").trim();
@@ -323,11 +375,17 @@ const TestManagement: React.FC = () => {
             const unit = funit?.trim() || "";
             const normalRange = frange?.trim() || "";
             fields.push({ id: crypto.randomUUID(), name: fname.trim(), type, unit, normalRange });
+            if (unit) unitsToPersist.add(unit);
           }
         }
         const rawPayload: Omit<TestData, "id"> = { name, category, price, description, fields };
         await addMut.mutateAsync(cleanTestPayload(rawPayload));
         count++;
+      }
+      // Persist units encountered in import
+      if (unitsToPersist.size) {
+        await Promise.all(Array.from(unitsToPersist).map((u) => addUnit(u)));
+        await refetchUnits();
       }
       toast.success(`${count} tests imported`);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -498,6 +556,34 @@ const TestManagement: React.FC = () => {
           <Button onClick={openAdd}>
             <Plus className="w-4 h-4 mr-2" /> Add Test
           </Button>
+          <Button 
+            variant="secondary"
+            onClick={async () => {
+              try {
+                const count = await reloadDefaultTests();
+                toast.success(`Reloaded ${count} default tests`);
+                queryClient.invalidateQueries({ queryKey: ["tests"] });
+              } catch (e) {
+                toast.error("Failed to reload defaults");
+              }
+            }}
+          >
+            <Loader2 className="w-4 h-4 mr-2" /> Reload Tests
+          </Button>
+          <Button 
+            variant="secondary"
+            onClick={async () => {
+              try {
+                const count = await reloadDefaultUnits();
+                toast.success(`Reloaded ${count} units`);
+                await refetchUnits();
+              } catch (e) {
+                toast.error("Failed to reload units");
+              }
+            }}
+          >
+            <Loader2 className="w-4 h-4 mr-2" /> Reload Units
+          </Button>
         </div>
       </div>
 
@@ -590,22 +676,27 @@ const TestManagement: React.FC = () => {
                           >
                             <Printer className="w-4 h-4 mr-1" /> Print
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => openEdit(t)}
-                            className="text-yellow-600 hover:bg-yellow-50"
-                          >
-                            <Pencil className="w-4 h-4 mr-1" /> Edit
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            onClick={() => delMut.mutate(t.id!)}
-                            className="text-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" /> Delete
-                          </Button>
+                          {/* Hide edit/delete for protected tests */}
+                          {!t.protected && (
+                            <>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => openEdit(t)}
+                                className="text-yellow-600 hover:bg-yellow-50"
+                              >
+                                <Pencil className="w-4 h-4 mr-1" /> Edit
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                onClick={() => delMut.mutate(t.id!)}
+                                className="text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4 mr-1" /> Delete
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -716,9 +807,38 @@ const TestManagement: React.FC = () => {
                         </div>
                         <div className="col-span-2">
                           <Label>Unit</Label>
-                          <Input value={f.unit ?? ""} onChange={(e) => setEditing((p) => {
-                            if (!p) return p; const fields = [...p.data.fields]; fields[idx] = { ...fields[idx], unit: e.target.value }; return { ...p, data: { ...p.data, fields } };
-                          })} />
+                          <Select 
+                            value={(f.unit ?? "").trim()}
+                            onValueChange={async (val) => {
+                              if (val === "__add__") {
+                                const name = window.prompt("Enter new unit name (e.g., mg/dL):", "");
+                                const unitName = (name || "").trim();
+                                if (unitName) {
+                                  try {
+                                    await addUnit(unitName);
+                                    await refetchUnits();
+                                    setEditing((p) => {
+                                      if (!p) return p; const fields = [...p.data.fields]; fields[idx] = { ...fields[idx], unit: unitName }; return { ...p, data: { ...p.data, fields } };
+                                    });
+                                  } catch (e) {
+                                    toast.error("Failed to add unit");
+                                  }
+                                }
+                              } else {
+                                setEditing((p) => {
+                                  if (!p) return p; const fields = [...p.data.fields]; fields[idx] = { ...fields[idx], unit: val }; return { ...p, data: { ...p.data, fields } };
+                                });
+                              }
+                            }}
+                          >
+                            <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
+                            <SelectContent>
+                              {(units || []).map((u) => (
+                                <SelectItem key={u.id || u.name} value={u.name}>{u.name}</SelectItem>
+                              ))}
+                              <SelectItem value="__add__">+ Add new unit…</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="col-span-4">
                           <Label>Normal Range</Label>

@@ -237,7 +237,7 @@ const Patients = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Registration Date</TableHead>
-                    <TableHead>Tests</TableHead>
+                    <TableHead>Test Names</TableHead>
                     <TableHead>Last Visit</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
                     <TableHead>Status</TableHead>
@@ -273,49 +273,80 @@ const Patients = () => {
                         </TableCell>
                         <TableCell>
                           {patient.tests?.length ? (
-                            <div className="flex flex-col gap-1 max-w-[250px]">
-                              <div className="flex items-center gap-2">
-                                <TestTube2 className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="text-sm font-medium">{patient.tests.length} Tests</span>
-                              </div>
-                              <div className="flex flex-wrap gap-1.5 mt-1">
-                                {patient.tests.map((testRef: TestReference, i: number) => {
-                                  // Handle both string (test ID) and object test references
-                                  const testId = typeof testRef === 'string' ? testRef : testRef.id;
-                                  const test = tests[testId];
+                            <div className="flex flex-wrap gap-1.5 max-w-[300px]">
+                              {patient.tests.map((testRef: TestReference, i: number) => {
+                                // Handle both string (test ID) and object test references
+                                const testId = typeof testRef === 'string' ? testRef : testRef.id;
+                                const test = tests[testId];
+                                
+                                // Get name from testRef if it's an object, otherwise use test data or fallback
+                                const displayName = (typeof testRef === 'object' && testRef.name) 
+                                  ? testRef.name 
+                                  : test?.name || `Test ${i + 1}`;
+                                
+                                // Extract short name for display (e.g., "CBC" from "Complete Blood Count (CBC)")
+                                const getShortName = (name: string) => {
+                                  // Look for text in parentheses first
+                                  const parenthesesMatch = name.match(/\(([^)]+)\)/);
+                                  if (parenthesesMatch) {
+                                    return parenthesesMatch[1];
+                                  }
                                   
-                                  // Get name and code from testRef if it's an object, otherwise use test data or fallback
-                                  const displayName = (typeof testRef === 'object' && testRef.name) 
-                                    ? testRef.name 
-                                    : test?.name || `Test ${i + 1}`;
+                                  // Common abbreviations mapping
+                                  const abbreviations: Record<string, string> = {
+                                    'Complete Blood Count': 'CBC',
+                                    'Liver Function Test': 'LFT',
+                                    'Kidney Function Test': 'KFT',
+                                    'Renal Function Test': 'RFT',
+                                    'Thyroid Function Test': 'TFT',
+                                    'Lipid Profile': 'Lipid',
+                                    'Blood Sugar': 'Sugar',
+                                    'Differential Leukocyte Count': 'DLC',
+                                    'Erythrocyte Sedimentation Rate': 'ESR',
+                                    'Absolute Eosinophil Count': 'AEC'
+                                  };
                                   
-                                  const displayCode = (typeof testRef === 'object' && testRef.code) 
-                                    ? testRef.code 
-                                    : test?.code || `T${testId.substring(0, 4).toUpperCase()}`;
-                                  return (
-                                    <div key={i} className="group relative">
-                                      <Badge 
-                                        variant="secondary" 
-                                        className="text-xs font-mono py-1 px-1.5 h-auto hover:bg-secondary/80 transition-colors"
-                                      >
-                                        <span className="font-semibold">{displayCode}</span>
-                                      </Badge>
-                                      <div className="absolute z-50 hidden group-hover:block bg-popover text-popover-foreground text-xs p-2 rounded-md shadow-lg border max-w-[200px] break-words">
-                                        <div className="font-semibold">{displayName}</div>
-                                        {test?.code && <div className="text-muted-foreground">Code: {test.code}</div>}
-                                        {test?.price !== undefined && (
-                                          <div className="mt-1 text-green-600">
-                                            ₹{test?.price.toLocaleString()}
-                                          </div>
-                                        )}
-                                      </div>
+                                  // Check for exact matches
+                                  for (const [full, abbr] of Object.entries(abbreviations)) {
+                                    if (name.toLowerCase().includes(full.toLowerCase())) {
+                                      return abbr;
+                                    }
+                                  }
+                                  
+                                  // If no abbreviation found, use first 3-4 words or characters
+                                  const words = name.split(' ');
+                                  if (words.length > 1) {
+                                    return words.slice(0, Math.min(2, words.length)).join(' ');
+                                  }
+                                  
+                                  return name.length > 8 ? name.substring(0, 8) + '...' : name;
+                                };
+                                
+                                const shortName = getShortName(displayName);
+                                
+                                return (
+                                  <div key={i} className="group relative">
+                                    <Badge 
+                                      variant="secondary" 
+                                      className="text-xs py-1 px-2 h-auto hover:bg-secondary/80 transition-colors"
+                                    >
+                                      <span className="font-medium">{shortName}</span>
+                                    </Badge>
+                                    <div className="absolute z-50 hidden group-hover:block bg-popover text-popover-foreground text-xs p-2 rounded-md shadow-lg border max-w-[250px] break-words bottom-full mb-1 left-1/2 transform -translate-x-1/2">
+                                      <div className="font-semibold">{displayName}</div>
+                                      {test?.code && <div className="text-muted-foreground mt-1">Code: {test.code}</div>}
+                                      {test?.price !== undefined && (
+                                        <div className="mt-1 text-green-600 font-medium">
+                                          ₹{test?.price.toLocaleString()}
+                                        </div>
+                                      )}
                                     </div>
-                                  );
-                                })}
-                              </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
-                            <span className="text-muted-foreground text-sm">No tests assigned</span>
+                            <span className="text-muted-foreground text-sm">-</span>
                           )}
                         </TableCell>
                         <TableCell>{format(patient.lastVisit, 'dd MMM yyyy')}</TableCell>
@@ -342,7 +373,7 @@ const Patients = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center">
+                      <TableCell colSpan={9} className="h-24 text-center">
                         No patients found
                       </TableCell>
                     </TableRow>

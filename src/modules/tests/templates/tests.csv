@@ -1,0 +1,7 @@
+# id,name,category,department,sampleType,container,price,testFormat,parameters
+# testFormat: Single|Multiple|Heading
+# parameters: for Multiple, provide semicolon-separated param specs. Each spec is label|type|unit|refRange|options (options for select as a pipe-separated list inside brackets)
+# Example rows:
+# test-lipid-tc,TOTAL CHOLESTEROL,Biochemistry,PATHOLOGY,Serum,Red Top,200,Single,
+# test-lipid,LIpid Profile,Biochemistry,PATHOLOGY,Serum,Red Top,800,Multiple,Total Cholesterol|number|mg/dL|<200;Triglycerides|number|mg/dL|<150;HDL Cholesterol|number|mg/dL|>40;LDL Cholesterol|number|mg/dL|<130;VLDL Cholesterol|number|mg/dL|5-40;TC/HDL Ratio|number||<5.0;LDL/HDL Ratio|number||<3.5
+# test-dengue,Dengue Panel (NS1, IgM, IgG),SeroLOGY & INFECTIOUS DISEASE,PATHOLOGY,Blood,Red Top,1800,Multiple,DENGUE NS1 ANTIGEN|select||Negative|[Negative,Positive];DENGUE ANTIBODIES IgM|select||Negative|[Negative,Positive];DENGUE ANTIBODIES IgG|select||Negative|[Negative,Positive]
