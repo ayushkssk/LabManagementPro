@@ -1,6 +1,7 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 
@@ -12,6 +13,8 @@ interface TestParameter {
   value?: string;
   group?: string;
   refRange?: string;
+  type?: string;
+  options?: string[];
 }
 
 interface TestParameterTableProps {
@@ -101,12 +104,30 @@ export const TestParameterTable: React.FC<TestParameterTableProps> = ({
                 </TableCell>
                 <TableCell className="p-0.5 border-r border-gray-100">
                   <div className="px-1">
-                    <Input
-                      type="text"
-                      value={param.value || ''}
-                      onChange={(e) => onParameterChange(param.id, 'value', e.target.value)}
-                      className="h-5 w-full text-[10px] px-2 py-0 border border-gray-200 rounded-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                    />
+                    {param.type === 'select' && param.options ? (
+                      <Select
+                        value={param.value || ''}
+                        onValueChange={(value) => onParameterChange(param.id, 'value', value)}
+                      >
+                        <SelectTrigger className="h-5 w-full text-[10px] px-2 py-0 border border-gray-200 rounded-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {param.options.map((option) => (
+                            <SelectItem key={option} value={option} className="text-[10px]">
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        type="text"
+                        value={param.value || ''}
+                        onChange={(e) => onParameterChange(param.id, 'value', e.target.value)}
+                        className="h-5 w-full text-[10px] px-2 py-0 border border-gray-200 rounded-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                      />
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="px-2 py-0.5 border-r border-gray-100 text-left text-gray-700">{param.unit}</TableCell>

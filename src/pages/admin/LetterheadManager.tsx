@@ -86,15 +86,14 @@ const LetterheadManager: React.FC = () => {
     let newTemplate: LetterheadTemplate;
     
     if (templateType === 'pdf') {
-      // PDF template using letterheadgreen.pdf
+      // Simple template without PDF background
       newTemplate = {
         id: `lh_${Date.now()}`,
-        name: 'Green Letterhead PDF',
-        description: 'Professional green letterhead in PDF format',
+        name: 'Simple Letterhead',
+        description: 'Clean letterhead without background',
         type,
         isDefault: false,
-        isPdf: true,
-        pdfUrl: '/letterheadgreen.pdf',
+        isPdf: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         pageSize: 'A4',
@@ -113,22 +112,21 @@ const LetterheadManager: React.FC = () => {
         },
         content: [],
         settings: {
-          // Default settings for PDF templates
           showPageNumbers: false,
           pageNumberFormat: 'Page {current} of {total}',
-          printBackground: true,
+          printBackground: false,
           scale: 1,
           fontFamily: 'Arial, sans-serif'
         },
         styles: {
-          primaryColor: '#10b981',
-          secondaryColor: '#065f46',
+          primaryColor: '#000000',
+          secondaryColor: '#333333',
           fontFamily: 'Arial, sans-serif',
           baseFontSize: '12px',
           lineHeight: 1.5,
-          textColor: '#1f2937',
-          linkColor: '#2563eb',
-          borderColor: '#e5e7eb'
+          textColor: '#000000',
+          linkColor: '#000000',
+          borderColor: '#000000'
         },
         margins: {
           top: 20,

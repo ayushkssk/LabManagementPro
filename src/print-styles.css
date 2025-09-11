@@ -1,14 +1,26 @@
 /* Professional A4 print styles */
 @media print {
+  /* Print settings */
+  @page {
+    size: A4;
+    margin: 10mm;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
   /* Hide everything by default when printing */
   body * {
     visibility: hidden;
+    background: transparent !important;
   }
 
   /* Only show the print container and its children */
   .print-container,
   .print-container * {
     visibility: visible;
+    background: transparent !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Size and position the print container for A4 */
@@ -19,7 +31,8 @@
     margin: 0;
     padding: 10mm;
     box-sizing: border-box;
-    background: #fff;
+    background: transparent !important;
+    color: #000 !important;
   }
 
   /* Header block should not force a new page */
@@ -40,11 +53,6 @@
     page-break-before: always;
   }
 
-  /* Page setup */
-  @page {
-    size: A4;
-    margin: 10mm;
-  }
 
   /* Ensure tables print with crisp borders */
   .print-container table,
@@ -53,10 +61,11 @@
     border: 1px solid #000 !important;
   }
 
-  /* Try to preserve header background color on printers that support it */
+  /* Table header styles */
   .print-container thead {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    background: #eee !important;
+    border: 1px solid #000 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

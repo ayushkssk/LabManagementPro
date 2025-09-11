@@ -628,11 +628,6 @@ const PatientRegistration: React.FC = () => {
         </style>
       </head>
       <body>
-        <!-- PDF Letterhead Background -->
-        <div class="pdf-background">
-          <iframe src="/letterheadgreen.pdf" title="Letterhead Background"></iframe>
-        </div>
-
         <!-- Watermark -->
         <div class="watermark" style="display: none;">${hospital.name}</div>
 

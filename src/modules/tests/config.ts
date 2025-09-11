@@ -10,10 +10,12 @@ export const sampleTests: SampleTestMeta[] = [
   { id: 'test-7', name: 'Coagulation Profile', category: 'Hematology', sampleType: 'Blood', container: 'Blue Top', instructions: 'Fasting not required' },
   { id: 'test-8', name: 'Blood Sugar Tests', category: 'Biochemistry', sampleType: 'Blood', container: 'Gray Top', instructions: 'Fasting required (8-12 hours)' },
   { id: 'test-10', name: 'Liver Function Test (LFT)', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting required (8-12 hours)' },
-  { id: 'test-11', name: 'Renal Function Test (RFT)', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting preferred' },
-  { id: 'test-12', name: 'Kidney Function Test (KFT)', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting preferred' },
   { id: 'test-37', name: 'Male Hormone Profile', category: 'Hormone', sampleType: 'Blood', container: 'Red Top', instructions: 'Morning sample preferred' },
   { id: 'test-22', name: 'VDRL (Syphilis)', category: 'Serology', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-serum-electrolyte', name: 'Serum Electrolyte', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-18', name: 'Widal Test (Typhoid)', category: 'SeroLOGY & INFECTIOUS DISEASE', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-h-pylori', name: 'H Pylori', category: 'SeroLOGY & INFECTIOUS DISEASE', sampleType: 'Stool', container: 'Stool Container', instructions: 'Fresh stool sample required' },
+  { id: 'test-kft-rft', name: 'KFT/RFT (Kidney Function Test)', category: 'BIOCHEMISTRY', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting preferred' },
 ];
 
 export const testConfigurations: TestConfigurationMap = {
@@ -204,6 +206,39 @@ export const testConfigurations: TestConfigurationMap = {
       { id: 'sample_time', label: 'Sample Collection Time', type: 'datetime-local', required: false },
     ],
   },
+  serum_electrolyte: {
+    fields: [
+      { id: 'sodium', label: 'Sodium (Na+)', type: 'number', unit: 'mmol/L', refRange: '136-150', required: true },
+      { id: 'potassium', label: 'Potassium (K+)', type: 'number', unit: 'mmol/L', refRange: '3.5-5.1', required: true },
+      { id: 'chloride', label: 'Chloride (Cl-)', type: 'number', unit: 'mmol/L', refRange: '98-107', required: true },
+    ],
+  },
+  widal_test: {
+    fields: [
+      { id: 's_typhi_o', label: 'S. Typhi O', type: 'select', unit: 'Titer', refRange: '<1:80', options: ['NR', '1:20', '1:40', '1:80', '1:160', '1:320'], required: true },
+      { id: 's_typhi_h', label: 'S. Typhi H', type: 'select', unit: 'Titer', refRange: '<1:160', options: ['NR', '1:20', '1:40', '1:80', '1:160', '1:320'], required: true },
+      { id: 's_paratyphi_ah', label: 'S. Paratyphi AH', type: 'select', unit: 'Titer', refRange: '<1:80', options: ['NR', '1:20', '1:40', '1:80', '1:160', '1:320'], required: true },
+      { id: 's_paratyphi_bh', label: 'S. Paratyphi BH', type: 'select', unit: 'Titer', refRange: '<1:80', options: ['NR', '1:20', '1:40', '1:80', '1:160', '1:320'], required: true },
+    ],
+  },
+  h_pylori: {
+    fields: [
+      { id: 'h_pylori_antigen', label: 'Helicobacter Pylori Antigen', type: 'select', unit: '', refRange: 'NEGATIVE', options: ['NEGATIVE', 'POSITIVE'], required: true },
+    ],
+  },
+  kft_rft: {
+    fields: [
+      { id: 'blood_urea', label: 'Blood Urea', type: 'number', unit: 'mg/dl', refRange: '21-40', required: true },
+      { id: 'serum_creatinine', label: 'Serum Creatinine', type: 'number', unit: 'mg/dl', refRange: '0.6-1.1', required: true },
+      { id: 'uric_acid', label: 'Uric Acid', type: 'number', unit: 'mg/dl', refRange: '2.4-5.7', required: true },
+      { id: 'sodium', label: 'Sodium (Na+)', type: 'number', unit: 'mmol/L', refRange: '136-150', required: true },
+      { id: 'potassium', label: 'Potassium', type: 'number', unit: 'mmol/L', refRange: '3.7-5.5', required: true },
+      { id: 'chloride', label: 'Chloride (Cl-)', type: 'number', unit: 'mmol/L', refRange: '98-107', required: true },
+      { id: 'bun', label: 'Blood Urea Nitrogen (BUN)', type: 'number', unit: 'mg/dl', refRange: '6-20', required: true },
+      { id: 'bun_creatinine_ratio', label: 'BUN/Creatinine Ratio', type: 'number', unit: 'RATIO', refRange: '10-20', required: true },
+      { id: 'calcium', label: 'Calcium', type: 'number', unit: 'mg/dl', refRange: '8.6-10.3', required: true },
+    ],
+  },
 };
 
 export const testConfigByTestId: Record<string, keyof typeof testConfigurations> = {
@@ -216,8 +251,10 @@ export const testConfigByTestId: Record<string, keyof typeof testConfigurations>
   'test-7': 'coagulation_profile',
   'test-8': 'blood_glucose',
   'test-10': 'liver_function',
-  'test-11': 'renal_function',
-  'test-12': 'kidney_function',
   'test-37': 'male_hormone_profile',
   'test-22': 'vdrl',
+  'test-serum-electrolyte': 'serum_electrolyte',
+  'test-18': 'widal_test',
+  'test-h-pylori': 'h_pylori',
+  'test-kft-rft': 'kft_rft',
 };

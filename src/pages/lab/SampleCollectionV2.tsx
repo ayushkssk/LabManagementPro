@@ -5,12 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2, ArrowLeft, CheckCircle, ClipboardList, XCircle, Printer } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { getPatient, PatientData } from '@/services/patientService';
-import { sampleTests as extSampleTests, testConfigurations as extTestConfigs, testConfigByTestId as extConfigMap } from '@/modules/tests/config';
+import { testConfigurations, testConfigByTestId, sampleTests as externalSampleTests } from '../../modules/tests/config';
 import { TestParameterTable } from '@/components/tests/TestParameterTable';
 import { demoTests } from '@/data/demoData';
 import { Letterhead, letterheadStyles } from '@/components/letterhead/Letterhead';
 import { useHospitalLetterhead } from '@/hooks/useHospitalLetterhead';
 import { useReactToPrint } from 'react-to-print';
+import QRCode from 'react-qr-code';
+import { labReportService, LabReport, LabReportParameter } from '@/services/labReportService';
 
 // Types
 interface Sample {
@@ -23,6 +25,7 @@ interface Sample {
   collectedAt?: Date;
   collectedBy?: string;
   notes?: string;
+  parameters?: { [key: string]: { value: string; notes?: string } };
 }
 
 interface BaseField {
@@ -58,10 +61,12 @@ interface TableParam {
   normalRange: string;
   value?: string;
   notes?: string;
+  type?: string;
+  options?: string[];
 }
 
 // Use shared tests meta from reusable module
-const sampleTests = extSampleTests;
+const sampleTests = externalSampleTests;
 
 const SampleCollectionV2: React.FC = () => {
   // Navigation and routing
@@ -81,6 +86,7 @@ const SampleCollectionV2: React.FC = () => {
   const [printWithLetterhead, setPrintWithLetterhead] = useState(false);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [currentTest, setCurrentTest] = useState<Sample | null>(null);
+  const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const { hospital: hospitalData } = useHospitalLetterhead();
 
   // Derived state
@@ -94,11 +100,11 @@ const SampleCollectionV2: React.FC = () => {
     if (!selectedTestId) return;
     
     // Get the test configuration key from the mapping
-    const configKey = extConfigMap[selectedTestId as keyof typeof extConfigMap];
+    const configKey = testConfigByTestId[selectedTestId as keyof typeof testConfigByTestId];
     if (!configKey) return;
     
     // Get the configuration for this test
-    const config = extTestConfigs[configKey as keyof typeof extTestConfigs];
+    const config = testConfigurations[configKey as keyof typeof testConfigurations];
     if (!config) return;
     
     // Convert the configuration to table parameters
@@ -135,19 +141,21 @@ const SampleCollectionV2: React.FC = () => {
         // Build samples from patient's tests
         const selectedIds = patientData.tests || [];
         const orderedSamples = selectedIds.map(testId => {
-          const rich = sampleTests.find(t => t.id === testId);
-          if (rich) {
+          // First try to find in extSampleTests (modules/tests/config.ts)
+          const testMeta = sampleTests.find(t => t.id === testId);
+          if (testMeta) {
             return {
-              testId: rich.id,
-              testName: rich.name,
-              sampleType: rich.sampleType,
-              container: rich.container,
-              instructions: rich.instructions,
+              testId: testMeta.id,
+              testName: testMeta.name,
+              sampleType: testMeta.sampleType,
+              container: testMeta.container,
+              instructions: testMeta.instructions,
               collected: false,
               notes: ''
             };
           }
           
+          // Then try demoTests as fallback
           const fallback = demoTests.find(t => t.id === testId);
           return {
             testId,
@@ -187,7 +195,29 @@ const SampleCollectionV2: React.FC = () => {
     
     // Reset parameters when changing tests
     setParameters({});
-  }, []);
+    
+    // Initialize parameters for the selected test
+    const configKey = testConfigByTestId[testId];
+    if (!testConfigByTestId[testId] || !testConfigurations[testConfigByTestId[testId]]) {
+      const testConfig = testConfigurations[configKey];
+      const initialParams: { [key: string]: TableParam } = {};
+      
+      testConfig.fields.forEach(field => {
+        initialParams[field.id] = {
+          id: field.id,
+          name: field.label,
+          unit: field.unit || '',
+          normalRange: field.refRange || '',
+          value: '',
+          notes: '',
+          type: field.type,
+          options: field.type === 'select' ? field.options : undefined
+        };
+      });
+      
+      setParameters(initialParams);
+    }
+  }, [selectedTestId]);
 
   // Toggle sample collected status
   const toggleSampleCollected = useCallback((testId: string) => {
@@ -199,7 +229,14 @@ const SampleCollectionV2: React.FC = () => {
               collected: !sample.collected,
               collectedAt: sample.collected ? undefined : new Date(),
               collectedBy: sample.collected ? undefined : technicianName || 'System',
-              notes: !sample.collected && !sample.notes ? 'Sample collected' : sample.notes
+              notes: !sample.collected && !sample.notes ? 'Sample collected' : sample.notes,
+              // Save current parameters when marking as collected
+              parameters: !sample.collected ? Object.fromEntries(
+                Object.entries(parameters).map(([key, param]) => [
+                  key, 
+                  { value: param.value || '', notes: param.notes }
+                ])
+              ) : sample.parameters
             }
           : sample
       );
@@ -222,7 +259,13 @@ const SampleCollectionV2: React.FC = () => {
         collected: true,
         collectedAt: new Date(),
         collectedBy: technicianName || 'System',
-        notes: 'Sample collected'
+        notes: 'Sample collected',
+        parameters: Object.fromEntries(
+          Object.entries(parameters).map(([key, param]) => [
+            key, 
+            { value: param.value || '', notes: param.notes }
+          ])
+        )
       });
       
       toast({
@@ -231,7 +274,7 @@ const SampleCollectionV2: React.FC = () => {
         variant: 'default',
       });
     }
-  }, [technicianName, samples, selectedTest]);
+  }, [samples, selectedTest, technicianName, parameters]);
 
   // Handle form submission
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -273,107 +316,169 @@ const SampleCollectionV2: React.FC = () => {
   // Add a ref for the content to be printed
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Handle print with custom styles
+  // Handle print with simplified approach
   const handlePrint = useReactToPrint({
-    content: () => {
-      try {
-        // Clone the print content to ensure it's fresh
-        const content = printRef.current;
-        if (!content) {
-          console.error('Print content not found');
-          return null;
-        }
-        
-        // Create a new div to hold the print content
-        const printContainer = document.createElement('div');
-        printContainer.className = 'temp-print-container';
-        printContainer.style.visibility = 'hidden';
-        
-        // Clone the content of the print dialog
-        const printContent = document.querySelector('.print-dialog-content');
-        if (!printContent) {
-          console.error('Print dialog content not found');
-          return null;
-        }
-        
-        printContainer.innerHTML = printContent.innerHTML;
-        document.body.appendChild(printContainer);
-        
-        return printContainer;
-      } catch (error) {
-        console.error('Error preparing print content:', error);
-        return null;
-      }
-    },
+    content: () => printRef.current,
+    documentTitle: `Lab Report - ${patient?.name || 'Patient'} - ${currentTest?.testName || 'Test'}`,
+    removeAfterPrint: false,
     pageStyle: `
       @page { 
         size: A4;
-        margin: 10mm;
-      }
-      body { 
+        margin: 8mm;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
-        background: white !important;
-        color: black !important;
-        font-family: Arial, sans-serif;
-        line-height: 1.5;
-      }
-      .print-content {
-        background: white !important;
-        color: black !important;
-        padding: 20px;
-      }
-      .print-header {
-        display: block !important;
-        text-align: center;
-        margin-bottom: 1.5rem;
       }
       @media print {
-        .print-header {
-          position: relative;
-          width: 100%;
-          margin: 0 auto;
-          padding: 0;
+        * {
+          background: transparent !important;
+          color: #000 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
-        .print-header img {
-          max-width: 100%;
-          height: auto;
+        body { 
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white !important;
+          color: #000 !important;
+          font-family: Arial, sans-serif !important;
+          font-size: 12px !important;
+          line-height: 1.4 !important;
         }
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 15px 0;
-      }
-      th, td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: left;
-      }
-      th {
-        background-color: #f5f5f5;
-      }
-      h1, h2, h3 {
-        color: #333;
+        .print-container {
+          width: 100% !important;
+          max-width: none !important;
+          margin: 0 !important;
+          padding: 10mm !important;
+          background: white !important;
+        }
+        table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          margin: 10px 0 !important;
+          page-break-inside: avoid !important;
+        }
+        th, td {
+          border: 1px solid #000 !important;
+          padding: 6px 8px !important;
+          text-align: left !important;
+          background: transparent !important;
+          font-size: 11px !important;
+        }
+        th {
+          background: #f0f0f0 !important;
+          font-weight: bold !important;
+        }
+        h1, h2, h3 {
+          color: #000 !important;
+          margin: 10px 0 !important;
+        }
+        .no-print, button, .print-hide {
+          display: none !important;
+        }
+        .letterhead {
+          background: transparent !important;
+        }
+        img {
+          max-width: 100% !important;
+          height: auto !important;
+          display: block !important;
+        }
       }
     `,
-    removeAfterPrint: true,
+    onBeforePrint: () => {
+      console.log('Preparing to print...');
+      return Promise.resolve();
+    },
     onAfterPrint: () => {
-      // Clean up any temporary elements
-      const tempElements = document.querySelectorAll('.temp-print-container');
-      tempElements.forEach(el => el.remove());
+      console.log('Print dialog closed');
       setShowPrintDialog(false);
+    },
+    onPrintError: (errorLocation, error) => {
+      console.error('Print error at:', errorLocation, error);
     }
   });
   
   // Function to handle the Save & Print action
-  const handleSaveAndPrint = useCallback((testId: string) => {
+  const handleSaveAndPrint = useCallback(async (testId: string) => {
     try {
+      console.log('=== SAVE & PRINT DEBUG START ===');
+      console.log('Save & Print clicked for test:', testId);
+      console.log('Current parameters state:', parameters);
+      console.log('Parameters keys:', Object.keys(parameters));
+      console.log('Parameters values:', Object.values(parameters).map(p => ({ value: p?.value, notes: p?.notes })));
+      
       const test = samples.find(s => s.testId === testId);
-      if (!test) {
-        console.error('Test not found');
+      if (!test || !patient) {
+        console.error('Test or patient not found', { test: !!test, patient: !!patient });
+        toast({
+          title: 'Error',
+          description: 'Test or patient information not found.',
+          variant: 'destructive',
+        });
         return;
       }
+
+      // Get test configuration for parameter details
+      const configKey = testConfigByTestId[testId];
+      const testConfig = configKey ? testConfigurations[configKey] : null;
+      
+      if (!testConfig) {
+        console.error('Test configuration not found for:', testId, 'Available configs:', Object.keys(testConfigurations));
+        console.error('Config mapping:', testConfigByTestId);
+        toast({
+          title: 'Error',
+          description: `Test configuration not found for ${testId}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      console.log('Test config found:', testConfig);
+      console.log('Parameters to process:', Object.keys(parameters).length);
+
+      // Convert parameters to lab report format - include all fields even if empty for now
+      const reportParameters: LabReportParameter[] = testConfig.fields
+        .map((field: any) => {
+          const param = parameters[field.id];
+          const value = param?.value || '';
+          const isAbnormal = value && field.refRange && !isValueInRange(value, field.refRange);
+          console.log(`Field ${field.id} (${field.label}): "${value}"`);
+          
+          return {
+            id: field.id,
+            label: field.label,
+            value: value,
+            unit: field.unit,
+            refRange: field.refRange,
+            isAbnormal,
+            notes: param?.notes
+          };
+        });
+
+      console.log('Report parameters created:', reportParameters.length);
+
+      // Prepare lab report data
+      const reportData = {
+        patientId: patient.id,
+        patientName: patient.name,
+        patientAge: patient.age.toString(),
+        patientGender: patient.gender,
+        testId: test.testId,
+        testName: test.testName,
+        parameters: reportParameters,
+        collectedAt: test.collectedAt || new Date(),
+        reportedAt: new Date(),
+        collectedBy: test.collectedBy || technicianName || 'System',
+        technicianName: technicianName || 'System',
+        status: 'completed' as const
+      };
+
+      console.log('About to save report data:', reportData);
+      
+      // Save to database
+      const reportId = await labReportService.saveLabReport(reportData);
+      console.log('Report saved with ID:', reportId);
+      setSavedReportId(reportId);
 
       // Update the current test with the latest data
       const updatedTest = {
@@ -381,10 +486,16 @@ const SampleCollectionV2: React.FC = () => {
         collected: true,
         collectedAt: test.collectedAt || new Date(),
         collectedBy: test.collectedBy || technicianName || 'System',
-        notes: test.notes || 'Sample collected'
+        notes: test.notes || 'Sample collected',
+        parameters: Object.fromEntries(
+          Object.entries(parameters).map(([key, param]) => [
+            key, 
+            { value: param.value || '', notes: param.notes }
+          ])
+        )
       };
-      
-      // Update the current test state
+
+      console.log('Updated test with parameters:', updatedTest);
       setCurrentTest(updatedTest);
       
       // Update the samples array to keep it in sync
@@ -393,133 +504,280 @@ const SampleCollectionV2: React.FC = () => {
           s.testId === test.testId ? updatedTest : s
         )
       );
-      
-      // Show the print dialog after a small delay to ensure state is updated
+
+      toast({
+        title: 'Report Saved',
+        description: 'Lab report has been saved to database successfully.',
+        variant: 'default',
+      });
+
+      console.log('About to show print dialog');
+      // Show print dialog after a brief delay to ensure state updates
       setTimeout(() => {
-        try {
-          setShowPrintDialog(true);
-        } catch (error) {
-          console.error('Error showing print dialog:', error);
-          // Optionally show an error message to the user
-          // You can use a toast notification here if you have one
-        }
+        console.log('Setting showPrintDialog to true');
+        setShowPrintDialog(true);
       }, 100);
     } catch (error) {
+      console.error('=== SAVE & PRINT ERROR ===');
       console.error('Error in save and print:', error);
-      // Optionally show an error message to the user
-      // You can use a toast notification here if you have one
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      toast({
+        title: 'Error',
+        description: `Failed to save lab report: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: 'destructive',
+      });
     }
-  }, [samples, technicianName]);
+    console.log('=== SAVE & PRINT DEBUG END ===');
+  }, [samples, technicianName, patient, parameters]);
   
   // Function to handle the print button in the dialog
   const handlePrintFromDialog = useCallback(() => {
+    console.log('Print button clicked');
+    if (!printRef.current) {
+      console.error('Print content not found');
+      return;
+    }
+    console.log('Triggering print...');
     try {
-      // Small delay to ensure the dialog is fully rendered
+      // Small delay to ensure DOM is ready
       setTimeout(() => {
-        try {
-          if (!printRef.current) {
-            console.error('Print content not found');
-            return;
-          }
-          handlePrint();
-        } catch (error) {
-          console.error('Error during printing:', error);
-          // Optionally show an error message to the user
-        }
+        handlePrint();
       }, 100);
     } catch (error) {
-      console.error('Error in print dialog:', error);
-      // Optionally show an error message to the user
+      console.error('Print error:', error);
     }
   }, [handlePrint]);
 
-  // Get test configurations from the external module
-  const testConfigurations = extTestConfigs;
+  // Test configurations are imported directly
+
+  // Helper function to check if value is in range
+  const isValueInRange = (value: string, range: string): boolean => {
+    if (!value || !range) return true;
+    
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return true;
+    
+    // Handle ranges like "11.0-16.0", "40-50", etc.
+    const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+    if (rangeMatch) {
+      const min = parseFloat(rangeMatch[1]);
+      const max = parseFloat(rangeMatch[2]);
+      return numValue >= min && numValue <= max;
+    }
+    
+    return true;
+  };
   
   // Print dialog component
   const PrintDialog = () => {
     if (!showPrintDialog || !currentTest) return null;
 
-    // Get the current test configuration
-    const testConfig = testConfigurations[currentTest.testId as keyof typeof testConfigurations];
-    const testParameters = parameters;
+    // Get the current test configuration using the mapping
+    const configMap = testConfigByTestId;
+    const configKey = configMap[currentTest.testId];
+    const testConfig = configKey ? testConfigurations[configKey] : null;
+    
+    // Get the actual collected test data from samples array
+    const collectedTest = samples.find(s => s.testId === currentTest.testId);
+    const testParameters = collectedTest?.parameters || parameters;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
-          <div className="p-4 border-b flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Print Test Report</h3>
-            <button 
-              onClick={() => setShowPrintDialog(false)}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <XCircle className="h-6 w-6" />
-            </button>
-          </div>
-          <div className="p-6 overflow-auto flex-1 print-dialog-content">
-            <div ref={printRef} className="bg-white p-6 print:p-0">
-              <div className="print-header mb-6">
-                <img 
-                  src="/letetrheadheader.png" 
-                  alt="Hospital Letterhead" 
-                  className="w-full h-auto max-h-32 object-contain print:max-h-40 print:mb-4"
-                />
-              </div>
-              <Letterhead hospital={hospitalData}>
-                <div className="space-y-6">
-                  <div className="text-center mb-6">
-                    <h1 className="text-2xl font-bold">Laboratory Test Report</h1>
-                    <p className="text-sm text-gray-600">Date: {new Date().toLocaleDateString()}</p>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div ref={printRef} className="print-container">
+            <style>{`
+              @media print {
+                @page {
+                  size: A4;
+                  margin: 0.5in;
+                }
+                .print-container {
+                  width: 100% !important;
+                  max-width: none !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  box-shadow: none !important;
+                  border-radius: 0 !important;
+                }
+                .no-print {
+                  display: none !important;
+                }
+                .print-content {
+                  font-size: 11px !important;
+                  line-height: 1.3 !important;
+                  page-break-inside: avoid;
+                }
+                .print-header img {
+                  max-height: 80px !important;
+                  width: auto !important;
+                }
+                .print-table {
+                  font-size: 10px !important;
+                  border-collapse: collapse !important;
+                  width: 100% !important;
+                  margin: 8px 0 !important;
+                }
+                .print-table th,
+                .print-table td {
+                  padding: 4px 6px !important;
+                  border: 1px solid #333 !important;
+                }
+                .print-footer {
+                  margin-top: 12px !important;
+                  font-size: 9px !important;
+                }
+                .print-signatures {
+                  margin-top: 16px !important;
+                  font-size: 10px !important;
+                }
+                .print-notes {
+                  margin-top: 8px !important;
+                  font-size: 9px !important;
+                  padding: 6px !important;
+                }
+                .qr-code {
+                  width: 50px !important;
+                  height: 50px !important;
+                }
+                .patient-info {
+                  font-size: 10px !important;
+                  margin-bottom: 8px !important;
+                }
+                .test-title {
+                  font-size: 12px !important;
+                  margin: 8px 0 !important;
+                  text-align: center !important;
+                  font-weight: bold !important;
+                }
+              }
+            `}</style>
+            <div className="p-6 no-print">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="float-right"
+                onClick={() => setShowPrintDialog(false)}
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                {/* Hospital Header */}
+                <div className="text-center border-b-2 border-blue-600 pb-4 mb-6">
+                  <div className="w-full mb-4">
+                    <img 
+                      src="/letetrheadheader.png" 
+                      alt="Hospital Letterhead" 
+                      className="w-full h-auto"
+                    />
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <h3 className="font-semibold">Patient Details</h3>
-                      <p>Name: {patient?.name}</p>
-                      <p>Age: {patient?.age} {patient?.gender}</p>
-                      <p>ID: {patient?.id}</p>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Test Information</h3>
-                      <p>Test: {currentTest.testName}</p>
-                      <p>Collected By: {currentTest.collectedBy}</p>
-                      <p>Collected At: {currentTest.collectedAt?.toLocaleString()}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="border-t border-b py-4 my-4">
-                    <h3 className="font-semibold mb-2">Test Results</h3>
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="border p-2 text-left">Parameter</th>
-                          <th className="border p-2 text-left">Result</th>
-                          <th className="border p-2 text-left">Unit</th>
-                          <th className="border p-2 text-left">Reference Range</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testConfig?.fields?.map((field: any) => {
-                          const param = Object.values(testParameters).find(p => p.id === field.id);
-                          return (
-                            <tr key={field.id} className="border-b">
-                              <td className="border p-2">{field.label}</td>
-                              <td className="border p-2">{param?.value || '-'}</td>
-                              <td className="border p-2">{field.unit || '-'}</td>
-                              <td className="border p-2">{field.refRange || '-'}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  <div className="mt-6 text-sm text-gray-600">
-                    <p>Notes: {currentTest.notes || 'No additional notes'}</p>
-                    <p className="mt-4">This is a computer-generated report and does not require a signature.</p>
+                  <div className="bg-blue-600 text-white py-2 px-4 rounded">
+                    <h2 className="text-lg font-bold tracking-wider">REPORT</h2>
                   </div>
                 </div>
-              </Letterhead>
+
+                {/* Patient Information */}
+                <div className="grid grid-cols-3 gap-6 mb-6 text-sm">
+                  <div className="space-y-1">
+                    <p><span className="font-semibold">Name:</span> {patient?.name || 'N/A'}</p>
+                    <p><span className="font-semibold">Age:</span> {patient?.age || 'N/A'} Year</p>
+                    <p><span className="font-semibold">Referred By:</span> {'Dr. SWATI HOSPITAL'}</p>
+                  </div>
+                  <div className="flex flex-col items-center justify-start">
+                    <div>
+                      <QRCode
+                        value={`https://swatihospital.com/verify-report/${currentTest?.testId || 'unknown'}-${Date.now()}`}
+                        size={60}
+                        level="M"
+                      />
+                    </div>
+                    <p className="text-xs font-semibold text-center">SCAN QR FOR VERIFICATION</p>
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <p><span className="font-semibold">Sex:</span> {patient?.gender || 'N/A'}</p>
+                    <p><span className="font-semibold">Received On:</span> {currentTest?.collectedAt ? new Date(currentTest.collectedAt).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')}</p>
+                    <p><span className="font-semibold">Reported On:</span> {new Date().toLocaleDateString('en-GB')}</p>
+                  </div>
+                </div>
+
+                {/* Test Name */}
+                <div className="text-center mb-4">
+                  <h3 className="text-lg font-bold text-gray-800">{currentTest.testName?.toUpperCase() || 'LABORATORY TEST'}</h3>
+                </div>
+                
+                {/* Test Results Table */}
+                <div className="mb-6">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border border-gray-400 p-2 text-left font-semibold">Investigation</th>
+                        <th className="border border-gray-400 p-2 text-center font-semibold">Result</th>
+                        <th className="border border-gray-400 p-2 text-center font-semibold">Units</th>
+                        <th className="border border-gray-400 p-2 text-center font-semibold">Ref. Range</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {testConfig?.fields?.filter((field: any) => {
+                        // Only show parameters that have values entered
+                        const param = testParameters[field.id];
+                        return param?.value && param.value.trim() !== '';
+                      }).map((field: any) => {
+                        const param = testParameters[field.id];
+                        const isAbnormal = param?.value && field.refRange && !isValueInRange(param.value, field.refRange);
+                        return (
+                          <tr key={field.id}>
+                            <td className="border border-gray-400 p-2">{field.label}</td>
+                            <td className={`border border-gray-400 p-2 text-center font-semibold ${isAbnormal ? 'text-red-600' : ''}`}>
+                              {param?.value || '-'} {isAbnormal && '↓'}
+                            </td>
+                            <td className="border border-gray-400 p-2 text-center">{field.unit || '-'}</td>
+                            <td className="border border-gray-400 p-2 text-center">{field.refRange || '-'}</td>
+                          </tr>
+                        );
+                      })}
+                      {/* Show message if no parameters have values */}
+                      {(!testConfig?.fields?.some((field: any) => testParameters[field.id]?.value?.trim())) && (
+                        <tr>
+                          <td colSpan={4} className="border border-gray-400 p-4 text-center text-gray-500">
+                            No test results entered yet
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Footer */}
+                <div className="mt-8 flex justify-center items-end text-sm">
+                  <div className="flex justify-between w-full max-w-4xl">
+                    <div className="text-center">
+                      <p className="font-bold text-base">Vinit Gaurav</p>
+                      <p className="text-xs">DMLT</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-bold text-base">Dr Amar Kumar</p>
+                      <p className="text-xs">MBBS</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Important Notes */}
+                <div className="mt-12 bg-blue-50 p-3 text-xs">
+                  <p className="font-semibold mb-1">• Clinical Correlation is essential for Final Diagnosis.</p>
+                  <p>• Report for Medico Legal Purpose.</p>
+                  <p>• If test results are unexpected, please contact the laboratory</p>
+                </div>
+
+                {/* Footer Image */}
+                <div className="w-full mt-6">
+                  <img 
+                    src="/letetrheadfooter.png" 
+                    alt="Hospital Footer" 
+                    className="w-full h-auto"
+                  />
+                </div>
+              </div>
             </div>
           </div>
           <div className="p-4 border-t flex justify-end space-x-2">
@@ -687,7 +945,11 @@ const SampleCollectionV2: React.FC = () => {
                   </Button>
                   {selectedTest.collected && (
                     <Button
-                      onClick={() => handleSaveAndPrint(selectedTest.testId)}
+                      onClick={() => {
+                        console.log('Save & Print button clicked!');
+                        console.log('Selected test ID:', selectedTest.testId);
+                        handleSaveAndPrint(selectedTest.testId);
+                      }}
                       variant="default"
                       className="flex-1 bg-green-600 hover:bg-green-700"
                     >
@@ -708,6 +970,9 @@ const SampleCollectionV2: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Print Dialog */}
+      <PrintDialog />
 
       {/* Print content */}
       <div className="hidden">

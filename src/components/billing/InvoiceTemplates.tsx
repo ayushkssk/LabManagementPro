@@ -5,67 +5,106 @@ import { PdfLetterhead } from '@/components/print/PdfLetterhead';
 // Print-specific CSS for A4 full page layout
 const printStyles = `
   @media print {
+    /* Page setup for full A4 */
+    @page {
+      size: A4;
+      margin: 8mm !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    /* Reset all backgrounds to transparent */
     * {
       -webkit-print-color-adjust: exact !important;
       color-adjust: exact !important;
       print-color-adjust: exact !important;
+      background: transparent !important;
+      background-color: transparent !important;
+      background-image: none !important;
     }
     
-    @page {
-      size: A4;
-      margin: 0mm !important;
-    }
-    
-    html {
-      margin: 0 !important;
-      padding: 0 !important;
-      width: 210mm !important;
-      height: 297mm !important;
-    }
-    
-    body {
+    html, body {
       margin: 0 !important;
       padding: 0 !important;
       width: 210mm !important;
       min-height: 297mm !important;
-      font-size: 11px !important;
-      line-height: 1.3 !important;
+      font-size: 10px !important;
+      line-height: 1.2 !important;
       background: white !important;
+      color: #000 !important;
     }
     
     .print-container {
       width: 210mm !important;
       min-height: 297mm !important;
-      margin: 0 !important;
-      padding: 10mm !important;
+      margin: 0 auto !important;
+      padding: 8mm !important;
       box-sizing: border-box !important;
       background: white !important;
       page-break-inside: avoid !important;
+      color: #000 !important;
     }
     
     .print-letterhead-container {
       width: 210mm !important;
       min-height: 297mm !important;
-      margin: 0 !important;
-      padding: 5mm !important;
+      margin: 0 auto !important;
+      padding: 8mm !important;
       box-sizing: border-box !important;
       background: white !important;
       page-break-inside: avoid !important;
+      color: #000 !important;
     }
     
     .print-content {
       width: 100% !important;
       box-sizing: border-box !important;
+      background: transparent !important;
     }
     
-    /* Ensure tables don't break */
+    /* Ensure tables don't break and fill width */
     table {
       page-break-inside: avoid !important;
       width: 100% !important;
+      border-collapse: collapse !important;
+      background: transparent !important;
+      margin: 0 !important;
+    }
+    
+    /* Table cells and headers with proper borders */
+    th, td {
+      border: 1px solid #000 !important;
+      background: transparent !important;
+      padding: 4px 6px !important;
+      font-size: 10px !important;
+    }
+    
+    /* Table headers */
+    th {
+      background: #f0f0f0 !important;
+      font-weight: bold !important;
     }
     
     /* Prevent content from being cut off */
     .no-break {
+      page-break-inside: avoid !important;
+    }
+    
+    /* Hide print buttons and other non-essential elements */
+    .no-print, .print-button, button, .print-hide {
+      display: none !important;
+    }
+    
+    /* Ensure full page utilization */
+    .full-page {
+      min-height: 280mm !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    
+    /* Terms and conditions at bottom */
+    .terms-section {
+      margin-top: auto !important;
       page-break-inside: avoid !important;
     }
   }
@@ -183,7 +222,7 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({
   const content = (
     <>
       <style dangerouslySetInnerHTML={{ __html: printStyles }} />
-      <div className={usePdfLetterhead ? "print-letterhead-container bg-transparent" : "print-container bg-white"}>
+      <div className={usePdfLetterhead ? "print-letterhead-container bg-transparent full-page" : "print-container bg-white full-page"}>
       {/* Custom Header */}
       {customHeader && (
         <div className={`mb-6 ${alignmentClasses[headerAlign]}`}>
@@ -275,19 +314,24 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({
           </tr>
         </tbody>
       </table>
+      
+      {/* Tax inclusive note */}
+      <div className="text-center text-xs mt-1 mb-3">
+        <p>(Inclusive of all applicable taxes)</p>
+      </div>
       </div>
 
       {/* Payment Details for PDF Letterhead */}
       {usePdfLetterhead && (
         <div className="mt-4">
-          <h3 className="font-semibold text-gray-700 mb-1 bg-blue-600 text-white p-2 text-xs">PAYMENT DETAILS</h3>
-          <div className="grid grid-cols-2 gap-2 border border-gray-400 p-3 text-xs">
-            <div>
+          <h3 className="font-semibold text-gray-700 mb-1 bg-blue-600 text-white p-2 text-xs text-center">PAYMENT DETAILS</h3>
+          <div className="grid grid-cols-2 gap-0 border border-gray-400 text-xs">
+            <div className="p-3 border-r border-gray-400">
               <p className="mb-1"><strong>Total Amount:</strong> ₹{bill.totalAmount}</p>
               <p className="mb-1"><strong>Discount:</strong> ₹0.00</p>
               <p className="mb-1"><strong>Net Payable:</strong> ₹{bill.totalAmount}</p>
             </div>
-            <div>
+            <div className="p-3">
               <p className="mb-1"><strong>Payment Mode:</strong> {bill.paymentMode || 'Cash'}</p>
               <p className="mb-1"><strong>Amount Paid:</strong> ₹{bill.totalAmount}</p>
               <p className="mb-1"><strong>Balance:</strong> ₹0.00</p>
@@ -298,16 +342,25 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({
 
       {/* Terms & Conditions for PDF Letterhead */}
       {usePdfLetterhead && (
-        <div className="mt-4">
-          <h4 className="font-semibold text-gray-700 mb-1 text-sm">Terms & Conditions:</h4>
-          <div className="text-xs text-gray-600 space-y-1">
+        <div className="mt-6 terms-section">
+          <h4 className="font-semibold text-gray-700 mb-2 text-sm">Terms & Conditions:</h4>
+          <div className="text-xs text-gray-700 space-y-1">
             <p>1. Please bring this bill at the time of sample collection.</p>
             <p>2. Report delivery time is subject to test type and sample collection time.</p>
             <p>3. For any queries, please contact our customer care.</p>
             <p>4. This is a computer generated bill, no signature required.</p>
           </div>
-          <div className="mt-2 text-xs text-gray-600">
+          <div className="mt-3 text-xs text-gray-700">
             <p><strong>Note:</strong> Please check all details at the time of sample collection. The management will not be responsible for any discrepancy later.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Authorized Signatory for PDF Letterhead */}
+      {usePdfLetterhead && (
+        <div className="mt-8 text-right">
+          <div className="border-t border-gray-400 pt-2 inline-block min-w-32">
+            <p className="text-xs font-semibold text-center">Authorized Signatory</p>
           </div>
         </div>
       )}
@@ -326,14 +379,6 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({
         </div>
       )}
 
-      {/* Authorized Signatory for PDF Letterhead */}
-      {usePdfLetterhead && (
-        <div className="mt-6 text-right">
-          <div className="border-t border-gray-400 pt-2 inline-block">
-            <p className="text-xs font-semibold">Authorized Signatory</p>
-          </div>
-        </div>
-      )}
       </div>
     </>
   );

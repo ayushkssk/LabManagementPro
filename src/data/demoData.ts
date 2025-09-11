@@ -462,10 +462,38 @@ export const demoTests: Test[] = [
     name: 'Widal Test (Typhoid)',
     price: 600,
     fields: [
-      { id: getFieldId(), name: 'S. Typhi O', type: 'text', unit: 'Titer', normalRange: '<1:80' },
-      { id: getFieldId(), name: 'S. Typhi H', type: 'text', unit: 'Titer', normalRange: '<1:160' },
-      { id: getFieldId(), name: 'S. Paratyphi AH', type: 'text', unit: 'Titer', normalRange: '<1:80' },
-      { id: getFieldId(), name: 'S. Paratyphi BH', type: 'text', unit: 'Titer', normalRange: '<1:80' }
+      { 
+        id: getFieldId(), 
+        name: 'S. Typhi O', 
+        type: 'select', 
+        unit: 'Titer', 
+        normalRange: '<1:80',
+        options: ['NR', '1:20', '1:40', '1:80', '1:160', '1:320']
+      },
+      { 
+        id: getFieldId(), 
+        name: 'S. Typhi H', 
+        type: 'select', 
+        unit: 'Titer', 
+        normalRange: '<1:160',
+        options: ['NR', '1:20', '1:40', '1:80', '1:160', '1:320']
+      },
+      { 
+        id: getFieldId(), 
+        name: 'S. Paratyphi AH', 
+        type: 'select', 
+        unit: 'Titer', 
+        normalRange: '<1:80',
+        options: ['NR', '1:20', '1:40', '1:80', '1:160', '1:320']
+      },
+      { 
+        id: getFieldId(), 
+        name: 'S. Paratyphi BH', 
+        type: 'select', 
+        unit: 'Titer', 
+        normalRange: '<1:80',
+        options: ['NR', '1:20', '1:40', '1:80', '1:160', '1:320']
+      }
     ]
   },
   {
@@ -830,6 +858,122 @@ export const demoTests: Test[] = [
       { id: 'f166', name: 'CMV IgM', type: 'text', unit: '', normalRange: 'Negative' },
       { id: 'f167', name: 'HSV 1/2 IgG', type: 'text', unit: '', normalRange: 'Negative' },
       { id: 'f168', name: 'HSV 1/2 IgM', type: 'text', unit: '', normalRange: 'Negative' }
+    ]
+  },
+  {
+    id: 'test-serum-electrolyte',
+    category: 'BIOCHEMISTRY',
+    name: 'Serum Electrolyte',
+    price: 450,
+    fields: [
+      { 
+        id: getFieldId(), 
+        name: 'Sodium (Na+)', 
+        type: 'number', 
+        unit: 'mmol/L', 
+        normalRange: '136-150'
+      },
+      { 
+        id: getFieldId(), 
+        name: 'Potassium (K+)', 
+        type: 'number', 
+        unit: 'mmol/L', 
+        normalRange: '3.5-5.1'
+      },
+      { 
+        id: getFieldId(), 
+        name: 'Chloride (Cl-)', 
+        type: 'number', 
+        unit: 'mmol/L', 
+        normalRange: '98-107'
+      }
+    ]
+  },
+  {
+    id: 'test-h-pylori',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
+    name: 'H Pylori',
+    price: 350,
+    fields: [
+      { 
+        id: getFieldId(), 
+        name: 'Helicobacter Pylori Antigen', 
+        type: 'select', 
+        unit: '', 
+        normalRange: 'NEGATIVE',
+        options: ['NEGATIVE', 'POSITIVE']
+      }
+    ]
+  },
+  {
+    id: 'test-kft-rft',
+    category: 'BIOCHEMISTRY',
+    name: 'KFT/RFT (Kidney Function Test)',
+    price: 800,
+    fields: [
+      { 
+        id: getFieldId(), 
+        name: 'Blood Urea', 
+        type: 'number', 
+        unit: 'mg/dl', 
+        normalRange: '21-40'
+      },
+      { 
+        id: getFieldId(), 
+        name: 'Serum Creatinine', 
+        type: 'number', 
+        unit: 'mg/dl', 
+        normalRange: '0.6-1.1'
+      },
+      { 
+        id: getFieldId(), 
+        name: 'Uric Acid', 
+        type: 'number', 
+        unit: 'mg/dl', 
+        normalRange: '2.4-5.7'
+      },
+      { 
+        id: getFieldId(), 
+        name: 'Sodium (Na+)', 
+        type: 'number', 
+        unit: 'mmol/L', 
+        normalRange: '136-150'
+      },
+      { 
+        id: getFieldId(), 
+        name: 'Potassium', 
+        type: 'number', 
+        unit: 'mmol/L', 
+        normalRange: '3.7-5.5'
+      },
+      { 
+        id: getFieldId(), 
+        name: 'Chloride (Cl-)', 
+        type: 'number', 
+        unit: 'mmol/L', 
+        normalRange: '98-107'
+      },
+      { 
+        id: getFieldId(), 
+        name: 'Blood Urea Nitrogen (BUN)', 
+        type: 'number', 
+        unit: 'mg/dl', 
+        normalRange: '6-20'
+      },
+      { 
+        id: getFieldId(), 
+        name: 'BUN/Creatinine Ratio', 
+        type: 'number', 
+        unit: 'RATIO', 
+        normalRange: '10-20'
+      },
+      { 
+        id: getFieldId(), 
+        name: 'Calcium', 
+        type: 'number', 
+        unit: 'mg/dl', 
+        normalRange: '8.6-10.3'
+      }
     ]
   }
 ];
