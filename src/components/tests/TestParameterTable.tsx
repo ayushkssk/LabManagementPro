@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, CheckCircle, AlertTriangle } from 'lucide-react';
 
 interface TestParameter {
   id: string;
@@ -105,28 +105,34 @@ export const TestParameterTable: React.FC<TestParameterTableProps> = ({
                 <TableCell className="p-0.5 border-r border-gray-100">
                   <div className="px-1">
                     {param.type === 'select' && param.options ? (
-                      <Select
-                        value={param.value || ''}
-                        onValueChange={(value) => onParameterChange(param.id, 'value', value)}
-                      >
-                        <SelectTrigger className="h-5 w-full text-[10px] px-2 py-0 border border-gray-200 rounded-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400">
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {param.options.map((option) => (
-                            <SelectItem key={option} value={option} className="text-[10px]">
-                              {option}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-1">
+                        <Select
+                          value={param.value || ''}
+                          onValueChange={(value) => onParameterChange(param.id, 'value', value)}
+                        >
+                          <SelectTrigger className={`h-5 w-full text-[10px] px-2 py-0 rounded-sm focus:ring-1 ${getInputBorderClass(param.value, param.normalRange || param.refRange)}`}>
+                            <SelectValue placeholder="Select..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {param.options.map((option) => (
+                              <SelectItem key={option} value={option} className="text-[10px]">
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {param.value && <ValidationIndicator value={param.value} refRange={param.normalRange || param.refRange} type="select" />}
+                      </div>
                     ) : (
-                      <Input
-                        type="text"
-                        value={param.value || ''}
-                        onChange={(e) => onParameterChange(param.id, 'value', e.target.value)}
-                        className="h-5 w-full text-[10px] px-2 py-0 border border-gray-200 rounded-sm focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                      />
+                      <div className="space-y-1">
+                        <Input
+                          type="text"
+                          value={param.value || ''}
+                          onChange={(e) => onParameterChange(param.id, 'value', e.target.value)}
+                          className={`h-5 w-full text-[10px] px-2 py-0 rounded-sm focus:ring-1 ${getInputBorderClass(param.value, param.normalRange || param.refRange)}`}
+                        />
+                        {param.value && <ValidationIndicator value={param.value} refRange={param.normalRange || param.refRange} type="number" />}
+                      </div>
                     )}
                   </div>
                 </TableCell>
@@ -193,6 +199,107 @@ const TestResultIndicator: React.FC<{ value: number; refRange: string }> = ({ va
   }
   
   return <span className="h-3 w-3 text-green-500">✓</span>;
+};
+
+// Helper function to get input border class based on validation
+const getInputBorderClass = (value?: string, refRange?: string): string => {
+  if (!value || !refRange) return 'border-gray-200 focus:border-blue-400';
+  
+  const validationResult = validateValue(value, refRange);
+  
+  switch (validationResult.status) {
+    case 'normal':
+      return 'border-green-400 focus:border-green-500';
+    case 'high':
+    case 'low':
+      return 'border-red-400 focus:border-red-500';
+    case 'abnormal':
+      return 'border-orange-400 focus:border-orange-500';
+    default:
+      return 'border-gray-200 focus:border-blue-400';
+  }
+};
+
+// Helper function to validate value against reference range
+const validateValue = (value: string, refRange: string): { status: 'normal' | 'high' | 'low' | 'abnormal' | 'unknown'; message?: string } => {
+  if (!value || !refRange) return { status: 'unknown' };
+  
+  // Handle select type values (like NEGATIVE/POSITIVE)
+  if (refRange === 'NEGATIVE' || refRange === 'POSITIVE') {
+    return {
+      status: value === refRange ? 'normal' : 'abnormal',
+      message: value === refRange ? 'Normal' : `Expected: ${refRange}`
+    };
+  }
+  
+  // Handle numeric ranges
+  const numValue = parseFloat(value);
+  if (isNaN(numValue)) return { status: 'unknown' };
+  
+  const rangeMatch = refRange.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+  if (rangeMatch) {
+    const min = parseFloat(rangeMatch[1]);
+    const max = parseFloat(rangeMatch[2]);
+    
+    if (numValue < min) {
+      return { status: 'low', message: `Low (${numValue} < ${min})` };
+    } else if (numValue > max) {
+      return { status: 'high', message: `High (${numValue} > ${max})` };
+    } else {
+      return { status: 'normal', message: 'Normal' };
+    }
+  }
+  
+  return { status: 'unknown' };
+};
+
+// Real-time validation indicator component
+const ValidationIndicator: React.FC<{ value: string; refRange?: string; type: 'number' | 'select' }> = ({ 
+  value, 
+  refRange, 
+  type 
+}) => {
+  if (!value || !refRange) return null;
+  
+  const validation = validateValue(value, refRange);
+  
+  if (validation.status === 'unknown') return null;
+  
+  const getIcon = () => {
+    switch (validation.status) {
+      case 'normal':
+        return <CheckCircle className="h-3 w-3 text-green-500" />;
+      case 'high':
+        return <ArrowUp className="h-3 w-3 text-red-500" />;
+      case 'low':
+        return <ArrowDown className="h-3 w-3 text-red-500" />;
+      case 'abnormal':
+        return <AlertTriangle className="h-3 w-3 text-orange-500" />;
+      default:
+        return null;
+    }
+  };
+  
+  const getTextColor = () => {
+    switch (validation.status) {
+      case 'normal':
+        return 'text-green-600';
+      case 'high':
+      case 'low':
+        return 'text-red-600';
+      case 'abnormal':
+        return 'text-orange-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+  
+  return (
+    <div className={`flex items-center space-x-1 text-[8px] ${getTextColor()}`}>
+      {getIcon()}
+      <span className="font-medium">{validation.message}</span>
+    </div>
+  );
 };
 
 export default TestParameterTable;

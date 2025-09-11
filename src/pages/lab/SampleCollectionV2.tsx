@@ -316,85 +316,120 @@ const SampleCollectionV2: React.FC = () => {
   // Add a ref for the content to be printed
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Handle print with simplified approach
+  // Handle print with enhanced configuration
   const handlePrint = useReactToPrint({
     content: () => printRef.current,
     documentTitle: `Lab Report - ${patient?.name || 'Patient'} - ${currentTest?.testName || 'Test'}`,
     removeAfterPrint: false,
     pageStyle: `
-      @page { 
+      @page {
         size: A4;
-        margin: 8mm;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
+        margin: 12mm;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
       @media print {
         * {
-          background: transparent !important;
-          color: #000 !important;
           -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
+          color-adjust: exact !important;
         }
-        body { 
+        html, body {
+          width: 210mm;
+          height: 297mm;
           margin: 0 !important;
           padding: 0 !important;
           background: white !important;
           color: #000 !important;
           font-family: Arial, sans-serif !important;
-          font-size: 12px !important;
-          line-height: 1.4 !important;
+          font-size: 11px !important;
+          line-height: 1.3 !important;
+        }
+        .no-print, button, .print-hide {
+          display: none !important;
         }
         .print-container {
           width: 100% !important;
           max-width: none !important;
           margin: 0 !important;
-          padding: 10mm !important;
-          background: white !important;
+          padding: 8mm !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          page-break-inside: avoid !important;
         }
         table {
           width: 100% !important;
           border-collapse: collapse !important;
-          margin: 10px 0 !important;
+          margin: 8px 0 !important;
           page-break-inside: avoid !important;
         }
         th, td {
           border: 1px solid #000 !important;
-          padding: 6px 8px !important;
+          padding: 4px 6px !important;
           text-align: left !important;
           background: transparent !important;
-          font-size: 11px !important;
+          font-size: 10px !important;
+          vertical-align: top !important;
         }
         th {
-          background: #f0f0f0 !important;
+          background: #f5f5f5 !important;
           font-weight: bold !important;
         }
         h1, h2, h3 {
           color: #000 !important;
-          margin: 10px 0 !important;
+          margin: 8px 0 !important;
+          page-break-after: avoid !important;
         }
-        .no-print, button, .print-hide {
-          display: none !important;
-        }
-        .letterhead {
-          background: transparent !important;
-        }
-        img {
+        .letterhead img {
           max-width: 100% !important;
           height: auto !important;
           display: block !important;
         }
+        .qr-code {
+          width: 80px !important;
+          height: 80px !important;
+        }
+        .signatures {
+          margin-top: 20px !important;
+          page-break-inside: avoid !important;
+        }
+        .footer {
+          margin-top: 15px !important;
+          font-size: 9px !important;
+        }
       }
     `,
-    onBeforePrint: () => {
-      console.log('Preparing to print...');
+    onBeforeGetContent: () => {
+      console.log('Preparing print content...');
+      // Ensure all images are loaded
+      const images = printRef.current?.querySelectorAll('img');
+      if (images) {
+        const imagePromises = Array.from(images).map(img => {
+          return new Promise<void>(resolve => {
+            if (img.complete) {
+              resolve();
+            } else {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+            }
+          });
+        });
+        return Promise.all(imagePromises).then(() => {});
+      }
       return Promise.resolve();
     },
     onAfterPrint: () => {
-      console.log('Print dialog closed');
+      console.log('Print completed');
       setShowPrintDialog(false);
     },
-    onPrintError: (errorLocation, error) => {
-      console.error('Print error at:', errorLocation, error);
+    print: async (printIframe) => {
+      // Custom print function to ensure proper handling
+      return new Promise<void>((resolve) => {
+        if (printIframe?.contentWindow) {
+          printIframe.contentWindow.focus();
+          printIframe.contentWindow.print();
+        }
+        resolve();
+      });
     }
   });
   
@@ -557,7 +592,7 @@ const SampleCollectionV2: React.FC = () => {
     const numValue = parseFloat(value);
     if (isNaN(numValue)) return true;
     
-    // Handle ranges like "11.0-16.0", "40-50", etc.
+    // Handle ranges like "21-40", "0.6-1.1", "2.4-5.7", etc.
     const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
     if (rangeMatch) {
       const min = parseFloat(rangeMatch[1]);
@@ -661,10 +696,10 @@ const SampleCollectionV2: React.FC = () => {
                 <XCircle className="h-4 w-4" />
               </Button>
             </div>
-            <div className="p-6">
+            <div className="p-6 print-content">
               <div className="space-y-4">
                 {/* Hospital Header */}
-                <div className="text-center border-b-2 border-blue-600 pb-4 mb-6">
+                <div className="text-center border-b-2 border-blue-600 pb-4 mb-6 print-header">
                   <div className="w-full mb-4">
                     <img 
                       src="/letetrheadheader.png" 
@@ -678,7 +713,7 @@ const SampleCollectionV2: React.FC = () => {
                 </div>
 
                 {/* Patient Information */}
-                <div className="grid grid-cols-3 gap-6 mb-6 text-sm">
+                <div className="grid grid-cols-3 gap-6 mb-6 text-sm patient-info">
                   <div className="space-y-1">
                     <p><span className="font-semibold">Name:</span> {patient?.name || 'N/A'}</p>
                     <p><span className="font-semibold">Age:</span> {patient?.age || 'N/A'} Year</p>
@@ -690,6 +725,7 @@ const SampleCollectionV2: React.FC = () => {
                         value={`https://swatihospital.com/verify-report/${currentTest?.testId || 'unknown'}-${Date.now()}`}
                         size={60}
                         level="M"
+                        className="qr-code"
                       />
                     </div>
                     <p className="text-xs font-semibold text-center">SCAN QR FOR VERIFICATION</p>
@@ -702,13 +738,13 @@ const SampleCollectionV2: React.FC = () => {
                 </div>
 
                 {/* Test Name */}
-                <div className="text-center mb-4">
+                <div className="text-center mb-4 test-title">
                   <h3 className="text-lg font-bold text-gray-800">{currentTest.testName?.toUpperCase() || 'LABORATORY TEST'}</h3>
                 </div>
                 
                 {/* Test Results Table */}
                 <div className="mb-6">
-                  <table className="w-full border-collapse text-sm">
+                  <table className="w-full border-collapse text-sm print-table">
                     <thead>
                       <tr className="bg-gray-100">
                         <th className="border border-gray-400 p-2 text-left font-semibold">Investigation</th>
@@ -725,11 +761,12 @@ const SampleCollectionV2: React.FC = () => {
                       }).map((field: any) => {
                         const param = testParameters[field.id];
                         const isAbnormal = param?.value && field.refRange && !isValueInRange(param.value, field.refRange);
+                        
                         return (
                           <tr key={field.id}>
                             <td className="border border-gray-400 p-2">{field.label}</td>
                             <td className={`border border-gray-400 p-2 text-center font-semibold ${isAbnormal ? 'text-red-600' : ''}`}>
-                              {param?.value || '-'} {isAbnormal && '↓'}
+                              {param?.value || '-'} {isAbnormal && (parseFloat(param?.value || '0') > parseFloat(field.refRange?.split('-')[1] || '0') ? '↑' : '↓')}
                             </td>
                             <td className="border border-gray-400 p-2 text-center">{field.unit || '-'}</td>
                             <td className="border border-gray-400 p-2 text-center">{field.refRange || '-'}</td>
@@ -749,7 +786,7 @@ const SampleCollectionV2: React.FC = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="mt-8 flex justify-center items-end text-sm">
+                <div className="mt-8 flex justify-center items-end text-sm print-signatures">
                   <div className="flex justify-between w-full max-w-4xl">
                     <div className="text-center">
                       <p className="font-bold text-base">Vinit Gaurav</p>
@@ -763,14 +800,14 @@ const SampleCollectionV2: React.FC = () => {
                 </div>
 
                 {/* Important Notes */}
-                <div className="mt-12 bg-blue-50 p-3 text-xs">
+                <div className="mt-12 bg-blue-50 p-3 text-xs print-notes">
                   <p className="font-semibold mb-1">• Clinical Correlation is essential for Final Diagnosis.</p>
                   <p>• Report for Medico Legal Purpose.</p>
                   <p>• If test results are unexpected, please contact the laboratory</p>
                 </div>
 
                 {/* Footer Image */}
-                <div className="w-full mt-6">
+                <div className="w-full mt-6 print-footer">
                   <img 
                     src="/letetrheadfooter.png" 
                     alt="Hospital Footer" 
