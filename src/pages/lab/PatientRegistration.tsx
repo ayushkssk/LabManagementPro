@@ -21,7 +21,9 @@ import {
 } from 'lucide-react';
 import { demoTests } from '@/data/demoData';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/firebase';
 import { addPatient } from '@/services/patientService';
 import { PdfLetterhead } from '@/components/print/PdfLetterhead';
 import { InvoiceTemplate } from '@/components/billing/InvoiceTemplates';
@@ -123,11 +125,27 @@ const PatientRegistration: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBillDialog, setShowBillDialog] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicatePatient, setDuplicatePatient] = useState<any>(null);
   const [cities, setCities] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Recently added tests should appear on top in dropdowns
+  const recentTestPriority: string[] = [
+    'test-bgt-typt-dot',
+    'test-stool-routine',
+    'test-hb-bg-rbs',
+    'test-bsf-bspp',
+    'test-hba1c',
+    'test-bsf',
+    'test-bspp',
+    'test-lipid-profile',
+    'test-culture-antibiotic-sensitivity',
+    'test-urine-routine',
+  ];
 
   // Handle Enter to behave like Tab within the form (skip textarea and allow submit buttons)
   const handleFormKeyDown = (e: React.KeyboardEvent) => {
@@ -284,12 +302,14 @@ const PatientRegistration: React.FC = () => {
   useEffect(() => {
     if (patient.state) {
       const list = cityByState[patient.state] || [];
-      setCities(list);
+      // De-duplicate to avoid duplicate React keys/warnings
+      const unique = Array.from(new Set(list));
+      setCities(unique);
       setPatient(prev => ({
         ...prev,
-        city: prev.city && list.includes(prev.city)
+        city: prev.city && unique.includes(prev.city)
           ? prev.city
-          : (patient.state === 'Bihar' && list.includes('Hajipur') ? 'Hajipur' : '')
+          : (patient.state === 'Bihar' && unique.includes('Hajipur') ? 'Hajipur' : '')
       }));
     }
   }, [patient.state]);
@@ -423,6 +443,26 @@ const PatientRegistration: React.FC = () => {
     if (yearInput) yearInput.value = '';
   };
 
+  // Check for duplicate patient by phone number
+  const checkForDuplicate = async (phone: string) => {
+    try {
+      const q = query(
+        collection(db, 'patients'),
+        where('phone', '==', phone)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        // Return the first matching patient
+        return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error checking for duplicate patient:', error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent, isBillGenerate: boolean = false) => {
     e.preventDefault();
     
@@ -488,6 +528,16 @@ const PatientRegistration: React.FC = () => {
       });
       return;
     }
+
+    // Check for duplicate patient if not in bill generate mode
+    if (!isBillGenerate) {
+      const existingPatient = await checkForDuplicate(patient.phone);
+      if (existingPatient) {
+        setDuplicatePatient(existingPatient);
+        setShowDuplicateDialog(true);
+        return;
+      }
+    }
     
     // Validate age (0-120) if provided
     if (patient.age) {
@@ -533,6 +583,63 @@ const PatientRegistration: React.FC = () => {
         return;
       }
       
+      // Save patient data
+      await savePatientData();
+    } catch (error) {
+      console.error('Error saving patient:', error);
+      toast({
+        title: 'Error',
+        description: isBillGenerate ? 'Failed to generate bill. Please try again.' : 'Failed to save patient. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Hospital data will be retrieved from context or props
+
+  const handleDuplicateConfirm = async (updateExisting: boolean) => {
+    setShowDuplicateDialog(false);
+    
+    if (updateExisting) {
+      // Update existing patient
+      try {
+        await updateDoc(doc(db, 'patients', duplicatePatient.id), {
+          lastVisit: new Date(),
+          // Add any other fields you want to update
+        });
+        
+        // Set the document ID for navigation
+        setPatientDocId(duplicatePatient.id);
+        
+        // Show bill dialog if tests are selected
+        if (patient.selectedTests.length > 0) {
+          setShowBillDialog(true);
+        } else {
+          toast({
+            title: 'Patient updated successfully!',
+            description: `Patient ID: ${duplicatePatient.hospitalId}`,
+            variant: 'default',
+          });
+          resetForm();
+        }
+      } catch (error) {
+        console.error('Error updating patient:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update patient. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } else {
+      // Continue with new registration
+      await savePatientData();
+    }
+  };
+
+  const savePatientData = async () => {
+    try {
       // Prepare patient data with the generated ID
       const patientData = {
         hospitalId: patientId, // The generated SWT-YYMMDD-XX ID
@@ -574,22 +681,20 @@ const PatientRegistration: React.FC = () => {
       }
     } catch (error) {
       console.error('Error saving patient:', error);
-      toast({
-        title: 'Error',
-        description: isBillGenerate ? 'Failed to generate bill. Please try again.' : 'Failed to save patient. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
+      throw error; // Re-throw to be caught by the caller
     }
   };
 
-  // Hospital data will be retrieved from context or props
-
   const handlePrintBill = () => {
-    // Create a new window for PDF letterhead with bill overlay
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (!printWindow) return;
+    // Create a hidden print container for the bill content
+    const printContainer = document.createElement('div');
+    printContainer.id = 'print-bill-container';
+    printContainer.style.position = 'fixed';
+    printContainer.style.top = '-9999px';
+    printContainer.style.left = '-9999px';
+    printContainer.style.width = '210mm';
+    printContainer.style.height = '297mm';
+    printContainer.className = 'print-container';
 
     // Use default hospital data
     const hospital = {
@@ -601,17 +706,6 @@ const PatientRegistration: React.FC = () => {
       registration: 'Reg. No.: 123456/2023',
       footerNote: 'This is a computer generated bill. No signature required.'
     };
-
-    // Load admin design settings from localStorage to sync with HospitalProfile
-    const savedProfileRaw = localStorage.getItem('hospitalProfile');
-    const savedProfile = savedProfileRaw ? JSON.parse(savedProfileRaw) : {};
-    const primaryColor: string = savedProfile.primaryColor || '#1a365d';
-    const fontFamily: string = savedProfile.fontFamily || 'Arial, sans-serif';
-    const showLogo: boolean = savedProfile.showLogo !== false; // default true
-    const showTagline: boolean = savedProfile.showTagline !== false; // default true
-    const showGst: boolean = savedProfile.showGst !== false; // default true
-    const logo: string | undefined = savedProfile.logo || undefined;
-    const tagline: string | undefined = savedProfile.tagline || undefined;
 
     // Format date and time in Indian format
     const formatDate = (date: Date) => {
@@ -632,331 +726,329 @@ const PatientRegistration: React.FC = () => {
 
     const now = new Date();
     const billContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Bill - ${patientId || 'Receipt'}</title>
-        <style>
-          body { 
-            font-family: ${fontFamily}; 
-            margin: 0; 
-            padding: 0; 
-            font-size: 12px;
-            color: #333;
-            position: relative;
-            height: 100vh;
-          }
-          .pdf-background {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-          }
-          .pdf-background iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-          }
-          .bill-content {
-            position: relative;
-            z-index: 1;
-            padding: 20px;
-            margin-top: 200px; /* Space for PDF letterhead */
-            background: transparent;
-          }
-          .bill-title {
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
-            margin: 10px 0;
-            color: #1a365d;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-          }
-          .bill-no {
-            text-align: right;
-            margin-bottom: 8px;
-            font-size: 12px;
-          }
-          .patient-info, .bill-info { 
-            width: 100%; 
-            margin-bottom: 10px;
-            border-collapse: collapse;
-            font-size: 12px;
-          }
-          .patient-info td, .bill-info td { 
-            padding: 6px 8px; 
-            border: 1px solid #ddd;
-            vertical-align: top;
-          }
-          .patient-info th, .bill-info th { 
-            background-color: #f0f4f8; 
-            text-align: left; 
-            padding: 8px;
-            border: 1px solid #ddd;
-            color: #1a365d;
-          }
-          .tests-table { 
-            width: 100%; 
-            border-collapse: collapse;
-            margin: 10px 0;
-            page-break-inside: avoid;
-            font-size: 11px;
-          }
-          .tests-table th { 
-            background-color: #f0f4f8; 
-            padding: 8px;
-            text-align: left;
-            border: 1px solid #ddd;
-            color: #1a365d;
-          }
-          .tests-table td { 
-            padding: 6px 8px;
-            border: 1px solid #ddd;
-            vertical-align: middle;
-          }
-          .total { 
-            text-align: right; 
-            font-weight: bold; 
-            font-size: 13px;
-          }
-          .signature {
-            margin-top: 60px;
-            text-align: right;
-            position: relative;
-          }
-          .signature::before {
-            content: "";
-            display: block;
-            width: 200px;
-            border-top: 1px solid #000;
-            margin-bottom: 5px;
-            position: absolute;
-            right: 0;
-            top: -10px;
-          }
-          .payment-info {
-            width: 45%;
-            float: right;
-            margin-top: 10px;
-            border: 1px solid #ddd;
-            border-collapse: collapse;
-            font-size: 12px;
-          }
-          .payment-info td, .payment-info th {
-            padding: 6px 8px;
-            border: 1px solid #ddd;
-          }
-          .payment-info th {
-            background-color: #f0f4f8;
-            color: #1a365d;
-          }
-          .terms {
-            clear: both;
-            margin-top: 20px;
-            font-size: 10px;
-            line-height: 1.4;
-            page-break-inside: avoid;
-          }
-          .terms ol {
-            margin: 5px 0;
-            padding-left: 20px;
-          }
-          .watermark {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 80px;
-            opacity: 0.1;
-            z-index: -1;
-            white-space: nowrap;
-            pointer-events: none;
-            color: #1a365d;
-            font-weight: bold;
-          }
-          .no-print { display: none; }
-          @media print {
-            body { 
-              width: 100%; 
-              margin: 0; 
-              padding: 0; 
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .no-print { display: none !important; }
-            .watermark { display: block !important; }
-          }
-        </style>
-      </head>
-      <body>
-        <!-- Watermark -->
-        <div class="watermark" style="display: block;">SWATI DIAGNOSTIC</div>
-
-        <div class="bill-content">
-          <!-- Bill Title -->
-          <div class="bill-title">PATIENT BILL / RECEIPT</div>
-
-          <!-- Bill Info -->
+      <div class="bill-content" style="position: relative; min-height: 100%; padding-bottom: 50px; margin: 0; padding: 0;">
+        <div class="letterhead-header" style="margin: 0; padding: 0; width: 100%;">
+          <img src="/letetrheadheader.png" alt="Hospital Letterhead Header" style="width: 100%; height: auto; display: block; margin: 0; padding: 0;">
+        </div>
+        
+        <div class="bill-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 11px;">
           <div class="bill-no">
-            <strong>Bill No.:</strong> ${patientId || 'N/A'} | 
-            <strong>Date:</strong> ${formatDate(now)} | 
-            <strong>Time:</strong> ${formatTime(now)}
+            <strong>Bill No.: ${patientId || 'SWT-250911-127'}</strong>
           </div>
-
-          <!-- Patient Info -->
-          <table class="patient-info">
-            <tr>
-              <th colspan="4" style="background-color: #1a365d; color: white; text-align: center;">PATIENT DETAILS</th>
-            </tr>
-            <tr>
-              <td width="25%"><strong>Patient Name:</strong></td>
-              <td width="25%">${patient.name || 'N/A'}</td>
-              <td width="25%"><strong>Age/Gender:</strong></td>
-              <td width="25%">${patient.age || 'N/A'} Y / ${patient.gender || 'N/A'}</td>
-            </tr>
-            <tr>
-              <td><strong>Phone:</strong></td>
-              <td>${patient.phone || 'N/A'}</td>
-              <td><strong>Referred By:</strong></td>
-              <td>${patient.doctor || 'Self'}</td>
-            </tr>
-            <tr>
-              <td><strong>Address:</strong></td>
-              <td colspan="3">
-                ${patient.address || 'N/A'} 
-                ${patient.city ? ', ' + patient.city : ''} 
-                ${patient.state ? ', ' + patient.state : ''} 
-                ${patient.pincode ? ' - ' + patient.pincode : ''}
-              </td>
-            </tr>
-          </table>
-
-          <!-- Tests Table -->
-          <table class="tests-table">
-            <thead>
-              <tr>
-                <th width="5%" style="text-align: center;">S.No</th>
-                <th width="60%">Test Name</th>
-                <th width="15%" style="text-align: center;">Category</th>
-                <th width="20%" style="text-align: right;">Amount (₹)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${patient.selectedTests.map((testId, index) => {
-                const test = demoTests.find(t => t.id === testId);
-                return test ? `
-                  <tr>
-                    <td style="text-align: center;">${index + 1}</td>
-                    <td>${test.name}</td>
-                    <td style="text-align: center;">${test.category}</td>
-                    <td style="text-align: right;">${test.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  </tr>
-                ` : '';
-              }).join('')}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3" style="text-align: right; font-weight: bold; padding-right: 15px;">Total Amount:</td>
-                <td style="text-align: right; font-weight: bold; border-top: 2px solid #000;">₹${calculateTotal().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              </tr>
-              <tr>
-                <td colspan="4" style="text-align: right; font-size: 10px; padding-right: 15px;">(Inclusive of all applicable taxes)</td>
-              </tr>
-            </tfoot>
-          </table>
-
-          <!-- Payment Info -->
-          <table class="payment-info">
-            <tr>
-              <th colspan="2" style="text-align: center; background-color: #1a365d; color: white;">PAYMENT DETAILS</th>
-            </tr>
-            <tr>
-              <td><strong>Total Amount:</strong></td>
-              <td style="text-align: right;">₹${calculateTotal().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            </tr>
-            <tr>
-              <td>Discount:</td>
-              <td style="text-align: right;">₹0.00</td>
-            </tr>
-            <tr>
-              <td><strong>Net Payable:</strong></td>
-              <td style="text-align: right; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; font-weight: bold;">
-                ₹${calculateTotal().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </td>
-            </tr>
-            <tr>
-              <td>Payment Mode:</td>
-              <td style="text-align: right;">Cash</td>
-            </tr>
-            <tr>
-              <td>Amount Paid:</td>
-              <td style="text-align: right;">₹${calculateTotal().toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            </tr>
-            <tr>
-              <td><strong>Balance:</strong></td>
-              <td style="text-align: right; font-weight: bold;">₹0.00</td>
-            </tr>
-          </table>
-
-          <!-- Terms and Conditions -->
-          <div class="terms">
-            <p><strong>Terms & Conditions:</strong></p>
-            <ol>
-              <li>Please bring this bill at the time of sample collection.</li>
-              <li>Report delivery time is subject to test type and sample collection time.</li>
-              <li>For any queries, please contact our customer care.</li>
-              <li>This is a computer generated bill, no signature required.</li>
-            </ol>
-            <p style="margin-top: 10px;">
-              <strong>Note:</strong> Please check all details at the time of sample collection. The management will not be responsible for any discrepancy later.
-            </p>
+          <div class="bill-date">
+            Date: ${formatDate(now)}
           </div>
-
-          <div class="signature">
-            <p>Authorized Signatory</p>
+          <div class="bill-time">
+            Time: ${formatTime(now)}
           </div>
         </div>
-
-        <!-- Footer -->
-        <div class="letterhead-footer">
-          <p>Thank you for choosing our services. For any queries, please contact us at ${hospital.phone}</p>
-          <p>${hospital.footerNote || 'This is a computer generated bill. No signature required.'}</p>
+        
+        <div class="bill-title">PATIENT BILL / RECEIPT</div>
+        
+        <table class="patient-info">
+          <thead>
+            <tr><th colspan="4" style="background-color: #4285f4; color: white; text-align: center;">PATIENT DETAILS</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Patient Name:</strong><br>${patient.name || 'N/A'}</td>
+              <td><strong>Age/Gender:</strong><br>${patient.age || 'N/A'} Y / ${patient.gender || 'N/A'}</td>
+              <td><strong>Phone:</strong><br>${patient.phone || 'N/A'}</td>
+              <td><strong>Referred By:</strong><br>${patient.doctor || 'Self'}</td>
+            </tr>
+            <tr>
+              <td colspan="4"><strong>Address:</strong><br>${patient.address || 'N/A'}</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <table class="tests-table">
+          <thead>
+            <tr style="background-color: #4285f4; color: white;">
+              <th>S.No</th>
+              <th>Test Name</th>
+              <th>Category</th>
+              <th>Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${patient.selectedTests.map((testId, index) => {
+              const test = demoTests.find(t => t.id === testId);
+              return test ? `
+                <tr>
+                  <td style="text-align: center;">${index + 1}</td>
+                  <td>${test.name}</td>
+                  <td style="text-align: center;">${test.category}</td>
+                  <td style="text-align: right;">₹${test.price}</td>
+                </tr>
+              ` : '';
+            }).join('')}
+            <tr style="border-top: 2px solid #333;">
+              <td colspan="3" class="total"><strong>Total Amount:</strong></td>
+              <td class="total"><strong>₹${calculateTotal()}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div style="margin-top: 15px; font-size: 11px; text-align: center;">
+          <em>(Inclusive of all applicable taxes)</em>
         </div>
-
-        <div class="no-print" style="margin-top: 20px; text-align: center; clear: both;">
-          <button onclick="window.print()" style="padding: 10px 20px; background: #1a365d; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px; font-weight: bold;">
-            <i class="fa fa-print" style="margin-right: 5px;"></i> Print Bill
-          </button>
-          <button onclick="window.close()" style="padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px; font-weight: bold;">
-            <i class="fa fa-times" style="margin-right: 5px;"></i> Close
-          </button>
+        
+        <table class="bill-info" style="margin-top: 15px;">
+          <thead>
+            <tr><th colspan="2" style="background-color: #4285f4; color: white; text-align: center;">PAYMENT DETAILS</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Total Amount:</strong> ₹${calculateTotal()}</td>
+              <td><strong>Payment Mode:</strong> Cash</td>
+            </tr>
+            <tr>
+              <td><strong>Discount:</strong> ₹0.00</td>
+              <td><strong>Amount Paid:</strong> ₹${calculateTotal()}</td>
+            </tr>
+            <tr>
+              <td><strong>Net Payable:</strong> ₹${calculateTotal()}</td>
+              <td><strong>Balance:</strong> ₹0.00</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        
+        <div style="margin-top: 100px;"></div>
+        <div class="terms-container" style="margin: 10px 0 5px 0; font-size: 9px; line-height: 1.3;">
+          <div style="margin-bottom: 5px;"><strong>Terms & Conditions:</strong></div>
+          <ol style="margin: 0 0 5px 0; padding-left: 15px;">
+            <li>Please bring this bill at the time of sample collection.</li>
+            <li>Report delivery time is subject to test type and sample collection time.</li>
+            <li>For any queries, please contact our customer care.</li>
+            <li>This is a computer generated bill, no signature required.</li>
+          </ol>
+          <p style="margin: 0;"><strong>Note:</strong> Please check all details at the time of sample collection. The management will not be responsible for any discrepancy later.</p>
         </div>
-      </body>
-      </html>
+        
+        <div class="footer" style="text-align: right; margin: 5px 0 10px 0; padding: 0;">
+          <p style="margin: 0;"><strong>Authorized Signature</strong></p>
+        </div>
+        
+        <div class="letterhead-footer" style="position: absolute; bottom: 0; left: 0; width: 100%; margin: 0; padding: 0;">
+          <img src="/letetrheadfooter.png" alt="Hospital Letterhead Footer" style="width: 100%; height: auto; display: block; margin: 0; padding: 0;">
+        </div>
+      </div>
     `;
 
-    // Write content to print window
-    printWindow.document.write(billContent);
-    printWindow.document.close();
+    // Add the print container to the document
+    printContainer.innerHTML = billContent;
+    document.body.appendChild(printContainer);
     
-    // Auto-print after content loads
-    printWindow.onload = () => {
-      // Show print dialog after a short delay to ensure content is rendered
-      setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
+    // Create and add print styles (optimized)
+    const printStyles = document.createElement('style');
+    printStyles.id = 'print-bill-styles';
+    printStyles.media = 'print'; // Only apply styles when printing
+    printStyles.textContent = `
+      @page {
+        size: A4;
+        margin: 0 !important;
+        padding: 0 !important;
         
-        // Show success message
-        toast({
-          title: "Bill Generated",
-          description: "The bill has been prepared for printing.",
-          variant: "default",
-        });
-      }, 500);
-    };
+        /* Completely remove all headers and footers */
+        @top-left { content: "" !important; display: none !important; }
+        @top-center { content: "" !important; display: none !important; }
+        @top-right { content: "" !important; display: none !important; }
+        @bottom-left { content: "" !important; display: none !important; }
+        @bottom-center { content: "" !important; display: none !important; }
+        @bottom-right { content: "" !important; display: none !important; }
+        
+        /* Chrome/Safari specific */
+        -webkit-margin-before: 0 !important;
+        -webkit-margin-after: 0 !important;
+        -webkit-margin-start: 0 !important;
+        -webkit-margin-end: 0 !important;
+      }
+      
+      /* Firefox specific page rules */
+      @-moz-document url-prefix() {
+        @page {
+          margin: 0 !important;
+          size: A4;
+        }
+      }
+      
+      @media print {
+        /* Completely hide everything first */
+        * {
+          visibility: hidden !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          height: 100% !important;
+          overflow: hidden !important;
+          background: white !important;
+        }
+        
+        /* Show only the print container and its children */
+        #print-bill-container, 
+        #print-bill-container * {
+          visibility: visible !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        body {
+          margin: 0;
+          padding: 0;
+        }
+        #print-bill-container {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 210mm !important;
+          height: 297mm !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-sizing: border-box !important;
+          font-family: Arial, sans-serif !important;
+          font-size: 12px !important;
+          color: #000 !important;
+          background: white !important;
+          overflow: hidden;
+        }
+        .bill-content {
+          width: 100% !important;
+          min-height: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          position: relative;
+        }
+        .hospital-info h1 {
+          font-size: 18px !important;
+          margin: 0 0 5px 0 !important;
+          text-align: center !important;
+          color: #1a365d !important;
+        }
+        .hospital-info p {
+          margin: 2px 0 !important;
+          text-align: center !important;
+          font-size: 11px !important;
+        }
+        .bill-header {
+          display: flex !important;
+          justify-content: space-between !important;
+          align-items: flex-start !important;
+          margin-bottom: 10px !important;
+        }
+        .bill-no {
+          text-align: right !important;
+          font-size: 10px !important;
+        }
+        .bill-title {
+          text-align: center !important;
+          font-size: 16px !important;
+          font-weight: bold !important;
+          margin: 10px 0 !important;
+          text-transform: uppercase !important;
+        }
+        .patient-info, .bill-info, .tests-table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          margin: 8px 0 !important;
+        }
+        .patient-info th, .bill-info th, .tests-table th {
+          background-color: #4285f4 !important;
+          color: white !important;
+          padding: 6px !important;
+          border: 1px solid #000 !important;
+          font-size: 11px !important;
+        }
+        .patient-info td, .bill-info td, .tests-table td {
+          padding: 4px 6px !important;
+          border: 1px solid #000 !important;
+          font-size: 10px !important;
+        }
+        .total {
+          text-align: right !important;
+          font-weight: bold !important;
+        }
+        .terms-container {
+          margin: 10px 0 !important;
+          font-size: 9px !important;
+          line-height: 1.3 !important;
+        }
+        .footer {
+          margin: 15px 0 10px 0 !important;
+          text-align: right !important;
+          font-size: 11px !important;
+          padding: 0 !important;
+          border: none !important;
+        }
+        .letterhead-header {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          text-align: center !important;
+          position: relative;
+          left: 0;
+          right: 0;
+        }
+        .letterhead-header img {
+          width: 100% !important;
+          max-width: 100% !important;
+          height: auto !important;
+          object-fit: contain !important;
+          display: block !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .letterhead-footer {
+          position: absolute !important;
+          bottom: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          text-align: center !important;
+        }
+        .letterhead-footer img {
+          width: 100% !important;
+          max-width: 100% !important;
+          height: auto !important;
+          object-fit: contain !important;
+          display: block !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+      }
+    `;
+    document.head.appendChild(printStyles);
+    
+    // Use requestAnimationFrame for better performance
+    requestAnimationFrame(() => {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        // Print immediately without additional delays
+        window.print();
+        
+        // Clean up after printing is done or after a short delay
+        const cleanup = () => {
+          if (document.body.contains(printContainer)) {
+            document.body.removeChild(printContainer);
+          }
+          if (printStyles.parentNode) {
+            document.head.removeChild(printStyles);
+          }
+          // Remove the event listener after cleanup
+          window.removeEventListener('afterprint', cleanup);
+        };
+        
+        // Handle cleanup after print dialog is closed
+        window.addEventListener('afterprint', cleanup);
+        // Fallback cleanup in case afterprint doesn't fire
+        setTimeout(cleanup, 1000);
+      }, 50); // Reduced initial delay
+    });
   };
 
   const handleCollectSubmit = async () => {
@@ -1029,10 +1121,10 @@ const PatientRegistration: React.FC = () => {
   };
 
   return (
-    <div className="h-screen bg-background overflow-hidden flex flex-col">
-      <div className="mx-auto px-2 sm:px-4 py-4 max-w-[1800px] w-full h-full flex flex-col overflow-hidden">
+    <div className="patient-registration-page h-screen w-full bg-background overflow-hidden m-0 p-0">
+      <div className="h-full flex flex-col px-4 py-2 max-w-full m-0">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="flex items-center gap-1 h-8 px-2">
             <ArrowLeft className="h-4 w-4" />
             Back
@@ -1054,15 +1146,14 @@ const PatientRegistration: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-full overflow-x-hidden flex-1 min-h-0">
+        <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
           {/* Patient Form */}
-          <div className="lg:col-span-2 min-w-0 h-full">
-            <Card className="shadow-sm border-0 min-w-0 h-full flex flex-col">
-              <CardHeader className="p-4 border-b">
+          <div className="flex-1 min-w-0 overflow-auto">
+            <Card className="shadow-sm border-0 h-full">
+              <CardHeader className="p-3 border-b">
                 <CardTitle className="text-lg">Patient Details</CardTitle>
               </CardHeader>
-              {/* Left panel: fill available height and scroll internally */}
-              <CardContent className="p-4 flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+              <CardContent className="p-3">
                 <form ref={formRef} onKeyDown={handleFormKeyDown} onSubmit={(e) => handleSubmit(e, false)}>
                   <div className="space-y-4">
                     {/* Row 1 - Name, Age, Gender */}
@@ -1364,8 +1455,8 @@ const PatientRegistration: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent>
                             {cities.length > 0 ? (
-                              cities.map((city) => (
-                                <SelectItem key={city} value={city}>
+                              cities.map((city, idx) => (
+                                <SelectItem key={`${city}-${idx}`} value={city}>
                                   {city}
                                 </SelectItem>
                               ))
@@ -1451,10 +1542,23 @@ const PatientRegistration: React.FC = () => {
                     
                     <div className="border rounded-md h-48 overflow-y-auto p-2">
                       {demoTests
-                        .filter(test => 
-                          test.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          test.category.toLowerCase().includes(searchQuery.toLowerCase())
-                        )
+                        .filter(test => {
+                          const q = (searchQuery || '').trim().toLowerCase();
+                          if (!q) return true;
+                          return (
+                            test.name.toLowerCase().includes(q) ||
+                            test.category.toLowerCase().includes(q) ||
+                            test.id.toLowerCase().includes(q)
+                          );
+                        })
+                        .sort((a, b) => {
+                          const ia = recentTestPriority.indexOf(a.id);
+                          const ib = recentTestPriority.indexOf(b.id);
+                          const aPr = ia === -1 ? Number.MAX_SAFE_INTEGER : ia;
+                          const bPr = ib === -1 ? Number.MAX_SAFE_INTEGER : ib;
+                          if (aPr !== bPr) return aPr - bPr;
+                          return a.name.localeCompare(b.name);
+                        })
                         .map((test) => {
                           // Create a unique key using test.id and index to prevent duplicates
                           const uniqueKey = `test-${test.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -1514,14 +1618,13 @@ const PatientRegistration: React.FC = () => {
             </Card>
           </div>
 
-          {/* Bill Preview */}
-          <div className="sticky top-4 max-w-full min-w-0 h-full">
-            <Card className="shadow-sm border-0 min-w-0 h-full flex flex-col">
-              {/* <CardHeader className="p-3 bg-muted/20">
-                <CardTitle className="text-sm font-medium">Bill Preview</CardTitle>
-              </CardHeader> */}
-              {/* Bill preview panel: fill available height and scroll internally */}
-              <CardContent className="p-4 flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+          {/* Tests & Bill Summary */}
+          <div className="w-80 min-w-0 overflow-auto">
+            <Card className="shadow-sm border-0 h-full">
+              <CardHeader className="p-3 border-b">
+                <CardTitle className="text-lg">Tests & Bill Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="p-3">
                 {patient.selectedTests.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     No tests selected yet. Select tests from the form.
@@ -1540,7 +1643,7 @@ const PatientRegistration: React.FC = () => {
                         Print Bill
                       </Button>
                     </div>
-                    <div className="border rounded-lg overflow-y-auto overflow-x-hidden bg-white p-4 print:border-0 print:p-0 max-w-full">
+                    <div className="border rounded-lg overflow-visible bg-white p-4 print:border-0 print:p-0 max-w-full">
                       <div className="w-full max-w-full print:p-4" style={{ fontSize: '12px', fontFamily: 'Arial, sans-serif' }}>
                             <InvoiceTemplate
                               template="professional"
@@ -1658,6 +1761,36 @@ const PatientRegistration: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      <style>{`
+        .hidden, .no-print {
+          display: none !important;
+        }
+        .patient-registration-page * {
+          box-sizing: border-box;
+        }
+        .patient-registration-page {
+          height: 100vh !important;
+          overflow: hidden !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+        }
+        body, html {
+          overflow: hidden !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        /* Remove any bottom elements */
+        .patient-registration-page::after,
+        .patient-registration-page::before {
+          display: none !important;
+        }
+      `}</style>
 
       {/* Bill Dialog */}
       <Dialog open={showBillDialog} onOpenChange={(open) => {
@@ -1800,6 +1933,38 @@ const PatientRegistration: React.FC = () => {
                 Collect Sample
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Patient Dialog */}
+      <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Duplicate Patient Found</DialogTitle>
+            <DialogDescription>
+              A patient with the phone number {patient.phone} already exists:
+              <div className="mt-2 p-3 bg-gray-100 rounded-md">
+                <p><strong>Name:</strong> {duplicatePatient?.name}</p>
+                <p><strong>Patient ID:</strong> {duplicatePatient?.hospitalId}</p>
+                <p><strong>Last Visit:</strong> {duplicatePatient?.lastVisit?.toDate?.()?.toLocaleDateString() || 'N/A'}</p>
+              </div>
+              <p className="mt-3">Would you like to update the existing record or create a new one?</p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-between">
+            <Button 
+              variant="outline" 
+              onClick={() => handleDuplicateConfirm(true)}
+            >
+              Update Existing
+            </Button>
+            <Button 
+              variant="default" 
+              onClick={() => handleDuplicateConfirm(false)}
+            >
+              Create New
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

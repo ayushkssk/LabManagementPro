@@ -18,60 +18,53 @@ export const sampleTests: SampleTestMeta[] = [
   { id: 'test-h-pylori', name: 'H Pylori', category: 'SeroLOGY & INFECTIOUS DISEASE', sampleType: 'Stool', container: 'Stool Container', instructions: 'Fresh stool sample required' },
   { id: 'test-kft-rft', name: 'KFT/RFT (Kidney Function Test)', category: 'BIOCHEMISTRY', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting preferred' },
   { id: 'test-bilirubin', name: 'BILIRUBIN TOTAL, DIRECT & INDIRECT', category: 'BIOCHEMISTRY', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-crp-quantitative', name: 'C-Reactive Protein (Quantitative)', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-aec-count', name: 'Absolute Eosinophil Count (AEC)', category: 'Hematology', sampleType: 'Blood', container: 'Lavender Top', instructions: 'Fasting not required' },
+  { id: 'test-crp-quantitative-alt', name: 'C-Reactive Protein (CRP) Quantitative', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-h-pylori-latex', name: 'H. Pylori (Latex)', category: 'SeroLOGY & INFECTIOUS DISEASE', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-amylase-serum', name: 'Amylase, Serum', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-lipase', name: 'Lipase', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-rbs', name: 'Blood Sugar Random (RBS)', category: 'Biochemistry', sampleType: 'Blood', container: 'Gray Top', instructions: 'Fasting not required' },
+  { id: 'test-bsf', name: 'Blood Sugar Fasting (BSF)', category: 'Biochemistry', sampleType: 'Blood', container: 'Gray Top', instructions: 'Fasting required (8-12 hours)' },
+  { id: 'test-bspp', name: 'Blood Sugar Post Prandial (BSPP)', category: 'Biochemistry', sampleType: 'Blood', container: 'Gray Top', instructions: 'Sample 2 hours after meal' },
+  { id: 'test-bsf-bspp', name: 'BSF, BSPP', category: 'Biochemistry', sampleType: 'Blood', container: 'Gray Top', instructions: 'FBS after 8-12h fast; PP 2h after meal' },
+  { id: 'test-hba1c', name: 'HbA1c (Glycosylated Hemoglobin) - HPLC', category: 'Biochemistry', sampleType: 'Blood', container: 'Lavender Top', instructions: 'Fasting not required' },
+  { id: 'test-haemoglobin', name: 'Haemoglobin', category: 'Hematology', sampleType: 'Blood', container: 'Lavender Top', instructions: 'Fasting not required' },
+  { id: 'test-blood-group', name: 'Blood Group Test', category: 'Hematology', sampleType: 'Blood', container: 'Lavender Top', instructions: 'Fasting not required' },
+  { id: 'test-hb-bg-rbs', name: 'Haemoglobin + Blood Group + RBS', category: 'Biochemistry', sampleType: 'Blood', container: 'Gray/Lavender Top', instructions: 'Collect per lab SOP' },
+  { id: 'test-stool-routine', name: 'Stool Routine Examination', category: 'Stool', sampleType: 'Stool', container: 'Stool Container', instructions: 'Fresh stool sample preferred' },
+  { id: 'test-bgt-typt-dot', name: 'BGT+TYPT DOT', category: 'Serology', sampleType: 'Blood', container: 'Lavender/Red Top', instructions: 'Fasting not required' },
+  { id: 'test-lipid-profile', name: 'Lipid Profile', category: 'Biochemistry', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting 9–12 hours preferred' },
+  { id: 'test-culture-antibiotic-sensitivity', name: 'Culture & Antibiotic Sensitivity', category: 'Microbiology', sampleType: 'Urine/Other', container: 'Sterile Container', instructions: 'Collect in sterile container; transport promptly' },
+  { id: 'test-urine-routine', name: 'Urine Routine Examination', category: 'Urology', sampleType: 'Urine', container: 'Sterile Urine Container', instructions: 'Midstream clean-catch sample preferred' },
+  { id: 'test-cardiac-marker', name: 'CARDIAC MARKER', category: 'Cardiology', sampleType: 'Blood', container: 'Red Top', instructions: 'Point-of-care card test' },
 ];
 
 export const testConfigurations: TestConfigurationMap = {
   blood_cbc: {
     fields: [
-      // Erythrocytes Group
-      { id: 'hb', label: 'Hemoglobin (HB)', type: 'number', unit: 'g/dL', refRange: 'M: 13.5-17.5, F: 12.0-15.5', required: true, group: 'Erythrocytes' },
-      { id: 'rbc', label: 'Total Red Blood Cell Count (RBC)', type: 'number', unit: '10^6/μL', refRange: 'M: 4.5-5.9, F: 4.0-5.2', required: true, group: 'Erythrocytes' },
-      { id: 'hct', label: 'Hematocrit (HCT)', type: 'number', unit: '%', refRange: 'M: 40-50, F: 36-46', required: true, group: 'Erythrocytes' },
-      { id: 'mcv', label: 'Mean Corpuscular Volume (MCV)', type: 'number', unit: 'fL', refRange: '80-100', required: true, group: 'Erythrocytes' },
-      { id: 'mch', label: 'Mean Corpuscular Hemoglobin (MCH)', type: 'number', unit: 'pg', refRange: '27-34', required: true, group: 'Erythrocytes' },
-      { id: 'mchc', label: 'Mean Corpuscular Hemoglobin Concentration (MCHC)', type: 'number', unit: 'g/dL', refRange: '32-36', required: true, group: 'Erythrocytes' },
-      { id: 'rdw_cv', label: 'Red Cell Distribution Width - CV (RDW-CV)', type: 'number', unit: '%', refRange: '11.5-14.5', required: true, group: 'Erythrocytes' },
-      { id: 'rdw_sd', label: 'Red Cell Distribution Width - SD (RDW-SD)', type: 'number', unit: 'fL', refRange: '39-46', required: true, group: 'Erythrocytes' },
-      
-      // Leucocytes Group
-      { id: 'tlc', label: 'Total Leukocyte Count (TLC)', type: 'number', unit: '10^3/μL', refRange: '4.5-11.0', required: true, group: 'Leucocytes' },
-      
-      // DIFFERENTIAL LEUCOCYTE COUNT (DLC) Group
-      { id: 'neutrophils_pct', label: 'Neutrophils (NEUT%)', type: 'number', unit: '%', refRange: '40-80', required: true, group: 'DIFFERENTIAL LEUCOCYTE COUNT (DLC)' },
-      { id: 'lymphocytes_pct', label: 'Lymphocytes (LYMPH%)', type: 'number', unit: '%', refRange: '20-40', required: true, group: 'DIFFERENTIAL LEUCOCYTE COUNT (DLC)' },
-      { id: 'monocytes_pct', label: 'Monocytes (MONO%)', type: 'number', unit: '%', refRange: '2-10', required: true, group: 'DIFFERENTIAL LEUCOCYTE COUNT (DLC)' },
-      { id: 'eosinophils_pct', label: 'Eosinophils (EOS%)', type: 'number', unit: '%', refRange: '1-6', required: true, group: 'DIFFERENTIAL LEUCOCYTE COUNT (DLC)' },
-      { id: 'basophils_pct', label: 'Basophils (BASO%)', type: 'number', unit: '%', refRange: '0-2', required: true, group: 'DIFFERENTIAL LEUCOCYTE COUNT (DLC)' },
-      
-      // ABSOLUTE COUNT Group
-      { id: 'neutrophils_abs', label: 'Neutrophils - Absolute Count (NEUT#)', type: 'number', unit: '10^3/μL', refRange: '2.0-7.5', required: true, group: 'ABSOLUTE COUNT' },
-      { id: 'lymphocytes_abs', label: 'Lymphocytes - Absolute Count (LYMPH#)', type: 'number', unit: '10^3/μL', refRange: '1.0-4.0', required: true, group: 'ABSOLUTE COUNT' },
-      { id: 'monocytes_abs', label: 'Monocytes - Absolute Count (MONO#)', type: 'number', unit: '10^3/μL', refRange: '0.2-1.0', required: true, group: 'ABSOLUTE COUNT' },
-      { id: 'eosinophils_abs', label: 'Eosinophils - Absolute Count (EOS#)', type: 'number', unit: '10^3/μL', refRange: '0.02-0.5', required: true, group: 'ABSOLUTE COUNT' },
-      { id: 'basophils_abs', label: 'Basophils - Absolute Count (BASO#)', type: 'number', unit: '10^3/μL', refRange: '0.02-0.1', required: true, group: 'ABSOLUTE COUNT' },
-      
-      // Platelets Group
-      { id: 'platelet_count', label: 'Platelet Count (PLT)', type: 'number', unit: '10^3/μL', refRange: '150-450', required: true, group: 'Platelets' },
-      { id: 'mpv', label: 'Mean Platelet Volume (MPV)', type: 'number', unit: 'fL', refRange: '7.5-11.5', required: true, group: 'Platelets' },
-      { id: 'pdw', label: 'Platelet Distribution Width (PDW)', type: 'number', unit: 'fL', refRange: '9-17', required: true, group: 'Platelets' },
-      { id: 'p_lcr', label: 'Platelet Large Cell Ratio (P-LCR)', type: 'number', unit: '%', refRange: '15-45', required: true, group: 'Platelets' },
-      { id: 'pct', label: 'Plateletcrit (PCT)', type: 'number', unit: '%', refRange: '0.15-0.35', required: true, group: 'Platelets' },
-      
-      // CELLS Group
-      { id: 'rbc_morph', label: 'RBC Morphology', type: 'textarea', required: false, group: 'CELLS' },
-      { id: 'wbc_morph', label: 'WBC Morphology', type: 'textarea', required: false, group: 'CELLS' },
-      { id: 'platelet_morph', label: 'Platelet Morphology', type: 'textarea', required: false, group: 'CELLS' },
-      
-      // Other Parameters
-      { id: 'esr', label: 'Erythrocyte Sedimentation Rate (ESR)', type: 'number', unit: 'mm/hr', refRange: 'M: 0-15, F: 0-20', required: false },
-      { id: 'pcv', label: 'Packed Cell Volume (PCV)', type: 'number', unit: '%', refRange: 'M: 40-50, F: 36-46', required: false },
-      { id: 'retics', label: 'Reticulocyte Count (RETIC)', type: 'number', unit: '%', refRange: '0.5 - 2.0', required: false },
-      { id: 'aniso', label: 'Anisocytosis (ANISO)', type: 'textarea', required: false },
-      { id: 'poikilo', label: 'Poikilocytosis (POIKILO)', type: 'textarea', required: false },
-      
-      // Comments
-      { id: 'comments', label: 'Laboratory Comments', type: 'textarea', required: false },
-      { id: 'impression', label: 'Clinical Impression', type: 'textarea', required: false }
+      // Investigation
+      { id: 'hb', label: 'Haemoglobin', type: 'number', unit: 'g/dL', refRange: '11.0-16.0', required: true },
+      { id: 'tlc', label: 'TLC (Total Leucocyte Count)', type: 'number', unit: '10^3/μL', refRange: '4.0-11.0', required: true },
+
+      // DIFFERENTIAL LEUCOCYTE COUNT
+      { id: 'neutrophils_pct', label: 'Neutrophil', type: 'number', unit: '%', refRange: '45-75', required: true },
+      { id: 'lymphocytes_pct', label: 'Lymphocyte', type: 'number', unit: '%', refRange: '20-45', required: true },
+      { id: 'eosinophils_pct', label: 'Eosinophil', type: 'number', unit: '%', refRange: '1-6', required: true },
+      { id: 'monocytes_pct', label: 'Monocyte', type: 'number', unit: '%', refRange: '1-10', required: true },
+      { id: 'basophils_pct', label: 'Basophil', type: 'number', unit: '%', refRange: '0.00-1.0', required: true },
+
+      // RBC and Indices
+      { id: 'rbc', label: 'RBC (Red Blood Cell Count)', type: 'number', unit: '10^6/μL', refRange: '3.5-5.5', required: true },
+      { id: 'hct', label: 'Hct (Hematocrit)', type: 'number', unit: '%', refRange: '36-48', required: true },
+      { id: 'mcv', label: 'M C V (Mean Corp Volume)', type: 'number', unit: 'fL', refRange: '80.0-99.9', required: true },
+      { id: 'mch', label: 'M C H (Mean Corp Hb)', type: 'number', unit: 'pg', refRange: '27.0-31.0', required: true },
+      { id: 'mchc', label: 'M C H C (Mean Corp Hb Conc)', type: 'number', unit: 'g/dL', refRange: '32.0-36.0', required: true },
+
+      // Platelets
+      { id: 'platelet_count', label: 'Platelet Count', type: 'number', unit: '10^3/μL', refRange: '150-450', required: true },
+      { id: 'rdw_cv', label: 'R D W (Red Cell Dis.Width)', type: 'number', unit: '%', refRange: '35-56', required: true },
+      { id: 'mpv', label: 'M P V (Mean Pla. Volume)', type: 'number', unit: 'fL', refRange: '7.0-11.0', required: true }
     ],
   },
   differential_leukocyte: {
@@ -255,6 +248,194 @@ export const testConfigurations: TestConfigurationMap = {
       { id: 'dengue_igg', label: 'DENGUE ANTIBODIES IgG', type: 'select', unit: '', refRange: 'Negative', options: ['Negative', 'Positive'], required: true },
     ],
   },
+  crp_quantitative: {
+    fields: [
+      { id: 'crp_value', label: 'C-Reactive Protein', type: 'number', unit: 'mg/L', refRange: '<5', required: true },
+    ],
+  },
+  aec_count: {
+    fields: [
+      { id: 'aec_value', label: 'Absolute Eosinophil Count', type: 'number', unit: '/cumm', refRange: '20-500', required: true },
+    ],
+  },
+  crp_quantitative_alt: {
+    fields: [
+      { id: 'crp_alt_value', label: 'C-Reactive Protein (CRP)', type: 'number', unit: 'mg/L', refRange: '0-6', required: true },
+    ],
+  },
+  h_pylori_latex: {
+    fields: [
+      { id: 'h_pylori_latex', label: 'H. Pylori (Latex)', type: 'select', unit: '', refRange: 'Negative: < 1, Positive: > 1', options: ['Negative', 'Positive'], required: true },
+    ],
+  },
+  amylase_serum: {
+    fields: [
+      { id: 'amylase_value', label: 'AMYLASE , SERUM', type: 'number', unit: 'IU/L', refRange: '25-110', required: true },
+      { id: 'amylase_comment', label: 'Comment', type: 'textarea', required: false, defaultValue: `Amylase is produced in the pancreas and most of the elevation in serum is due to increased rate of amylase entry into the bloodstream and/or decreased rate of clearance. Serum amylase rises within 6 to 48 hours of onset of acute pancreatitis in ~80% of patients, but is not proportional to disease severity. Activity usually returns to normal in 3-5 days in patients with milder edematous form. Values persisting longer than this period suggest continuing pancreatic necrosis or pseudocyst formation. Approximately 20% of patients with pancreatitis have normal or near-normal activity. Hyperlipemic patients with pancreatitis may show spuriously normal amylase levels due to suppression of amylase activity by triglyceride. Low amylase levels are seen in chronic pancreatitis, congestive heart failure, 2nd & 3rd trimesters of pregnancy, gastrointestinal cancer, and bone fractures.` },
+    ],
+  },
+  lipase: {
+    fields: [
+      { id: 'lipase_value', label: 'LIPASE', type: 'number', unit: 'IU/L', refRange: '13-64', required: true },
+    ],
+  },
+  blood_sugar_random: {
+    fields: [
+      { id: 'rbs', label: 'BLOOD SUGAR RANDOM', type: 'number', unit: 'mg/dL', refRange: '<140', required: true },
+    ],
+  },
+  blood_sugar_fasting: {
+    fields: [
+      { id: 'bsf', label: 'BLOOD SUGAR F', type: 'number', unit: 'mg/dL', refRange: '60-110', required: true },
+    ],
+  },
+  blood_sugar_pp: {
+    fields: [
+      { id: 'bspp', label: 'BLOOD SUGAR PP', type: 'number', unit: 'mg/dL', refRange: '100-140', required: true },
+    ],
+  },
+  blood_sugar_f_pp_combined: {
+    fields: [
+      { id: 'bsf', label: 'BLOOD SUGAR F', type: 'number', unit: 'mg/dL', refRange: '60-110', required: true },
+      { id: 'bspp', label: 'BLOOD SUGAR PP', type: 'number', unit: 'mg/dL', refRange: '100-140', required: true },
+    ],
+  },
+  hba1c: {
+    fields: [
+      { id: 'hba1c', label: 'HbA1c', type: 'number', unit: '%', refRange: 'Normal: 4.3-6.1\nNon-Diabetic: <6.0\nGood Control (Diabetic): <7.0\nPoor Control: >8.0\nNot In Control: >8.3', required: true },
+      { id: 'hba1c_comment', label: 'Comment', type: 'textarea', required: false, defaultValue: `INTERPRETATION:\nHbA1c is an indicator of glycaemic control and reflects average glycaemia over the past 6–8 weeks. In stable control, ~50% of HbA1c is formed in the month before sampling, ~25% in the month before that, and the remaining ~25% in months 2–4.\n\nLEVEL OF HbA1c:\n<5.3%: May represent acute/chronic hypoglycaemia risk.\n<5.4–5.7%: Very good diabetic control (use caution to avoid hypoglycaemia).\n5.8–7.2%: Good control of diabetes (continue monitoring; strive to reduce to 5.8–7.0%).\n7.3–8.0%: Fair control (suggest clinical evaluation for improvements).\n>8.0%: Suboptimal control with increased risk for complications; intervention is advised.` },
+    ],
+  },
+  haemoglobin_test: {
+    fields: [
+      { id: 'hb', label: 'HAEMOGLOBIN', type: 'number', unit: 'g/dL', refRange: '11.0-15.0', required: true },
+    ],
+  },
+  blood_group_test: {
+    fields: [
+      { id: 'blood_group', label: 'Blood Group', type: 'select', options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], required: true },
+      { id: 'rh_type', label: 'Rh Type', type: 'select', options: ['Positive', 'Negative'], required: true },
+    ],
+  },
+  hb_bg_rbs_panel: {
+    fields: [
+      { id: 'hb', label: 'HAEMOGLOBIN', type: 'number', unit: 'g/dL', refRange: '11.0-15.0', required: true },
+      { id: 'blood_group', label: 'Blood Group', type: 'select', options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], required: true },
+      { id: 'rh_type', label: 'Rh Type', type: 'select', options: ['Positive', 'Negative'], required: true },
+      { id: 'rbs', label: 'BLOOD SUGAR RANDOM', type: 'number', unit: 'mg/dL', refRange: '<140', required: true },
+    ],
+  },
+  stool_routine: {
+    fields: [
+      // Physical Examination
+      { id: 'colour', label: 'Colour', type: 'select', options: ['Brown', 'Yellow', 'Clay', 'Black (Melena)', 'Red'], required: false },
+      { id: 'mucus', label: 'Mucus', type: 'select', options: ['Absent', 'Present(+)', 'Present(++)'], required: false },
+      { id: 'consistency', label: 'Consistency', type: 'select', options: ['Formed', 'Semi-Solid', 'Loose', 'Watery'], required: false },
+      { id: 'blood', label: 'Blood', type: 'select', options: ['Nil', 'Present'], required: false },
+      { id: 'odour', label: 'Odour', type: 'select', options: ['Fecal', 'Foul'], required: false },
+
+      // Chemical Examination
+      { id: 'reaction', label: 'Reaction', type: 'select', options: ['Acidic', 'Alkaline', 'Neutral'], required: false },
+      { id: 'sugar', label: 'Sugar', type: 'select', options: ['Nil', 'Present'], required: false },
+      { id: 'occult_blood', label: 'Occult Blood', type: 'select', options: ['Negative', 'Positive'], required: false },
+
+      // Microscopic Examination
+      { id: 'e_histolytic', label: 'E-Histolytic', type: 'select', options: ['Nil', 'Present'], required: false },
+      { id: 'giardia', label: 'Giardia Intestinalis', type: 'select', options: ['Nil', 'Present'], required: false },
+      { id: 'helminthic', label: 'Helminthic Parasites', type: 'select', options: ['Nil', 'Present'], required: false },
+      { id: 'ova_hookworm', label: 'Ova of Hookworm', type: 'select', options: ['Nil', 'Present'], required: false },
+      { id: 'ova_roundworm', label: 'Ova of Roundworm', type: 'select', options: ['Nil', 'Present'], required: false },
+      { id: 'deg_leucocytes', label: 'Degenerated Leucocytes', type: 'number', unit: '/hpf', refRange: '0-5 /hpf', required: false },
+      { id: 'epithelial_cells', label: 'Epithelial cells', type: 'select', options: ['Nil', 'Few', 'Moderate', 'Many'], required: false },
+      { id: 'undigested_food', label: 'Undigested Food Particles', type: 'select', options: ['Absent', 'Present'], required: false },
+      { id: 'bacterial_flora', label: 'Bacterial Flora', type: 'select', options: ['Not Found', 'Found'], required: false },
+      { id: 'protozoal_parasite', label: 'Protozoal Parasite', type: 'select', options: ['Not Found', 'Found'], required: false },
+    ],
+  },
+  bgt_typt_dot_panel: {
+    fields: [
+      // Blood Group Test
+      { id: 'blood_group', label: 'Blood Group', type: 'select', options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], required: true },
+      { id: 'rh_type', label: 'Rh Type', type: 'select', options: ['Positive', 'Negative'], required: true },
+
+      // Typhi Dot
+      { id: 'typhi_igm', label: 'Typhoid Fever IgM Antibody', type: 'select', options: ['Negative', 'Positive'], required: true, refRange: 'Negative: < 1\nPositive: > 1' },
+      { id: 'typhi_igg', label: 'Typhoid Fever IgG', type: 'select', options: ['Negative', 'Positive'], required: true, refRange: 'Negative: < 1\nPositive: > 1' },
+    ],
+  },
+  lipid_profile2: {
+    fields: [
+      { id: 'total_chol', label: 'Total Cholesterol', type: 'number', unit: 'mg/dL', refRange: '250-280 Borderline high; 281-350 High; >350 Very High', required: true },
+      { id: 'triglycerides', label: 'Triglycerides', type: 'number', unit: 'mg/dL', refRange: '160-200 Borderline high; 200-450 High; >450 Very High', required: true },
+      { id: 'hdl', label: 'H.D.L Cholesterol', type: 'number', unit: 'mg/dL', refRange: '40-60 Normal; >60 High Risk', required: true },
+      { id: 'ldl', label: 'L.D.L Cholesterol', type: 'number', unit: 'mg/dL', refRange: '130-159 Borderline high; 160-189 High; >190 Very High', required: true },
+      { id: 'vldl', label: 'V.L.D.L Cholesterol', type: 'number', unit: 'mg/dL', refRange: '<30 mg/dL', required: false },
+      { id: 'tc_hdl_ratio', label: 'T.C/H.D.L Ratio', type: 'number', unit: '', refRange: '3.0 Low Risk; 3.0-5.0 Moderate Risk; >5.0 High Risk', required: false },
+      { id: 'ldl_hdl_ratio', label: 'L.D.L/H.D.L Ratio', type: 'number', unit: '', refRange: '2.6 Low Risk; 2.6-3.6 Moderate Risk; >3.6 High Risk', required: false },
+    ],
+  },
+  culture_antibiotic_sensitivity: {
+    fields: [
+      // General info
+      { id: 'nature_of_sample', label: 'Nature of sample', type: 'select', options: ['Urine', 'Blood', 'Sputum', 'Stool', 'Pus', 'Swab', 'CSF', 'Other'], required: true },
+      { id: 'organism_grown', label: 'Organism grown', type: 'textarea', required: true },
+      { id: 'colony_count', label: 'Colony Count', type: 'textarea', unit: 'CFU/ml', required: false, refRange: '' },
+
+      // Antibiotic sensitivity (HS, S, MS, R)
+      { id: 'amikacin', label: 'AMIKACIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'ciprofloxacin', label: 'CIPROFLOXACIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'ofloxacin', label: 'OFLOXACIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'azithromycin', label: 'AZITHROMYCIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'erythromycin', label: 'ERYTHROMYCIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'gentamycin', label: 'GENTAMYCIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'cefotaxime', label: 'CEFOTAXIME', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'cloxacillin', label: 'CLOXACILLIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'norfloxacin', label: 'NORFLOXACIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'amoxicillin', label: 'AMOXICILLIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'tobramycin', label: 'TOBRAMYCIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'ceftazidime', label: 'CEFTAZIDIME', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'levofloxacin', label: 'LEVOFLOXACIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'gatifloxacin', label: 'GATIFLOXACIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+      { id: 'ampicillin', label: 'AMPICILLIN', type: 'select', options: ['HS', 'S', 'MS', 'R'], required: false },
+
+      // Note
+      { id: 'note', label: 'Note', type: 'textarea', required: false, defaultValue: 'HS: Highly Sensitive, S: Sensitive, MS: Moderate Sensitive, R: Resistant' },
+    ],
+  },
+  urine_routine: {
+    fields: [
+      // Physical Examination
+      { id: 'quantity', label: 'Quantity', type: 'number', unit: 'mL', refRange: '', required: false },
+      { id: 'colour', label: 'Colour', type: 'select', options: ['Straw', 'Pale Yellow', 'Yellow', 'Amber', 'Dark'], required: false },
+      { id: 'appearance', label: 'Appearance', type: 'select', options: ['Clear', 'Slightly Turbid', 'Turbid'], required: false },
+      { id: 'sediment', label: 'Sediment', type: 'select', options: ['Nil', 'Present'], required: false },
+      { id: 'specific_gravity', label: 'Specific Gravity', type: 'number', unit: '', refRange: '1.005-1.030', required: false },
+
+      // Chemical Examination
+      { id: 'wbc_chem', label: 'White Blood Cell (chem)', type: 'select', options: ['Nil', 'Trace', 'Present'], required: false },
+      { id: 'ketone', label: 'Ketone', type: 'select', options: ['Nil', 'Trace', 'Present'], required: false },
+      { id: 'nitrite', label: 'Nitrite', type: 'select', options: ['Nil', 'Positive'], required: false },
+      { id: 'urobilinogen', label: 'Urobilinogen', type: 'select', options: ['Nil', 'Normal', 'Increased'], required: false },
+      { id: 'bilirubin', label: 'Bilirubin', type: 'select', options: ['Nil', 'Positive'], required: false },
+      { id: 'albumin', label: 'Albumin', type: 'select', options: ['Nil', 'Trace', '1+', '2+', '3+'], required: false },
+      { id: 'glucose', label: 'Glucose', type: 'select', options: ['Nil', 'Trace', '1+', '2+', '3+'], required: false },
+      { id: 'blood', label: 'Blood', type: 'select', options: ['Nil', 'Positive'], required: false },
+      { id: 'ph', label: 'pH', type: 'number', unit: '', refRange: '4.5-8.0', required: false },
+
+      // Microscopic Examination
+      { id: 'pus_cells', label: 'Pus cells', type: 'number', unit: '/HPF', refRange: '0-5', required: false },
+      { id: 'epithelial_cells', label: 'Epithelial cells', type: 'number', unit: '/HPF', refRange: '0-1', required: false },
+      { id: 'rbcs', label: 'RBCs', type: 'number', unit: '/HPF', refRange: '0-2', required: false },
+      { id: 'crystals', label: 'Crystals', type: 'select', options: ['Nil', 'Present'], required: false },
+      { id: 'casts', label: 'Casts', type: 'select', options: ['Nil', 'Present'], required: false },
+      { id: 'other', label: 'Other', type: 'textarea', required: false },
+    ],
+  },
+  cardiac_marker_simple: {
+    fields: [
+      { id: 'trop_t_card', label: 'Trop-T (By Card)', type: 'select', options: ['Negative', 'Positive'], required: true, refRange: 'Negative' },
+    ],
+  },
 };
 
 export const testConfigByTestId: Record<string, keyof typeof testConfigurations> = {
@@ -275,4 +456,24 @@ export const testConfigByTestId: Record<string, keyof typeof testConfigurations>
   'test-h-pylori': 'h_pylori',
   'test-kft-rft': 'kft_rft',
   'test-bilirubin': 'bilirubin_test',
+  'test-crp-quantitative': 'crp_quantitative',
+  'test-aec-count': 'aec_count',
+  'test-crp-quantitative-alt': 'crp_quantitative_alt',
+  'test-h-pylori-latex': 'h_pylori_latex',
+  'test-amylase-serum': 'amylase_serum',
+  'test-lipase': 'lipase',
+  'test-rbs': 'blood_sugar_random',
+  'test-bsf': 'blood_sugar_fasting',
+  'test-bspp': 'blood_sugar_pp',
+  'test-bsf-bspp': 'blood_sugar_f_pp_combined',
+  'test-hba1c': 'hba1c',
+  'test-haemoglobin': 'haemoglobin_test',
+  'test-blood-group': 'blood_group_test',
+  'test-hb-bg-rbs': 'hb_bg_rbs_panel',
+  'test-stool-routine': 'stool_routine',
+  'test-bgt-typt-dot': 'bgt_typt_dot_panel',
+  'test-lipid-profile': 'lipid_profile2',
+  'test-culture-antibiotic-sensitivity': 'culture_antibiotic_sensitivity',
+  'test-urine-routine': 'urine_routine',
+  'test-cardiac-marker': 'cardiac_marker_simple',
 };

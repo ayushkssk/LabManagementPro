@@ -37,7 +37,7 @@ export const demoPatients: Patient[] = [
     status: 'Bill Printed',
     createdAt: new Date('2023-03-10'),
     billId: 'bill-3'
-  }
+  },
 ];
 
 // Demo hospital data
@@ -186,16 +186,70 @@ export const demoTests: Test[] = [
     category: 'Hematology',
     price: 300,
     fields: [
-      { id: getFieldId(), name: 'Hemoglobin (Hb)', type: 'number', unit: 'g/dL', normalRange: '12-16' },
-      { id: getFieldId(), name: 'Hematocrit (PCV)', type: 'number', unit: '%', normalRange: '36-46' },
-      { id: getFieldId(), name: 'RBC Count', type: 'number', unit: 'million/μL', normalRange: '4.5-5.5' },
-      { id: getFieldId(), name: 'WBC Count', type: 'number', unit: 'cells/μL', normalRange: '4000-11000' },
-      { id: getFieldId(), name: 'Platelet Count', type: 'number', unit: 'lakhs/μL', normalRange: '1.5-4.5' },
-      { id: getFieldId(), name: 'MCV', type: 'number', unit: 'fL', normalRange: '80-100' },
-      { id: getFieldId(), name: 'MCH', type: 'number', unit: 'pg', normalRange: '27-33' },
-      { id: getFieldId(), name: 'MCHC', type: 'number', unit: 'g/dL', normalRange: '32-36' },
-      { id: getFieldId(), name: 'RDW', type: 'number', unit: '%', normalRange: '11.5-14.5' },
-      { id: getFieldId(), name: 'MPV', type: 'number', unit: 'fL', normalRange: '7.5-11.5' }
+      // Investigation
+      { id: getFieldId(), name: 'Haemoglobin', type: 'number', unit: 'g/dL', normalRange: '11.0-16.0' },
+      { id: getFieldId(), name: 'TLC (Total Leucocyte Count)', type: 'number', unit: '10^3/μL', normalRange: '4.0-11.0' },
+
+      // Differential Leukocyte Count
+      { id: getFieldId(), name: 'Neutrophil', type: 'number', unit: '%', normalRange: '45-75' },
+      { id: getFieldId(), name: 'Lymphocyte', type: 'number', unit: '%', normalRange: '20-45' },
+      { id: getFieldId(), name: 'Eosinophil', type: 'number', unit: '%', normalRange: '1-6' },
+      { id: getFieldId(), name: 'Monocyte', type: 'number', unit: '%', normalRange: '1-10' },
+      { id: getFieldId(), name: 'Basophil', type: 'number', unit: '%', normalRange: '0.00-1.0' },
+
+      // RBC and indices
+      { id: getFieldId(), name: 'RBC (Red Blood Cell Count)', type: 'number', unit: '10^6/μL', normalRange: '3.5-5.5' },
+      { id: getFieldId(), name: 'Hct (Hematocrit)', type: 'number', unit: '%', normalRange: '36-48' },
+      { id: getFieldId(), name: 'M C V (Mean Corp Volume)', type: 'number', unit: 'fL', normalRange: '80.0-99.9' },
+      { id: getFieldId(), name: 'M C H (Mean Corp Hb)', type: 'number', unit: 'pg', normalRange: '27.0-31.0' },
+      { id: getFieldId(), name: 'M C H C (Mean Corp Hb Conc)', type: 'number', unit: 'g/dL', normalRange: '32.0-36.0' },
+
+      // Platelets
+      { id: getFieldId(), name: 'Platelet Count', type: 'number', unit: '10^3/μL', normalRange: '150-450' },
+      { id: getFieldId(), name: 'R D W (Red Cell Dis.Width)', type: 'number', unit: '%', normalRange: '35-56' },
+      { id: getFieldId(), name: 'M P V (Mean Pla. Volume)', type: 'number', unit: 'fL', normalRange: '7.0-11.0' }
+    ]
+  },
+  {
+    id: 'test-cardiac-marker',
+    category: 'Cardiology',
+    name: 'CARDIAC MARKER',
+    price: 300,
+    fields: [
+      { id: getFieldId(), name: 'Trop-T (By Card)', type: 'select', unit: '', normalRange: 'Negative', options: ['Negative', 'Positive'] }
+    ]
+  },
+  {
+    id: 'test-urine-routine',
+    category: 'Urology',
+    name: 'Urine Routine Examination',
+    price: 250,
+    fields: [
+      // Physical Examination
+      { id: getFieldId(), name: 'Quantity', type: 'number', unit: 'mL', normalRange: '' },
+      { id: getFieldId(), name: 'Colour', type: 'select', unit: '', normalRange: '', options: ['Straw', 'Pale Yellow', 'Yellow', 'Amber', 'Dark'] },
+      { id: getFieldId(), name: 'Appearance', type: 'select', unit: '', normalRange: '', options: ['Clear', 'Slightly Turbid', 'Turbid'] },
+      { id: getFieldId(), name: 'Sediment', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Present'] },
+      { id: getFieldId(), name: 'Specific Gravity', type: 'number', unit: '', normalRange: '1.005-1.030' },
+
+      // Chemical Examination
+      { id: getFieldId(), name: 'White Blood Cell (chem)', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Trace', 'Present'] },
+      { id: getFieldId(), name: 'Ketone', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Trace', 'Present'] },
+      { id: getFieldId(), name: 'Nitrite', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Positive'] },
+      { id: getFieldId(), name: 'Urobilinogen', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Normal', 'Increased'] },
+      { id: getFieldId(), name: 'Bilirubin', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Positive'] },
+      { id: getFieldId(), name: 'Albumin', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Trace', '1+', '2+', '3+'] },
+      { id: getFieldId(), name: 'Glucose', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Trace', '1+', '2+', '3+'] },
+      { id: getFieldId(), name: 'Blood', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Positive'] },
+      { id: getFieldId(), name: 'pH', type: 'number', unit: '', normalRange: '4.5-8.0' },
+
+      // Microscopic Examination
+      { id: getFieldId(), name: 'Pus cells', type: 'number', unit: '/HPF', normalRange: '0-5' },
+      { id: getFieldId(), name: 'Epithelial cells', type: 'number', unit: '/HPF', normalRange: '0-1' },
+      { id: getFieldId(), name: 'RBCs', type: 'number', unit: '/HPF', normalRange: '0-2' },
+      { id: getFieldId(), name: 'Crystals', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Present'] },
+      { id: getFieldId(), name: 'Casts', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Present'] },
+      { id: getFieldId(), name: 'Other', type: 'text', unit: '', normalRange: '' }
     ]
   },
   {
@@ -666,6 +720,34 @@ export const demoTests: Test[] = [
     ]
   },
   {
+    id: 'test-culture-antibiotic-sensitivity',
+    category: 'Microbiology',
+    name: 'Culture & Antibiotic Sensitivity',
+    price: 800,
+    fields: [
+      { id: getFieldId(), name: 'Nature of sample', type: 'select', unit: '', normalRange: '', options: ['Urine', 'Blood', 'Sputum', 'Stool', 'Pus', 'Swab', 'CSF', 'Other'] },
+      { id: getFieldId(), name: 'Organism grown', type: 'text', unit: '', normalRange: '' },
+      { id: getFieldId(), name: 'Colony Count', type: 'text', unit: 'CFU/ml', normalRange: '' },
+
+      // Antibiotic sensitivity (HS, S, MS, R)
+      { id: getFieldId(), name: 'AMIKACIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'CIPROFLOXACIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'OFLOXACIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'AZITHROMYCIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'ERYTHROMYCIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'GENTAMYCIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'CEFOTAXIME', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'CLOXACILLIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'NORFLOXACIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'AMOXICILLIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'TOBRAMYCIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'CEFTAZIDIME', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'LEVOFLOXACIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'GATIFLOXACIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] },
+      { id: getFieldId(), name: 'AMPICILLIN', type: 'select', unit: '', normalRange: '', options: ['HS', 'S', 'MS', 'R'] }
+    ]
+  },
+  {
     id: 'test-33',
     category: 'Urology',
     name: '24-Hour Urine Protein',
@@ -985,6 +1067,199 @@ export const demoTests: Test[] = [
         normalRange: '8.6-10.3'
       }
     ]
+  },
+  
+  // New tests from user request
+  {
+    id: 'test-crp-quantitative',
+    category: 'Biochemistry',
+    name: 'C-Reactive Protein (Quantitative)',
+    price: 350,
+    fields: [
+      { id: getFieldId(), name: 'C-Reactive Protein', type: 'number', unit: 'mg/L', normalRange: '<5' }
+    ]
+  },
+  {
+    id: 'test-aec-count',
+    category: 'Hematology',
+    name: 'Absolute Eosinophil Count (AEC)',
+    price: 250,
+    fields: [
+      { id: getFieldId(), name: 'Absolute Eosinophil Count', type: 'number', unit: '/cumm', normalRange: '20-500' }
+    ]
+  },
+  {
+    id: 'test-crp-quantitative-alt',
+    category: 'Biochemistry',
+    name: 'C-Reactive Protein (CRP) Quantitative',
+    price: 350,
+    fields: [
+      { id: getFieldId(), name: 'C-Reactive Protein (CRP)', type: 'number', unit: 'mg/L', normalRange: '0-6' }
+    ]
+  },
+  {
+    id: 'test-h-pylori-latex',
+    category: 'SeroLOGY & INFECTIOUS DISEASE',
+    name: 'H. Pylori (Latex)',
+    price: 300,
+    fields: [
+      { id: getFieldId(), name: 'H. Pylori (Latex)', type: 'select', unit: '', normalRange: 'Negative: < 1, Positive: > 1', options: ['Negative', 'Positive'] }
+    ]
+  },
+  {
+    id: 'test-amylase-serum',
+    category: 'Biochemistry',
+    name: 'Amylase, Serum',
+    price: 400,
+    fields: [
+      { id: getFieldId(), name: 'AMYLASE , SERUM', type: 'number', unit: 'IU/L', normalRange: '25-110' },
+      { id: getFieldId(), name: 'Comment', type: 'text', unit: '', normalRange: '' }
+    ]
+  },
+  {
+    id: 'test-lipase',
+    category: 'Biochemistry',
+    name: 'Lipase',
+    price: 400,
+    fields: [
+      { id: getFieldId(), name: 'LIPASE', type: 'number', unit: 'IU/L', normalRange: '13-64' }
+    ]
+  },
+  {
+    id: 'test-rbs',
+    category: 'Biochemistry',
+    name: 'Blood Sugar Random (RBS)',
+    price: 150,
+    fields: [
+      { id: getFieldId(), name: 'BLOOD SUGAR RANDOM', type: 'number', unit: 'mg/dL', normalRange: '<140' }
+    ]
+  },
+  {
+    id: 'test-bsf',
+    category: 'Biochemistry',
+    name: 'Blood Sugar Fasting (BSF)',
+    price: 150,
+    fields: [
+      { id: getFieldId(), name: 'BLOOD SUGAR F', type: 'number', unit: 'mg/dL', normalRange: '60-110' }
+    ]
+  },
+  {
+    id: 'test-bspp',
+    category: 'Biochemistry',
+    name: 'Blood Sugar Post Prandial (BSPP)',
+    price: 150,
+    fields: [
+      { id: getFieldId(), name: 'BLOOD SUGAR PP', type: 'number', unit: 'mg/dL', normalRange: '100-140' }
+    ]
+  },
+  {
+    id: 'test-bsf-bspp',
+    category: 'Biochemistry',
+    name: 'BSF, BSPP',
+    price: 250,
+    fields: [
+      { id: getFieldId(), name: 'BLOOD SUGAR F', type: 'number', unit: 'mg/dL', normalRange: '60-110' },
+      { id: getFieldId(), name: 'BLOOD SUGAR PP', type: 'number', unit: 'mg/dL', normalRange: '100-140' }
+    ]
+  },
+  {
+    id: 'test-hba1c',
+    category: 'Biochemistry',
+    name: 'HbA1c (Glycosylated Hemoglobin) - HPLC',
+    price: 500,
+    fields: [
+      { id: getFieldId(), name: 'HbA1c', type: 'number', unit: '%', normalRange: 'Normal: 4.3-6.1; Non-Diabetic: <6.0; Good Control: <7.0; Poor Control: >8.0; Not In Control: >8.3' },
+      { id: getFieldId(), name: 'Comment', type: 'text', unit: '', normalRange: 'Interpretation pre-filled in form' }
+    ]
+  },
+  {
+    id: 'test-haemoglobin',
+    category: 'Hematology',
+    name: 'Haemoglobin',
+    price: 150,
+    fields: [
+      { id: getFieldId(), name: 'HAEMOGLOBIN', type: 'number', unit: 'g/dL', normalRange: '11.0-15.0' }
+    ]
+  },
+  {
+    id: 'test-blood-group',
+    category: 'Hematology',
+    name: 'Blood Group Test',
+    price: 150,
+    fields: [
+      { id: getFieldId(), name: 'Blood Group', type: 'select', unit: '', normalRange: '', options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] },
+      { id: getFieldId(), name: 'Rh Type', type: 'select', unit: '', normalRange: '', options: ['Positive', 'Negative'] }
+    ]
+  },
+  {
+    id: 'test-hb-bg-rbs',
+    category: 'Biochemistry',
+    name: 'Haemoglobin + Blood Group + RBS',
+    price: 400,
+    fields: [
+      { id: getFieldId(), name: 'HAEMOGLOBIN', type: 'number', unit: 'g/dL', normalRange: '11.0-15.0' },
+      { id: getFieldId(), name: 'Blood Group', type: 'select', unit: '', normalRange: '', options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] },
+      { id: getFieldId(), name: 'Rh Type', type: 'select', unit: '', normalRange: '', options: ['Positive', 'Negative'] },
+      { id: getFieldId(), name: 'BLOOD SUGAR RANDOM', type: 'number', unit: 'mg/dL', normalRange: '<140' }
+    ]
+  },
+  {
+    id: 'test-stool-routine',
+    category: 'Stool',
+    name: 'Stool Routine Examination',
+    price: 250,
+    fields: [
+      // Physical Examination
+      { id: getFieldId(), name: 'Colour', type: 'select', unit: '', normalRange: '', options: ['Brown', 'Yellow', 'Clay', 'Black (Melena)', 'Red'] },
+      { id: getFieldId(), name: 'Mucus', type: 'select', unit: '', normalRange: '', options: ['Absent', 'Present(+)', 'Present(++)'] },
+      { id: getFieldId(), name: 'Consistency', type: 'select', unit: '', normalRange: '', options: ['Formed', 'Semi-Solid', 'Loose', 'Watery'] },
+      { id: getFieldId(), name: 'Blood', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Present'] },
+      { id: getFieldId(), name: 'Odour', type: 'select', unit: '', normalRange: '', options: ['Fecal', 'Foul'] },
+
+      // Chemical Examination
+      { id: getFieldId(), name: 'Reaction', type: 'select', unit: '', normalRange: '', options: ['Acidic', 'Alkaline', 'Neutral'] },
+      { id: getFieldId(), name: 'Sugar', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Present'] },
+      { id: getFieldId(), name: 'Occult Blood', type: 'select', unit: '', normalRange: '', options: ['Negative', 'Positive'] },
+
+      // Microscopic Examination
+      { id: getFieldId(), name: 'E-Histolytic', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Present'] },
+      { id: getFieldId(), name: 'Giardia Intestinalis', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Present'] },
+      { id: getFieldId(), name: 'Helminthic Parasites', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Present'] },
+      { id: getFieldId(), name: 'Ova of Hookworm', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Present'] },
+      { id: getFieldId(), name: 'Ova of Roundworm', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Present'] },
+      { id: getFieldId(), name: 'Degenerated Leucocytes', type: 'number', unit: '/hpf', normalRange: '0-5 /hpf' },
+      { id: getFieldId(), name: 'Epithelial cells', type: 'select', unit: '', normalRange: '', options: ['Nil', 'Few', 'Moderate', 'Many'] },
+      { id: getFieldId(), name: 'Undigested Food Particles', type: 'select', unit: '', normalRange: '', options: ['Absent', 'Present'] },
+      { id: getFieldId(), name: 'Bacterial Flora', type: 'select', unit: '', normalRange: '', options: ['Not Found', 'Found'] },
+      { id: getFieldId(), name: 'Protozoal Parasite', type: 'select', unit: '', normalRange: '', options: ['Not Found', 'Found'] }
+    ]
+  },
+  {
+    id: 'test-bgt-typt-dot',
+    category: 'Serology',
+    name: 'BGT + TYPHI DOT (Blood Group + Typhi Dot)',
+    price: 300,
+    fields: [
+      { id: getFieldId(), name: 'Blood Group', type: 'select', unit: '', normalRange: '', options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] },
+      { id: getFieldId(), name: 'Rh Type', type: 'select', unit: '', normalRange: '', options: ['Positive', 'Negative'] },
+      { id: getFieldId(), name: 'Typhoid Fever IgM Antibody', type: 'select', unit: '', normalRange: 'Negative: < 1; Positive: > 1', options: ['Negative', 'Positive'] },
+      { id: getFieldId(), name: 'Typhoid Fever IgG', type: 'select', unit: '', normalRange: 'Negative: < 1; Positive: > 1', options: ['Negative', 'Positive'] }
+    ]
+  },
+  {
+    id: 'test-lipid-profile',
+    category: 'Biochemistry',
+    name: 'Lipid Profile',
+    price: 600,
+    fields: [
+      { id: getFieldId(), name: 'Total Cholesterol', type: 'number', unit: 'mg/dL', normalRange: '250-280 Borderline high; 281-350 High; >350 Very High' },
+      { id: getFieldId(), name: 'Triglycerides', type: 'number', unit: 'mg/dL', normalRange: '160-200 Borderline high; 200-450 High; >450 Very High' },
+      { id: getFieldId(), name: 'H.D.L Cholesterol', type: 'number', unit: 'mg/dL', normalRange: '40-60 Normal; >60 High Risk' },
+      { id: getFieldId(), name: 'L.D.L Cholesterol', type: 'number', unit: 'mg/dL', normalRange: '130-159 Borderline high; 160-189 High; >190 Very High' },
+      { id: getFieldId(), name: 'V.L.D.L Cholesterol', type: 'number', unit: 'mg/dL', normalRange: '<30 mg/dL' },
+      { id: getFieldId(), name: 'T.C/H.D.L Ratio', type: 'number', unit: '', normalRange: '3.0 Low Risk; 3.0-5.0 Moderate Risk; >5.0 High Risk' },
+      { id: getFieldId(), name: 'L.D.L/H.D.L Ratio', type: 'number', unit: '', normalRange: '2.6 Low Risk; 2.6-3.6 Moderate Risk; >3.6 High Risk' }
+    ]
   }
 ];
 
@@ -1076,7 +1351,7 @@ export const demoHospital: Hospital = {
   },
   phoneNumbers: ['+911234567890'],
   email: 'info@demohealthcare.com',
-  website: 'https://demohealthcare.com',
+  website: 'https://swatihospital.com',
   tagline: 'Quality Healthcare Services',
   description: 'A demo hospital for testing and demonstration purposes',
   logoUrl: '/logo.png',

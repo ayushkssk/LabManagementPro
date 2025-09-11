@@ -2,6 +2,7 @@ import React, { ReactNode, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '@/components/layout/Sidebar';
 import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
@@ -39,12 +40,13 @@ export const SuperAdminLayout = ({ children }: SuperAdminLayoutProps) => {
         {/* Top Navbar */}
         <Navbar onToggleSidebar={toggleSidebar} isCollapsed={isCollapsed} role="super-admin" />
         
-        {/* Main Content */}
+        {/* Scroll Area */}
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
           <div className="w-full">
             {children || <Outlet />}
           </div>
         </main>
+        <Footer />
       </div>
     </div>
   );

@@ -84,6 +84,7 @@ export interface Hospital {
   isActive: boolean;
   isVerified: boolean;
   isDemo: boolean;
+  isDeleted?: boolean;
   
   // Timestamps
   createdAt: Date;

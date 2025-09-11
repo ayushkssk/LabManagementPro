@@ -11,10 +11,13 @@ import { demoHospitals } from '@/data/demoData';
 
 interface HospitalContextType {
   hospitals: Hospital[];
+  deletedHospitals: Hospital[];
   addHospital: (hospitalData: Omit<Hospital, 'id' | 'createdAt' | 'updatedAt' | 'registrationDate' | 'isDemo'>) => Promise<string>;
   getHospitalById: (id: string) => Hospital | undefined;
   updateHospital: (id: string, updates: Partial<Hospital>) => void;
   deleteHospital: (id: string) => Promise<void>;
+  restoreHospital: (id: string) => Promise<void>;
+  permanentlyDeleteHospital: (id: string) => Promise<void>;
 }
 
 const HospitalContext = createContext<HospitalContextType | undefined>(undefined);
@@ -109,7 +112,11 @@ const createNewHospital = (data: {
 const HOSPITALS_STORAGE_KEY = 'labmanagerpro_hospitals';
 
 export const HospitalProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [allHospitals, setAllHospitals] = useState<Hospital[]>([]);
+  
+  // Computed values for active and deleted hospitals
+  const hospitals = allHospitals.filter(h => !h.isDeleted);
+  const deletedHospitals = allHospitals.filter(h => h.isDeleted);
 
   // Load demo data on initial render
   useEffect(() => {
@@ -141,7 +148,7 @@ export const HospitalProvider: React.FC<{ children: ReactNode }> = ({ children }
           }
         }));
         
-        setHospitals(hospitalsWithDates);
+        setAllHospitals(hospitalsWithDates);
       } else {
         // If no saved data, use demo hospitals and save them
         const hospitalsWithDates = demoHospitals.map(h => ({
@@ -151,7 +158,7 @@ export const HospitalProvider: React.FC<{ children: ReactNode }> = ({ children }
           registrationDate: new Date(h.registrationDate)
         }));
         
-        setHospitals(hospitalsWithDates);
+        setAllHospitals(hospitalsWithDates);
         localStorage.setItem(HOSPITALS_STORAGE_KEY, JSON.stringify(hospitalsWithDates));
       }
     } catch (error) {
@@ -164,17 +171,17 @@ export const HospitalProvider: React.FC<{ children: ReactNode }> = ({ children }
         registrationDate: new Date(h.registrationDate)
       }));
       
-      setHospitals(hospitalsWithDates);
+      setAllHospitals(hospitalsWithDates);
       localStorage.setItem(HOSPITALS_STORAGE_KEY, JSON.stringify(hospitalsWithDates));
     }
   }, []);
 
   // Save hospitals to localStorage whenever they change
   useEffect(() => {
-    if (hospitals.length > 0) {
-      localStorage.setItem(HOSPITALS_STORAGE_KEY, JSON.stringify(hospitals));
+    if (allHospitals.length > 0) {
+      localStorage.setItem(HOSPITALS_STORAGE_KEY, JSON.stringify(allHospitals));
     }
-  }, [hospitals]);
+  }, [allHospitals]);
 
   // Add a new hospital
   const addHospital = useCallback(async (hospitalData: Omit<Hospital, 'id' | 'createdAt' | 'updatedAt' | 'registrationDate' | 'isDemo'>) => {
@@ -196,7 +203,7 @@ export const HospitalProvider: React.FC<{ children: ReactNode }> = ({ children }
         logoUrl: hospitalData.logoUrl
       });
 
-      setHospitals(prev => [...prev, newHospital]);
+      setAllHospitals(prev => [...prev, newHospital]);
       return newHospital.id;
     } catch (error) {
       console.error('Error adding hospital:', error);
@@ -206,7 +213,7 @@ export const HospitalProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Update an existing hospital
   const updateHospital = useCallback((id: string, updates: Partial<Hospital>) => {
-    setHospitals(prevHospitals => 
+    setAllHospitals(prevHospitals => 
       prevHospitals.map(hospital => 
         hospital.id === id 
           ? { ...hospital, ...updates, updatedAt: new Date() } 
@@ -215,30 +222,62 @@ export const HospitalProvider: React.FC<{ children: ReactNode }> = ({ children }
     );
   }, []);
 
+  // Soft delete a hospital
   const deleteHospital = useCallback(async (id: string) => {
     // Prevent deletion of demo hospitals
-    const hospital = hospitals.find(h => h.id === id);
+    const hospital = allHospitals.find(h => h.id === id);
     if (hospital?.isDemo) {
       throw new Error('Cannot delete demo hospitals');
     }
     
-    setHospitals(prevHospitals => 
+    setAllHospitals(prevHospitals => 
+      prevHospitals.map(hospital => 
+        hospital.id === id 
+          ? { ...hospital, isDeleted: true, updatedAt: new Date() } 
+          : hospital
+      )
+    );
+  }, [allHospitals]);
+
+  // Restore a deleted hospital
+  const restoreHospital = useCallback(async (id: string) => {
+    setAllHospitals(prevHospitals => 
+      prevHospitals.map(hospital => 
+        hospital.id === id 
+          ? { ...hospital, isDeleted: false, updatedAt: new Date() } 
+          : hospital
+      )
+    );
+  }, []);
+
+  // Permanently delete a hospital
+  const permanentlyDeleteHospital = useCallback(async (id: string) => {
+    // Prevent permanent deletion of demo hospitals
+    const hospital = allHospitals.find(h => h.id === id);
+    if (hospital?.isDemo) {
+      throw new Error('Cannot permanently delete demo hospitals');
+    }
+    
+    setAllHospitals(prevHospitals => 
       prevHospitals.filter(hospital => hospital.id !== id)
     );
-  }, [hospitals]);
+  }, [allHospitals]);
 
-  // Get hospital by ID
+  // Get hospital by ID (including deleted ones)
   const getHospitalById = useCallback((id: string) => {
-    return hospitals.find(hospital => hospital.id === id);
-  }, [hospitals]);
+    return allHospitals.find(hospital => hospital.id === id);
+  }, [allHospitals]);
 
   return (
     <HospitalContext.Provider value={{ 
       hospitals, 
+      deletedHospitals,
       addHospital, 
       getHospitalById,
       updateHospital,
-      deleteHospital
+      deleteHospital,
+      restoreHospital,
+      permanentlyDeleteHospital
     }}>
       {children}
     </HospitalContext.Provider>

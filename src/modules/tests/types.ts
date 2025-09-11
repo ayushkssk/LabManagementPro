@@ -5,6 +5,7 @@ export interface BaseField {
   unit?: string;
   refRange?: string;
   group?: string;
+  defaultValue?: string;
 }
 
 export interface NumberField extends BaseField {

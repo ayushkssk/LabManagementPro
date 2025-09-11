@@ -1,6 +1,7 @@
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FieldConfig } from './types';
 
@@ -39,7 +40,7 @@ const TestForm: React.FC<TestFormProps> = ({ fields, values, onChange }) => {
               {commonLabel}
               {refRange}
               <Select
-                value={values[field.id] || ''}
+                value={(values[field.id] ?? (field as any).defaultValue) || ''}
                 onValueChange={(value) => onChange(field.id, value)}
               >
                 <SelectTrigger>
@@ -66,7 +67,7 @@ const TestForm: React.FC<TestFormProps> = ({ fields, values, onChange }) => {
               <Input
                 id={field.id}
                 type="number"
-                value={values[field.id] || ''}
+                value={(values[field.id] ?? (field as any).defaultValue) || ''}
                 onChange={(e) => onChange(field.id, e.target.value)}
                 required={field.required}
                 min={f.min}
@@ -85,9 +86,23 @@ const TestForm: React.FC<TestFormProps> = ({ fields, values, onChange }) => {
               <Input
                 id={field.id}
                 type="datetime-local"
-                value={values[field.id] || ''}
+                value={(values[field.id] ?? (field as any).defaultValue) || ''}
                 onChange={(e) => onChange(field.id, e.target.value)}
                 required={field.required}
+              />
+            </div>
+          );
+        }
+
+        if ((field as any).type === 'textarea') {
+          return (
+            <div key={field.id} className="space-y-2 md:col-span-2">
+              {commonLabel}
+              {refRange}
+              <Textarea
+                id={field.id}
+                value={(values[field.id] ?? (field as any).defaultValue) || ''}
+                onChange={(e) => onChange(field.id, e.target.value)}
               />
             </div>
           );

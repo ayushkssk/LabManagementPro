@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, ArrowLeft, CheckCircle, ClipboardList, XCircle, Printer, Plus, Search } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle, ClipboardList, XCircle, Printer, Plus, Search, Beaker, BadgeCheck, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { getPatient, PatientData } from '@/services/patientService';
+import { getPatient, PatientData, addTestToPatient, removeTestFromPatient } from '@/services/patientService';
 import { testConfigurations, testConfigByTestId, sampleTests as externalSampleTests } from '../../modules/tests/config';
 import { TestParameterTable } from '@/components/tests/TestParameterTable';
 import { demoTests } from '@/data/demoData';
@@ -93,6 +93,20 @@ const SampleCollectionV2: React.FC = () => {
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const [showAddTestDropdown, setShowAddTestDropdown] = useState(false);
   const [testSearchQuery, setTestSearchQuery] = useState('');
+  const [sidebarSearch, setSidebarSearch] = useState('');
+  // Recently added tests priority for dropdown ordering
+  const recentTestPriority: string[] = [
+    'test-bgt-typt-dot',
+    'test-stool-routine',
+    'test-hb-bg-rbs',
+    'test-bsf-bspp',
+    'test-hba1c',
+    'test-bsf',
+    'test-bspp',
+    'test-lipid-profile',
+    'test-culture-antibiotic-sensitivity',
+    'test-urine-routine',
+  ];
   const [testToDelete, setTestToDelete] = useState<string | null>(null);
   const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [lastSavedData, setLastSavedData] = useState<Record<string, any>>({});
@@ -110,13 +124,31 @@ const SampleCollectionV2: React.FC = () => {
     return sampleTests.filter(test => !currentTestIds.includes(test.id));
   }, [samples]);
 
+  // Sidebar filter for existing samples
+  const filteredSamples = useMemo(() => {
+    const q = (sidebarSearch || '').trim().toLowerCase();
+    if (!q) return samples;
+    return samples.filter(s => s.testName.toLowerCase().includes(q));
+  }, [samples, sidebarSearch]);
+
   // Filter available tests based on search query
   const filteredAvailableTests = useMemo(() => {
-    if (!testSearchQuery) return availableTests;
-    return availableTests.filter(test => 
-      test.name.toLowerCase().includes(testSearchQuery.toLowerCase()) ||
-      test.category.toLowerCase().includes(testSearchQuery.toLowerCase())
-    );
+    const q = (testSearchQuery || '').trim().toLowerCase();
+    const base = q
+      ? availableTests.filter(test =>
+          test.name.toLowerCase().includes(q) ||
+          test.category.toLowerCase().includes(q) ||
+          test.id.toLowerCase().includes(q)
+        )
+      : availableTests.slice();
+    return base.sort((a, b) => {
+      const ia = recentTestPriority.indexOf(a.id);
+      const ib = recentTestPriority.indexOf(b.id);
+      const aPr = ia === -1 ? Number.MAX_SAFE_INTEGER : ia;
+      const bPr = ib === -1 ? Number.MAX_SAFE_INTEGER : ib;
+      if (aPr !== bPr) return aPr - bPr;
+      return a.name.localeCompare(b.name);
+    });
   }, [availableTests, testSearchQuery]);
 
   // Load test configuration when selected test changes
@@ -351,7 +383,7 @@ const SampleCollectionV2: React.FC = () => {
   }, [samples, selectedTest, technicianName, parameters]);
 
   // Add new test to samples
-  const handleAddTest = useCallback((testId: string) => {
+  const handleAddTest = useCallback(async (testId: string) => {
     const testMeta = sampleTests.find(t => t.id === testId);
     if (!testMeta) return;
 
@@ -366,23 +398,35 @@ const SampleCollectionV2: React.FC = () => {
     };
 
     setSamples(prevSamples => [...prevSamples, newSample]);
-    
+
+    // Persist in Firestore
+    try {
+      if (patient?.id) {
+        await addTestToPatient(patient.id, testId);
+        // Reflect in local patient state
+        setPatient(prev => prev ? { ...prev, tests: [...(prev.tests || []), testId] } : prev);
+      }
+    } catch (err) {
+      console.error('Failed to add test to patient in Firestore:', err);
+      toast({ title: 'Sync Error', description: 'Could not sync added test to database.', variant: 'destructive' });
+    }
+
     // Auto-select the newly added test
     setSelectedTestId(testId);
-    
+
     // Close dropdown and reset search
     setShowAddTestDropdown(false);
     setTestSearchQuery('');
-    
+
     toast({
       title: 'Test Added',
       description: `${testMeta.name} has been added to the collection.`,
       variant: 'default',
     });
-  }, []);
+  }, [patient]);
 
   // Remove test from samples with confirmation
-  const handleRemoveTest = useCallback((testId: string) => {
+  const handleRemoveTest = useCallback(async (testId: string) => {
     const testToRemove = samples.find(s => s.testId === testId);
     if (!testToRemove) return;
 
@@ -397,6 +441,16 @@ const SampleCollectionV2: React.FC = () => {
     }
 
     setSamples(prevSamples => prevSamples.filter(s => s.testId !== testId));
+    // Persist removal to Firestore
+    try {
+      if (patient?.id) {
+        await removeTestFromPatient(patient.id, testId);
+        setPatient(prev => prev ? { ...prev, tests: (prev.tests || []).filter(t => t !== testId) } : prev);
+      }
+    } catch (err) {
+      console.error('Failed to remove test from patient in Firestore:', err);
+      toast({ title: 'Sync Error', description: 'Could not sync removed test to database.', variant: 'destructive' });
+    }
     
     // If the removed test was selected, select another one or clear selection
     if (selectedTestId === testId) {
@@ -416,7 +470,7 @@ const SampleCollectionV2: React.FC = () => {
     
     // Clear the test to delete state
     setTestToDelete(null);
-  }, [samples, selectedTestId]);
+  }, [samples, selectedTestId, patient]);
 
   // Auto-save functionality with debouncing
   const autoSaveTestData = useCallback(async (testId: string, parametersData: Record<string, TableParam>, sampleData: Sample) => {
@@ -636,7 +690,12 @@ const SampleCollectionV2: React.FC = () => {
           text-align: center !important;
         }
         .print-signatures {
-          margin: 8mm 0 4mm 0 !important;
+          /* Place signatures at the bottom of the page in print */
+          position: absolute !important;
+          left: 15mm !important;
+          right: 15mm !important;
+          bottom: 20mm !important;
+          margin: 0 !important;
           page-break-inside: avoid !important;
           font-size: 10px !important;
         }
@@ -1319,7 +1378,7 @@ const SampleCollectionV2: React.FC = () => {
                   <div className="print-signatures">
                     <div className="flex justify-between w-full">
                       <div className="text-left">
-                        <p className="font-bold">Vinit Gaurav</p>
+                        <p className="font-bold">Komal Kumari</p>
                         <p className="text-xs">DMLT</p>
                       </div>
                       <div className="text-right">
@@ -1430,54 +1489,59 @@ const SampleCollectionV2: React.FC = () => {
   }
 
   return (
-    <div className="w-full max-w-[99vw] -mx-4">
-      <div className="flex items-center justify-between px-4 py-1.5 border-b bg-card">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-lg font-semibold">Sample Collection</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-            <CheckCircle className="h-4 w-4" />
-            <span>{samples.filter(s => s.collected).length} of {samples.length} tests collected</span>
+    <div className="w-full">
+      {/* Page Header */}
+      <div className="relative overflow-hidden border-b bg-card">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/5 to-transparent" />
+        <div className="relative px-2 py-1 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-lg font-semibold tracking-tight flex items-center gap-2">
+              <Beaker className="h-4 w-4 text-primary" />
+              Sample Collection
+            </h1>
           </div>
-          {availableTests.length > 0 && (
-            <div className="text-xs text-muted-foreground">
-              {availableTests.length} more tests available
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
+              <CheckCircle className="h-4 w-4" />
+              <span>{samples.filter(s => s.collected).length} of {samples.length} tests collected</span>
             </div>
-          )}
+            {availableTests.length > 0 && (
+              <div className="text-xs text-muted-foreground">
+                {availableTests.length} more tests available
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Patient Info */}
-      <Card className="mb-4 mx-4 mt-2">
-        <CardHeader className="pb-2">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle>{patient.name}</CardTitle>
-              <CardDescription>
-                ID: {patient.hospitalId || patient.id} • {patient.age} years • {patient.gender}
-              </CardDescription>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handlePrint}
-            >
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
-
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 px-4 mt-2">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-2 px-2 mt-1">
         {/* Test List */}
-        <div className="xl:col-span-2">
-          <Card>
-            <CardHeader>
+        <div className="xl:col-span-3">
+          {/* Compact Patient Info above Ordered Tests */}
+          <Card className="shadow-card">
+            <CardHeader className="py-3">
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+                  {patient.name?.charAt(0) || 'P'}
+                </div>
+                <div className="min-w-0">
+                  <CardTitle className="text-base leading-tight truncate">{patient.name}</CardTitle>
+                  <CardDescription className="mt-0.5 truncate">{patient.age} years • {patient.gender}</CardDescription>
+                  <div className="mt-1 text-[10px] text-muted-foreground inline-flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 rounded-full bg-muted">ID: {patient.hospitalId || patient.id}</span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Verified</span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Walk-in</span>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          <Card className="shadow-card">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg">Ordered Tests</CardTitle>
@@ -1520,34 +1584,50 @@ const SampleCollectionV2: React.FC = () => {
                   </PopoverContent>
                 </Popover>
               </div>
+              <div className="mt-3 relative">
+                <Input
+                  value={sidebarSearch}
+                  onChange={(e) => setSidebarSearch(e.target.value)}
+                  placeholder="Filter ordered tests..."
+                  className="pl-9 h-9"
+                />
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {samples.length === 0 ? (
+                {filteredSamples.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No tests ordered</p>
                 ) : (
-                  samples.map((sample) => (
+                  filteredSamples.map((sample) => (
                     <div
                       key={sample.testId}
-                      className={`p-3 rounded-lg transition-colors ${
+                      className={`p-3 rounded-lg border transition-all ${
                         selectedTestId === sample.testId
-                          ? 'bg-primary/10 border border-primary/20'
-                          : 'hover:bg-muted/50'
+                          ? 'bg-primary/10 border-primary/30 shadow-sm'
+                          : 'hover:bg-muted/50 border-transparent'
                       }`}
                     >
                       <div 
                         onClick={() => handleTestSelect(sample.testId)}
                         className="flex items-center justify-between cursor-pointer"
                       >
-                        <div>
-                          <p className="font-medium">{sample.testName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {sample.sampleType} • {sample.container}
-                          </p>
+                        <div className="flex items-start gap-2">
+                          <div className="h-6 w-6 rounded bg-primary/10 text-primary flex items-center justify-center">
+                            <Beaker className="h-3.5 w-3.5" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{sample.testName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {sample.sampleType} • {sample.container}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-2">
                           {sample.collected ? (
-                            <CheckCircle className="h-5 w-5 text-green-500" />
+                            <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-xs border border-emerald-200">
+                              <BadgeCheck className="h-3.5 w-3.5" /> Collected
+                            </span>
                           ) : (
                             !sample.collected && (
                               <AlertDialog>
@@ -1583,6 +1663,7 @@ const SampleCollectionV2: React.FC = () => {
                               </AlertDialog>
                             )
                           )}
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         </div>
                       </div>
                     </div>
@@ -1594,14 +1675,22 @@ const SampleCollectionV2: React.FC = () => {
         </div>
 
         {/* Test Details */}
-        <div className="xl:col-span-10 pb-4">
+        <div className="xl:col-span-9 pb-4">
           {selectedTest ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>{selectedTest.testName}</CardTitle>
-                <CardDescription>
-                  {selectedTest.sampleType} • {selectedTest.container}
-                </CardDescription>
+            <Card className="shadow-card">
+              <CardHeader className="pb-2">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <CardTitle className="tracking-tight">{selectedTest.testName}</CardTitle>
+                    <CardDescription className="mt-1 flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-full bg-muted text-xs">{selectedTest.sampleType}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-muted text-xs">{selectedTest.container}</span>
+                    </CardDescription>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {selectedTest.collected ? 'Collected' : 'Pending'}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto w-full text-sm">
@@ -1637,38 +1726,39 @@ const SampleCollectionV2: React.FC = () => {
                     headerHeight={36}
                   />
                 </div>
-                <div className="mt-6 flex flex-col sm:flex-row gap-2">
-                  <Button
-                    onClick={() => toggleSampleCollected(selectedTest.testId)}
-                    variant={selectedTest.collected ? 'outline' : 'default'}
-                    className="flex-1"
-                  >
-                    {selectedTest.collected ? 'Mark as Not Collected' : 'Mark as Collected'}
-                  </Button>
-                  {selectedTest.collected && (
+                {/* Sticky in-card action bar */}
+                <div className="sticky bottom-0 mt-6 -mx-6 border-t bg-card/80 backdrop-blur px-6 py-3">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Button
-                      onClick={() => {
-                        // Validate that parameters have been entered
-                        const hasValues = Object.values(parameters).some(param => param?.value && param.value.trim() !== '');
-                        if (!hasValues) {
-                          toast({
-                            title: 'No Data Entered',
-                            description: 'Please enter test parameter values before saving and printing.',
-                            variant: 'destructive',
-                          });
-                          return;
-                        }
-                        console.log('Save & Print button clicked!');
-                        console.log('Selected test ID:', selectedTest.testId);
-                        handleSaveAndPrint(selectedTest.testId);
-                      }}
-                      variant="default"
-                      className="flex-1 bg-green-600 hover:bg-green-700"
+                      onClick={() => toggleSampleCollected(selectedTest.testId)}
+                      variant={selectedTest.collected ? 'outline' : 'default'}
+                      className="flex-1"
                     >
-                      <Printer className="mr-2 h-4 w-4" />
-                      Save & Print
+                      {selectedTest.collected ? 'Mark as Not Collected' : 'Mark as Collected'}
                     </Button>
-                  )}
+                    {selectedTest.collected && (
+                      <Button
+                        onClick={() => {
+                          // Validate that parameters have been entered
+                          const hasValues = Object.values(parameters).some(param => param?.value && param.value.trim() !== '');
+                          if (!hasValues) {
+                            toast({
+                              title: 'No Data Entered',
+                              description: 'Please enter test parameter values before saving and printing.',
+                              variant: 'destructive',
+                            });
+                            return;
+                          }
+                          handleSaveAndPrint(selectedTest.testId);
+                        }}
+                        variant="default"
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                      >
+                        <Printer className="mr-2 h-4 w-4" />
+                        Save & Print
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

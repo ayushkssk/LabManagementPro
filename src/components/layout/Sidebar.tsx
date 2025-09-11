@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -19,11 +19,11 @@ import {
   FileText,
   LayoutDashboard,
   ChevronDown,
-  ClipboardList
+  ClipboardList,
+  ChevronRight
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { useEffect } from 'react';
 
 interface BaseNavItem {
   icon: React.ComponentType<{ className?: string }>;
@@ -229,38 +229,64 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   };
 
   return (
-    <div className={`flex flex-col h-full bg-sidebar border-r border-sidebar-border transition-all duration-300 ${
-      isCollapsed ? 'w-16' : 'w-64'
-    }`}>
+    <div className={cn(
+      "flex flex-col h-full bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800",
+      "border-r border-slate-200 dark:border-slate-700 shadow-lg transition-all duration-300 ease-in-out",
+      isCollapsed ? 'w-16' : 'w-72'
+    )}>
       {/* Header */}
-      <div className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-medical rounded-xl flex items-center justify-center">
-              <Stethoscope className="w-6 h-6 text-white" />
-            </div>
-            {!isCollapsed && user && (
-              <div>
-                <h2 className="font-bold text-sidebar-foreground">LabManager Pro</h2>
-                <p className="text-sm text-muted-foreground capitalize">{user.role} Panel</p>
+      <div className={cn(
+        "relative overflow-hidden transition-all duration-300",
+        isCollapsed ? "p-3" : "p-6"
+      )}>
+        <div className="flex items-center justify-center">
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            isCollapsed ? "w-10 h-10" : "w-full"
+          )}>
+            {!isCollapsed && user ? (
+              <div className="w-full flex flex-col items-center space-y-3">
+                <div className="relative group">
+                  <img 
+                    src="/hospitallogo.png" 
+                    alt="Hospital Logo" 
+                    className="w-full h-auto max-h-16 object-contain transition-transform duration-200 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 capitalize">
+                    {user.role} Panel
+                  </p>
+                  <div className="w-12 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mt-1 rounded-full" />
+                </div>
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Building2 className="w-6 h-6 text-white" />
               </div>
             )}
           </div>
         </div>
       </div>
 
-      <Separator />
+      <div className="px-4">
+        <Separator className="bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-600 to-transparent" />
+      </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600">
         {navSections.map((section, sectionIndex) => (
           <div key={sectionIndex} className="space-y-1">
             {!isCollapsed && section.title && (
-              <h3 className="px-6 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {section.title}
-              </h3>
+              <div className="px-3 py-2">
+                <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  {section.title}
+                </h3>
+                <div className="w-8 h-0.5 bg-gradient-to-r from-blue-500 to-transparent mt-1 rounded-full" />
+              </div>
             )}
-            <div className="space-y-1 px-2">
+            <div className="space-y-1">
               {section.items.map((item) => {
                 const hasItems = item.items && item.items.length > 0;
                 const isMenuOpen = openMenus[item.label] ?? false;
@@ -273,113 +299,163 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
                         to={item.to}
                         className={({ isActive }) =>
                           cn(
-                            'flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors',
+                            'group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200',
+                            'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]',
                             isActive || isActiveItem
-                              ? 'bg-primary/10 text-primary fill-primary [&>svg]:text-primary [&>svg]:fill-primary'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                              ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25 [&>svg]:text-white'
+                              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700/50',
+                            isCollapsed ? 'justify-center px-2' : '',
                             item.className
                           )
                         }
+                        title={isCollapsed ? item.label : undefined}
                       >
-                        <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
-                        {!isCollapsed && item.label}
+                        <item.icon className={cn(
+                          "flex-shrink-0 transition-all duration-200",
+                          isCollapsed ? "h-6 w-6" : "mr-3 h-5 w-5",
+                          isActiveItem ? "" : "group-hover:scale-110"
+                        )} />
+                        {!isCollapsed && (
+                          <span className="truncate">{item.label}</span>
+                        )}
+                        {!isCollapsed && isActiveItem && (
+                          <div className="ml-auto w-2 h-2 bg-white rounded-full animate-pulse" />
+                        )}
                       </NavLink>
                     ) : (
                       <div
                         className={cn(
-                          'flex items-center px-4 py-2 text-sm font-medium rounded-md',
-                          'transition-colors cursor-pointer',
+                          'group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl cursor-pointer',
+                          'transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]',
                           isActiveItem
-                            ? 'bg-primary/10 text-primary fill-primary [&>svg]:text-primary [&>svg]:fill-primary'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25 [&>svg]:text-white'
+                            : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700/50',
+                          isCollapsed ? 'justify-center px-2' : '',
                           item.className
                         )}
                         onClick={() => item.items && setOpenMenus(prev => ({ ...prev, [item.label]: !prev[item.label] }))}
+                        title={isCollapsed ? item.label : undefined}
                       >
-                        <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                        <item.icon className={cn(
+                          "flex-shrink-0 transition-all duration-200",
+                          isCollapsed ? "h-6 w-6" : "mr-3 h-5 w-5",
+                          isActiveItem ? "" : "group-hover:scale-110"
+                        )} />
                         {!isCollapsed && (
                           <>
-                            <span className="flex-1">{item.label}</span>
+                            <span className="flex-1 truncate">{item.label}</span>
                             <ChevronDown
                               className={cn(
-                                'h-4 w-4 transition-transform',
-                                isMenuOpen ? 'rotate-180' : ''
+                                'h-4 w-4 transition-all duration-300 ease-in-out',
+                                isMenuOpen ? 'rotate-180' : '',
+                                isActiveItem ? 'text-white' : 'text-slate-400'
                               )}
                             />
                           </>
+                        )}
+                        {!isCollapsed && isActiveItem && (
+                          <div className="absolute right-0 w-1 h-8 bg-white rounded-l-full" />
                         )}
                       </div>
                     )}
 
                     {hasItems && !isCollapsed && (
-                      <div className="ml-6 space-y-1">
-                        {item.items?.map((subItem) => (
-                          <NavLink
-                            key={subItem.to}
-                            to={subItem.to || '#'}
-                            className={({ isActive }) =>
-                              cn(
-                                'flex items-center px-4 py-2 text-sm rounded-md transition-colors',
-                                isActive || location.pathname === subItem.to
-                                  ? 'bg-primary/10 text-primary fill-primary font-medium [&>svg]:text-primary [&>svg]:fill-primary'
-                                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                              )
-                            }
-                          >
-                            <subItem.icon className="mr-3 h-4 w-4 flex-shrink-0" />
-                            {subItem.label}
-                          </NavLink>
-                        ))}
+                      <div className={cn(
+                        "ml-4 space-y-1 overflow-hidden transition-all duration-300 ease-in-out",
+                        isMenuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                      )}>
+                        <div className="border-l-2 border-slate-200 dark:border-slate-600 pl-4 space-y-1">
+                          {item.items?.map((subItem) => (
+                            <NavLink
+                              key={subItem.to}
+                              to={subItem.to || '#'}
+                              className={({ isActive }) =>
+                                cn(
+                                  'group flex items-center px-3 py-2 text-sm rounded-lg transition-all duration-200',
+                                  'hover:shadow-sm hover:scale-[1.01] active:scale-[0.99]',
+                                  isActive || location.pathname === subItem.to
+                                    ? 'bg-gradient-to-r from-blue-400 to-purple-500 text-white shadow-md shadow-blue-400/20 font-medium [&>svg]:text-white'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/30'
+                                )
+                              }
+                            >
+                              <div className="w-1.5 h-1.5 rounded-full bg-current mr-3 transition-all duration-200 group-hover:scale-125" />
+                              <subItem.icon className="mr-2 h-4 w-4 flex-shrink-0 transition-all duration-200 group-hover:scale-110" />
+                              <span className="truncate">{subItem.label}</span>
+                            </NavLink>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
                 );
               })}
             </div>
-            {sectionIndex < navSections.length - 1 && <Separator className="my-2" />}
+            {sectionIndex < navSections.length - 1 && (
+              <div className="my-4 px-3">
+                <Separator className="bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-600 to-transparent" />
+              </div>
+            )}
           </div>
         ))}
       </nav>
 
       {/* User Section */}
       <div className="mt-auto">
-        <Separator />
-        <div className="p-4">
+        <div className="px-3 mb-2">
+          <Separator className="bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-600 to-transparent" />
+        </div>
+        <div className="p-3">
           {!isCollapsed && user ? (
-            <div className="flex items-center justify-between space-x-3">
-              <div className="flex items-center space-x-3 flex-1 min-w-0">
-                <div className="w-8 h-8 bg-gradient-medical rounded-full flex items-center justify-center flex-shrink-0">
-                  <UserIcon className="w-4 h-4 text-white" />
+            <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 rounded-xl p-3 shadow-inner">
+              <div className="flex items-center justify-between space-x-3">
+                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                  <div className="relative">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                      <UserIcon className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
+                      {user.name || 'User'}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                      {user.email}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {user.name || 'User'}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {user.email}
-                  </p>
-                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 flex-shrink-0 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 hover:scale-105 active:scale-95 rounded-lg"
+                  onClick={() => logout()}
+                  title="Sign out"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
+              <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-600">
+                <p className="text-xs text-center text-slate-500 dark:text-slate-400">
+                  Developed by <span className="font-semibold text-blue-600 dark:text-blue-400">IT4B.in</span>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center space-y-2">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 flex-shrink-0"
+                className="w-12 h-12 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 hover:scale-105 active:scale-95 rounded-xl"
                 onClick={() => logout()}
                 title="Sign out"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-5 w-5" />
               </Button>
+              <p className="text-xs text-center text-slate-500 dark:text-slate-400 px-2">
+                <span className="font-semibold text-blue-600 dark:text-blue-400">IT4B.in</span>
+              </p>
             </div>
-          ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-full h-10"
-              onClick={() => logout()}
-              title="Sign out"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
           )}
         </div>
       </div>

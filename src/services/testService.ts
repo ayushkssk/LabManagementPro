@@ -17,7 +17,31 @@ import {
   setDoc
 } from 'firebase/firestore';
 
-const TESTS_COLLECTION = 'tests';
+const TESTS_COLLECTION = 'tests'; // legacy fallback
+
+// Resolve current tenant (hospital) context from localStorage user or explicit selection
+const getTenantHospitalId = (): string | null => {
+  try {
+    const explicit = localStorage.getItem('activeHospitalId');
+    if (explicit && explicit !== 'super-admin') return explicit;
+    const userRaw = localStorage.getItem('demo-user');
+    if (!userRaw) return null;
+    const user = JSON.parse(userRaw);
+    if (user?.hospitalId && user.hospitalId !== 'super-admin') return user.hospitalId;
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const testsCollectionRef = (dbRef: typeof db, hospitalId?: string) => {
+  const hid = hospitalId ?? getTenantHospitalId();
+  if (hid) {
+    return collection(dbRef, `hospitals/${hid}/tests`);
+  }
+  // Fallback to legacy top-level
+  return collection(dbRef, TESTS_COLLECTION);
+};
 
 export interface TestData {
   id?: string;
@@ -38,7 +62,7 @@ export interface TestData {
 // Get all tests
 export const getTests = async (): Promise<TestData[]> => {
   try {
-    const querySnapshot = await getDocs(collection(db, TESTS_COLLECTION));
+    const querySnapshot = await getDocs(testsCollectionRef(db));
     const remoteTests = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
@@ -147,7 +171,8 @@ export const getTests = async (): Promise<TestData[]> => {
 // Get a single test by ID
 export const getTest = async (id: string): Promise<TestData | null> => {
   try {
-    const docRef = doc(db, TESTS_COLLECTION, id);
+    const hid = getTenantHospitalId();
+    const docRef = hid ? doc(db, `hospitals/${hid}/tests`, id) : doc(db, TESTS_COLLECTION, id);
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
@@ -163,7 +188,8 @@ export const getTest = async (id: string): Promise<TestData | null> => {
 // Add a new test
 export const addTest = async (test: Omit<TestData, 'id'>): Promise<string> => {
   try {
-    const docRef = await addDoc(collection(db, TESTS_COLLECTION), test);
+    const colRef = testsCollectionRef(db);
+    const docRef = await addDoc(colRef, test);
     return docRef.id;
   } catch (error) {
     console.error('Error adding test:', error);
@@ -174,7 +200,8 @@ export const addTest = async (test: Omit<TestData, 'id'>): Promise<string> => {
 // Update an existing test
 export const updateTest = async (id: string, test: Partial<TestData>): Promise<void> => {
   try {
-    const testRef = doc(db, TESTS_COLLECTION, id);
+    const hid = getTenantHospitalId();
+    const testRef = hid ? doc(db, `hospitals/${hid}/tests`, id) : doc(db, TESTS_COLLECTION, id);
     await updateDoc(testRef, test);
   } catch (error) {
     console.error('Error updating test:', error);
@@ -194,7 +221,8 @@ export const deleteTest = async (id: string): Promise<void> => {
     if (protectedIds.has(id)) {
       throw new Error('This test is protected and cannot be deleted. Use Reload Tests to restore defaults.');
     }
-    const testRef = doc(db, TESTS_COLLECTION, id);
+    const hid = getTenantHospitalId();
+    const testRef = hid ? doc(db, `hospitals/${hid}/tests`, id) : doc(db, TESTS_COLLECTION, id);
     await deleteDoc(testRef);
   } catch (error) {
     console.error('Error deleting test:', error);
@@ -263,7 +291,8 @@ export const reloadDefaultTests = async (): Promise<number> => {
 
     for (const t of catalog) {
       if (!t.id) continue;
-      const ref = doc(db, TESTS_COLLECTION, t.id);
+      const hid = getTenantHospitalId();
+      const ref = hid ? doc(db, `hospitals/${hid}/tests`, t.id) : doc(db, TESTS_COLLECTION, t.id);
       // set with merge to avoid overwriting custom fields; ensures no duplicates because IDs are fixed
       await setDoc(ref, t as any, { merge: true });
       upserted++;
@@ -285,7 +314,8 @@ export const assignTestCodes = async (): Promise<number> => {
 
     tests.forEach((test, index) => {
       if (!test.id) return;
-      const testRef = doc(db, TESTS_COLLECTION, test.id);
+      const hid = getTenantHospitalId();
+      const testRef = hid ? doc(db, `hospitals/${hid}/tests`, test.id) : doc(db, TESTS_COLLECTION, test.id);
       batch.update(testRef, { code: `TEST-${index + 1}` });
       count++;
     });

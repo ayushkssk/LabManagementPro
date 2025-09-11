@@ -61,11 +61,9 @@ const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="flex h-16 items-center justify-between border-b bg-white px-4 dark:bg-gray-950">
-      {/* Left side - Hospital Name */}
+      {/* Left side - Software Name */}
       <div className="flex items-center gap-2">
-        <h1 className="text-lg font-semibold">
-          {currentHospital?.name || (role === 'super-admin' ? 'Super Admin' : 'Admin Dashboard')}
-        </h1>
+        <h1 className="text-lg font-semibold">LabManager Pro</h1>
         {currentHospital?.name && (
           <span className="text-sm text-muted-foreground">
             {role === 'admin' ? 'Admin' : role === 'technician' ? 'Technician' : ''}

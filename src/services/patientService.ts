@@ -1,17 +1,19 @@
 import { db } from '@/firebase';
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
   orderBy,
   Timestamp,
-  writeBatch
+  writeBatch,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 
 const PATIENTS_COLLECTION = 'patients';
@@ -32,6 +34,9 @@ export interface PatientData {
   balance: number;
   status: 'active' | 'inactive' | 'overdue';
   tests?: string[]; // Array of test IDs
+  isDeleted?: boolean;
+  deletedAt?: Date;
+  deletedBy?: string;
 }
 
 // Convert Firestore data to PatientData
@@ -52,24 +57,41 @@ const fromFirestore = (doc: any): PatientData => {
     lastVisit: data.lastVisit?.toDate(),
     balance: data.balance || 0,
     status: data.status || 'active',
-    tests: data.tests || []
+    tests: data.tests || [],
+    isDeleted: data.isDeleted || false,
+    deletedAt: data.deletedAt?.toDate(),
+    deletedBy: data.deletedBy
   };
 };
 
 // Convert PatientData to Firestore document
 const toFirestore = (patient: PatientData) => {
-  return {
+  const data: any = {
     ...patient,
     registrationDate: Timestamp.fromDate(patient.registrationDate),
     lastVisit: Timestamp.fromDate(patient.lastVisit || new Date()),
   };
+  
+  if (patient.deletedAt) {
+    data.deletedAt = Timestamp.fromDate(patient.deletedAt);
+  }
+  
+  return data;
 };
 
-export const getPatients = async (): Promise<PatientData[]> => {
+export const getPatients = async (includeDeleted: boolean = false): Promise<PatientData[]> => {
   try {
+    // Use simple query to avoid composite index requirement
     const q = query(collection(db, PATIENTS_COLLECTION), orderBy('registrationDate', 'desc'));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => fromFirestore(doc));
+    const allPatients = querySnapshot.docs.map(doc => fromFirestore(doc));
+    
+    // Filter on client side to avoid composite index
+    if (includeDeleted) {
+      return allPatients;
+    } else {
+      return allPatients.filter(patient => !patient.isDeleted);
+    }
   } catch (error) {
     console.error('Error getting patients:', error);
     throw error;
@@ -112,12 +134,159 @@ export const updatePatient = async (id: string, patient: Partial<PatientData>): 
   }
 };
 
+// Realtime-safe helpers to manage patient's ordered tests
+export const addTestToPatient = async (patientId: string, testId: string): Promise<void> => {
+  if (!patientId || !testId) return;
+  try {
+    const docRef = doc(db, PATIENTS_COLLECTION, patientId);
+    await updateDoc(docRef, { tests: arrayUnion(testId), lastVisit: Timestamp.fromDate(new Date()) });
+  } catch (error) {
+    console.error('Error adding test to patient:', error);
+    throw error;
+  }
+};
+
+export const removeTestFromPatient = async (patientId: string, testId: string): Promise<void> => {
+  if (!patientId || !testId) return;
+  try {
+    const docRef = doc(db, PATIENTS_COLLECTION, patientId);
+    await updateDoc(docRef, { tests: arrayRemove(testId), lastVisit: Timestamp.fromDate(new Date()) });
+  } catch (error) {
+    console.error('Error removing test from patient:', error);
+    throw error;
+  }
+};
+
+export const setPatientTests = async (patientId: string, tests: string[]): Promise<void> => {
+  if (!patientId) return;
+  try {
+    const docRef = doc(db, PATIENTS_COLLECTION, patientId);
+    await updateDoc(docRef, { tests: tests ?? [], lastVisit: Timestamp.fromDate(new Date()) });
+  } catch (error) {
+    console.error('Error setting patient tests:', error);
+    throw error;
+  }
+};
+
+// Soft delete a patient
+export const softDeletePatient = async (id: string, deletedBy?: string): Promise<void> => {
+  try {
+    const docRef = doc(db, PATIENTS_COLLECTION, id);
+    await updateDoc(docRef, {
+      isDeleted: true,
+      deletedAt: Timestamp.fromDate(new Date()),
+      deletedBy: deletedBy || 'system'
+    });
+  } catch (error) {
+    console.error('Error soft deleting patient:', error);
+    throw error;
+  }
+};
+
+// Restore a soft-deleted patient
+export const restorePatient = async (id: string): Promise<void> => {
+  try {
+    const docRef = doc(db, PATIENTS_COLLECTION, id);
+    await updateDoc(docRef, {
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: null
+    });
+  } catch (error) {
+    console.error('Error restoring patient:', error);
+    throw error;
+  }
+};
+
+// Permanently delete a patient (hard delete)
 export const deletePatient = async (id: string): Promise<void> => {
   try {
     const docRef = doc(db, PATIENTS_COLLECTION, id);
     await deleteDoc(docRef);
   } catch (error) {
     console.error('Error deleting patient:', error);
+    throw error;
+  }
+};
+
+// Bulk soft delete patients
+export const bulkSoftDeletePatients = async (ids: string[], deletedBy?: string): Promise<void> => {
+  try {
+    const batch = writeBatch(db);
+    const deleteData = {
+      isDeleted: true,
+      deletedAt: Timestamp.fromDate(new Date()),
+      deletedBy: deletedBy || 'system'
+    };
+
+    ids.forEach(id => {
+      const docRef = doc(db, PATIENTS_COLLECTION, id);
+      batch.update(docRef, deleteData);
+    });
+
+    await batch.commit();
+  } catch (error) {
+    console.error('Error bulk soft deleting patients:', error);
+    throw error;
+  }
+};
+
+// Bulk restore patients
+export const bulkRestorePatients = async (ids: string[]): Promise<void> => {
+  try {
+    const batch = writeBatch(db);
+    const restoreData = {
+      isDeleted: false,
+      deletedAt: null,
+      deletedBy: null
+    };
+
+    ids.forEach(id => {
+      const docRef = doc(db, PATIENTS_COLLECTION, id);
+      batch.update(docRef, restoreData);
+    });
+
+    await batch.commit();
+  } catch (error) {
+    console.error('Error bulk restoring patients:', error);
+    throw error;
+  }
+};
+
+// Bulk permanent delete patients
+export const bulkDeletePatients = async (ids: string[]): Promise<void> => {
+  try {
+    const batch = writeBatch(db);
+
+    ids.forEach(id => {
+      const docRef = doc(db, PATIENTS_COLLECTION, id);
+      batch.delete(docRef);
+    });
+
+    await batch.commit();
+  } catch (error) {
+    console.error('Error bulk deleting patients:', error);
+    throw error;
+  }
+};
+
+// Get only soft-deleted patients
+export const getDeletedPatients = async (): Promise<PatientData[]> => {
+  try {
+    // Use simple query and filter on client side to avoid index requirement
+    const q = query(collection(db, PATIENTS_COLLECTION));
+    const querySnapshot = await getDocs(q);
+    const allPatients = querySnapshot.docs.map(doc => fromFirestore(doc));
+    
+    // Filter and sort on client side
+    return allPatients
+      .filter(patient => patient.isDeleted)
+      .sort((a, b) => {
+        if (!a.deletedAt || !b.deletedAt) return 0;
+        return b.deletedAt.getTime() - a.deletedAt.getTime();
+      });
+  } catch (error) {
+    console.error('Error getting deleted patients:', error);
     throw error;
   }
 };

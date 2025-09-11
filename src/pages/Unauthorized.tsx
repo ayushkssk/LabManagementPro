@@ -6,7 +6,7 @@ export const Unauthorized = () => {
   const navigate = useNavigate();
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="flex-1 min-h-0 flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full space-y-6 text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
           <AlertCircle className="h-8 w-8 text-red-600" />

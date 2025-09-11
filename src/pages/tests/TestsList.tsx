@@ -59,8 +59,8 @@ const TestsList: React.FC = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <div className="flex-1 flex flex-col p-4 md:p-6 space-y-4 overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col bg-background">
+      <div className="flex-1 min-h-0 flex flex-col p-4 md:p-6 space-y-4 overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
           <h1 className="text-2xl font-bold">Laboratory Tests</h1>
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">

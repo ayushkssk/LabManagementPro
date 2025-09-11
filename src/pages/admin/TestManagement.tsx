@@ -13,6 +13,7 @@ import { Trash2, Plus, Upload, Download, Pencil, Loader2, Printer } from "lucide
 import type { Test as TestType, TestField, Hospital, TestResult, FieldResult } from "@/types";
 import { addTest, deleteTest, getTests, updateTest, assignTestCodes, reloadDefaultTests, type TestData } from "@/services/testService";
 import { getUnits, addUnit, reloadDefaultUnits, type UnitData } from "@/services/unitService";
+import { useHospitals } from '@/context/HospitalContext';
 import { printTestReport } from "@/utils/printUtils";
 // Using a mock hospital since the context doesn't expose the current hospital directly
 const MOCK_HOSPITAL: Hospital = {
@@ -134,6 +135,12 @@ const TestManagement: React.FC = () => {
   type LoadedTest = TestData & { id: string; code?: string; };
   const { data: tests = [], isLoading } = useQuery<LoadedTest[]>({ queryKey: ["tests"], queryFn: getTests as any });
   const { data: units = [], refetch: refetchUnits } = useQuery<UnitData[]>({ queryKey: ["units"], queryFn: getUnits as any });
+  const { hospitals } = useHospitals();
+
+  const [activeHospitalId, setActiveHospitalId] = useState<string>(() => localStorage.getItem('activeHospitalId') || '');
+  const isSuperAdmin = (() => {
+    try { const u = JSON.parse(localStorage.getItem('demo-user') || 'null'); return u?.role === 'super-admin'; } catch { return false; }
+  })();
 
   // Auto-seed units from hardcoded catalog if none exist
   useEffect(() => {
@@ -529,7 +536,27 @@ const TestManagement: React.FC = () => {
             </PopoverContent>
           </Popover>
         </div>
-        <div className="flex gap-2 whitespace-nowrap">
+        <div className="flex gap-2 whitespace-nowrap items-center">
+          {isSuperAdmin && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Hospital:</span>
+              <Select
+                value={activeHospitalId}
+                onValueChange={(val) => {
+                  setActiveHospitalId(val);
+                  localStorage.setItem('activeHospitalId', val);
+                  queryClient.invalidateQueries({ queryKey: ["tests"] });
+                }}
+              >
+                <SelectTrigger className="w-[220px]"><SelectValue placeholder="Select hospital" /></SelectTrigger>
+                <SelectContent>
+                  {hospitals.map(h => (
+                    <SelectItem key={h.id} value={h.id}>{h.displayName || h.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Button variant="outline" onClick={downloadSample}>
             <Download className="w-4 h-4 mr-2" /> Sample Excel
           </Button>

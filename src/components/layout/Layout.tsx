@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
-import { FloatingActionButton } from './FloatingActionButton';
+// Removed FloatingActionButton (Help & Support)
+// Removed Footer import as it's no longer needed
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -13,6 +15,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const location = useLocation();
+  const isPatientRegistration = location.pathname === '/lab/register';
 
   // Check if mobile view
   useEffect(() => {
@@ -48,11 +52,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             isSidebarCollapsed={isCollapsed} 
           />
           
-          <main className="flex-1 overflow-auto p-4 md:p-6 bg-muted/20 relative">
+          <main className="flex-1 overflow-auto bg-muted/30">
             <div className="max-w-[1600px] mx-auto w-full h-full">
               {children}
             </div>
-            <FloatingActionButton />
           </main>
         </div>
       </div>

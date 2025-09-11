@@ -6,6 +6,36 @@
     margin: 10mm;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    
+    /* Remove URL and page info from print */
+    margin: 0;
+    padding: 0;
+    
+    @top-left {
+      content: '';
+    }
+    @top-center {
+      content: '';
+    }
+    @top-right {
+      content: '';
+    }
+    @bottom-left {
+      content: '';
+    }
+    @bottom-center {
+      content: '';
+    }
+    @bottom-right {
+      content: '';
+    }
+  }
+  
+  /* Hide URL in Firefox */
+  @-moz-document url-prefix() {
+    @page {
+      margin: 0;
+    }
   }
   
   /* Hide everything by default when printing */
