@@ -572,16 +572,148 @@ const SampleCollectionV2: React.FC = () => {
       console.error('Print content not found');
       return;
     }
-    console.log('Triggering print...');
+    
     try {
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        handlePrint();
-      }, 100);
+      // Get the print content HTML
+      const printContent = printRef.current.innerHTML;
+      
+      // Create a new window/tab for printing
+      const printWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+      
+      if (!printWindow) {
+        console.error('Failed to open print window');
+        return;
+      }
+
+      // Write the complete HTML document to the new window
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Lab Report - ${patient?.name || 'Patient'} - ${currentTest?.testName || 'Test'}</title>
+          <style>
+            @page {
+              size: A4;
+              margin: 12mm;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            
+            * {
+              -webkit-print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            
+            html, body {
+              width: 210mm;
+              height: 297mm;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: white !important;
+              color: #000 !important;
+              font-family: Arial, sans-serif !important;
+              font-size: 11px !important;
+              line-height: 1.3 !important;
+            }
+            
+            .print-container {
+              width: 100% !important;
+              max-width: none !important;
+              margin: 0 !important;
+              padding: 8mm !important;
+              box-shadow: none !important;
+              border-radius: 0 !important;
+              page-break-inside: avoid !important;
+            }
+            
+            table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              margin: 8px 0 !important;
+              page-break-inside: avoid !important;
+            }
+            
+            th, td {
+              border: 1px solid #000 !important;
+              padding: 4px 6px !important;
+              text-align: left !important;
+              background: transparent !important;
+              font-size: 10px !important;
+              vertical-align: top !important;
+            }
+            
+            th {
+              background: #f5f5f5 !important;
+              font-weight: bold !important;
+            }
+            
+            h1, h2, h3 {
+              color: #000 !important;
+              margin: 8px 0 !important;
+              page-break-after: avoid !important;
+            }
+            
+            .letterhead img {
+              max-width: 100% !important;
+              height: auto !important;
+              display: block !important;
+            }
+            
+            .qr-code {
+              width: 80px !important;
+              height: 80px !important;
+            }
+            
+            .signatures {
+              margin-top: 20px !important;
+              page-break-inside: avoid !important;
+            }
+            
+            .footer {
+              margin-top: 15px !important;
+              font-size: 9px !important;
+            }
+            
+            /* Hide any buttons or non-print elements */
+            .no-print, button, .print-hide {
+              display: none !important;
+            }
+            
+            @media print {
+              body {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            ${printContent}
+          </div>
+          <script>
+            // Wait for images to load, then trigger print
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                // Close the window after printing (optional)
+                window.onafterprint = function() {
+                  window.close();
+                };
+              }, 500);
+            };
+          </script>
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      printWindow.focus();
+      
     } catch (error) {
       console.error('Print error:', error);
     }
-  }, [handlePrint]);
+  }, [patient, currentTest]);
 
   // Test configurations are imported directly
 
