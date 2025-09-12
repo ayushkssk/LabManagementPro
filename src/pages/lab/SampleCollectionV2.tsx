@@ -1181,6 +1181,25 @@ const SampleCollectionV2: React.FC = () => {
               .print-signatures { width: 100%; }
               .print-notes { text-align: center; }
               .print-content table thead th { text-align: left; }
+              
+              /* Watermark for print */
+              @media print {
+                .print-content {
+                  position: relative;
+                }
+                .print-watermark {
+                  position: fixed;
+                  top: 0;
+                  left: 0;
+                  width: 100%;
+                  height: 100%;
+                  background: url('/watermark.png') no-repeat center center;
+                  background-size: 80% auto;
+                  opacity: 0.3;
+                  z-index: 9999;
+                  pointer-events: none;
+                }
+              }
 
               /* Preview WYSIWYG styles to mirror print (scoped to preview container) */
               .print-preview .print-content {
@@ -1367,7 +1386,8 @@ const SampleCollectionV2: React.FC = () => {
                 <XCircle className="h-4 w-4" />
               </Button>
             </div>
-            <div className="print-content flex flex-col" style={{ minHeight: '100vh' }}>
+            <div className="print-content" style={{ position: 'relative' }}>
+              <div className="print-watermark" style={{ display: 'none' }}></div>
               {/* Hospital Header - Full Width */}
               <div className="print-header">
                 <img 
