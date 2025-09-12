@@ -25,6 +25,8 @@ import {
   bulkRestorePatients,
   getDeletedPatients 
 } from '@/services/patientService';
+import { db } from '@/firebase';
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { DeletePatientsModal } from '@/components/patients/DeletePatientsModal';
 import { useAuth } from '@/context/AuthContext';
@@ -64,49 +66,72 @@ const Patients = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [selectedPatients, setSelectedPatients] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<'all' | 'billed' | 'reportPrinted' | 'both'>('all');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDeleted, setShowDeleted] = useState(false);
 
   useEffect(() => {
-    async function fetchPatients() {
+    let unsubscribe: (() => void) | undefined;
+    async function init() {
       try {
         setLoading(true);
-        // Fetch patients and tests in parallel
-        const [patientsData, testsData] = await Promise.all([
-          getPatients(showDeleted),
-          getTests()
-        ]) as [PatientData[], any[]];
-
-        // Create a map of test IDs to test details
-        const testsMap = testsData.reduce<Record<string, { id: string; name: string; code?: string; price?: number }>>((acc, test) => {
+        // Fetch tests once
+        const testsData = await getTests();
+        const testsMap = testsData.reduce<Record<string, { id: string; name: string; price?: number }>>((acc, test: any) => {
           if (test?.id) {
-            acc[test.id] = { 
-              id: test.id, 
-              name: test.name || 'Unnamed Test', 
-              code: test.code,
-              price: test.price
+            acc[test.id] = {
+              id: test.id,
+              name: test.name || 'Unnamed Test',
+              price: test.price,
             };
           }
           return acc;
         }, {});
-
-        console.log('Tests data from database:', testsData);
-        console.log('Processed tests map:', testsMap);
-        setPatients(patientsData);
         setTests(testsMap);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load patients. Please try again.',
-          variant: 'destructive',
+
+        // Subscribe to patients in real-time and filter on client for showDeleted
+        const patientsQuery = query(collection(db, 'patients'), orderBy('registrationDate', 'desc'));
+        unsubscribe = onSnapshot(patientsQuery, (snap) => {
+          const items: PatientData[] = snap.docs.map((d: any) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              hospitalId: data.hospitalId || data.id,
+              name: data.name,
+              age: data.age,
+              gender: data.gender,
+              phone: data.phone,
+              address: data.address,
+              city: data.city,
+              state: data.state,
+              pincode: data.pincode,
+              registrationDate: data.registrationDate?.toDate?.() || new Date(data.registrationDate),
+              lastVisit: data.lastVisit?.toDate?.() || new Date(data.lastVisit || Date.now()),
+              balance: data.balance || 0,
+              status: data.status || 'active',
+              tests: data.tests || [],
+              tags: data.tags || [],
+              tagsHistory: (data.tagsHistory || []).map((h: any) => ({ tag: h.tag, at: h.at?.toDate ? h.at.toDate() : new Date(h.at) })),
+              isDeleted: data.isDeleted || false,
+              deletedAt: data.deletedAt?.toDate?.(),
+              deletedBy: data.deletedBy,
+            } as PatientData;
+          });
+          setPatients(showDeleted ? items : items.filter(p => !p.isDeleted));
+          setLoading(false);
+        }, (error) => {
+          console.error('onSnapshot error:', error);
+          setLoading(false);
         });
-      } finally {
+      } catch (error) {
+        console.error('Error initializing patients list:', error);
         setLoading(false);
       }
     }
-
-    fetchPatients();
+    init();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [showDeleted]);
 
   // Sort patients by registration date (newest first) and then by hospital ID
@@ -125,30 +150,33 @@ const Patients = () => {
     const searchLower = searchQuery.toLowerCase();
     const patientId = patient.hospitalId || patient.id || '';
     
-    // Check if patient matches search query
-    const matchesSearch = (
-      patient.name.toLowerCase().includes(searchLower) ||
-      patient.phone.includes(searchQuery) ||
-      patientId.toLowerCase().includes(searchLower)
-    );
+    const matchesSearch = 
+      patient.name.toLowerCase().includes(searchLower) || 
+      patient.phone.includes(searchQuery) || 
+      patientId.toLowerCase().includes(searchLower);
     
-    // Check status filter
     const matchesStatus = statusFilter === 'all' || patient.status === statusFilter;
-    
-    // If no date range is selected, only filter by search and status
-    if (!dateRange?.from || !dateRange?.to) return matchesSearch && matchesStatus;
-    
-    // Check if patient's registration date is within the selected date range
-    const visitDate = new Date(patient.registrationDate).getTime();
-    const fromDate = new Date(dateRange.from);
-    fromDate.setHours(0, 0, 0, 0);
-    
-    const toDate = new Date(dateRange.to);
-    toDate.setHours(23, 59, 59, 999);
-    
-    const isInDateRange = visitDate >= fromDate.getTime() && visitDate <= toDate.getTime();
-    
-    return matchesSearch && matchesStatus && isInDateRange;
+
+    // Tag filter logic
+    const hasBilled = (patient as any).tags?.includes('Billed');
+    const hasPrinted = (patient as any).tags?.includes('Report Printed');
+    const matchesTag =
+      tagFilter === 'all' ? true :
+      tagFilter === 'billed' ? hasBilled :
+      tagFilter === 'reportPrinted' ? hasPrinted :
+      (hasBilled && hasPrinted);
+
+    // Date range filter on lastVisit
+    let matchesDate = true;
+    if (dateRange?.from && dateRange?.to) {
+      const fromDate = new Date(dateRange.from);
+      fromDate.setHours(0, 0, 0, 0);
+      const toDate = new Date(dateRange.to);
+      toDate.setHours(23, 59, 59, 999);
+      const visitTime = new Date(patient.lastVisit).getTime();
+      matchesDate = visitTime >= fromDate.getTime() && visitTime <= toDate.getTime();
+    }
+    return matchesSearch && matchesStatus && matchesTag && matchesDate;
   });
 
   // Selection handlers
@@ -364,6 +392,18 @@ const Patients = () => {
                     <option value="inactive">Inactive</option>
                     <option value="overdue">Overdue</option>
                   </select>
+
+                  <select
+                    value={tagFilter}
+                    onChange={(e) => setTagFilter(e.target.value as any)}
+                    className="h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm font-medium focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none shadow-sm"
+                    title="Filter by dynamic tags"
+                  >
+                    <option value="all">All Tags</option>
+                    <option value="billed">Billed</option>
+                    <option value="reportPrinted">Report Printed</option>
+                    <option value="both">Billed + Report Printed</option>
+                  </select>
                   
                   <Popover>
                     <PopoverTrigger asChild>
@@ -556,17 +596,57 @@ const Patients = () => {
                             {formatCurrency(patient.balance)}
                           </TableCell>
                           <TableCell>
-                            <Badge 
-                              variant={patient.status === 'active' ? 'default' : 'secondary'}
-                              className={cn(
-                                "text-xs font-medium",
-                                patient.status === 'active' && "bg-green-100 text-green-800 hover:bg-green-200",
-                                patient.status === 'inactive' && "bg-gray-100 text-gray-800 hover:bg-gray-200",
-                                patient.status === 'overdue' && "bg-red-100 text-red-800 hover:bg-red-200"
+                            <div className="flex flex-wrap gap-1.5 items-center">
+                              <Badge 
+                                variant={patient.status === 'active' ? 'default' : 'secondary'}
+                                className={cn(
+                                  "text-xs font-medium",
+                                  patient.status === 'active' && "bg-green-100 text-green-800 hover:bg-green-200",
+                                  patient.status === 'inactive' && "bg-gray-100 text-gray-800 hover:bg-gray-200",
+                                  patient.status === 'overdue' && "bg-red-100 text-red-800 hover:bg-red-200"
+                                )}
+                              >
+                                {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
+                              </Badge>
+                              {(patient as any).tags?.includes('Billed') && (
+                                <Badge
+                                  className="text-xs bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200"
+                                  title={`Billed on ${(() => { const h = (patient as any).tagsHistory?.filter((x:any)=>x.tag==='Billed')||[]; const at = h.length? new Date(Math.max(...h.map((x:any)=> new Date(x.at).getTime()))): null; return at ? new Intl.DateTimeFormat('en-IN',{dateStyle:'medium', timeStyle:'short'}).format(at) : '' })()}`}
+                                >
+                                  Billed
+                                </Badge>
                               )}
-                            >
-                              {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
-                            </Badge>
+                              {(patient as any).tags?.includes('Report Printed') && (
+                                <Badge
+                                  className="text-xs bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200"
+                                  title={`Report Printed on ${(() => { const h = (patient as any).tagsHistory?.filter((x:any)=>x.tag==='Report Printed')||[]; const at = h.length? new Date(Math.max(...h.map((x:any)=> new Date(x.at).getTime()))): null; return at ? new Intl.DateTimeFormat('en-IN',{dateStyle:'medium', timeStyle:'short'}).format(at) : '' })()}`}
+                                >
+                                  Report Printed
+                                </Badge>
+                              )}
+                              {(patient as any).tagsHistory?.length > 0 && (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" size="sm" className="h-6 px-2 text-xs">History</Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-64 p-2" align="start">
+                                    <div className="text-xs font-medium mb-1">Tag History</div>
+                                    <div className="space-y-1 max-h-60 overflow-auto">
+                                      {([...(patient as any).tagsHistory] as Array<{tag:string; at: Date}>)
+                                        .sort((a,b)=> new Date(b.at).getTime() - new Date(a.at).getTime())
+                                        .map((entry, idx) => (
+                                          <div key={idx} className="flex items-center justify-between">
+                                            <span className="mr-2">{entry.tag}</span>
+                                            <span className="text-[10px] text-slate-500">
+                                              {new Intl.DateTimeFormat('en-IN',{dateStyle:'medium', timeStyle:'short'}).format(new Date(entry.at))}
+                                            </span>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">

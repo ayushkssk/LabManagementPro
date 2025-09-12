@@ -25,7 +25,7 @@ import { toast } from '@/components/ui/use-toast';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase';
 import Navbar from '@/components/layout/Navbar';
-import { addPatient } from '@/services/patientService';
+import { addPatient, markPatientBilled } from '@/services/patientService';
 import { PdfLetterhead } from '@/components/print/PdfLetterhead';
 import { InvoiceTemplate } from '@/components/billing/InvoiceTemplates';
 
@@ -1045,6 +1045,10 @@ const PatientRegistration: React.FC = () => {
           }
           // Remove the event listener after cleanup
           window.removeEventListener('afterprint', cleanup);
+          // Mark as Billed if we have the patient doc id
+          if (patientDocId) {
+            markPatientBilled(patientDocId).catch(err => console.error('Failed to mark Billed:', err));
+          }
         };
         
         // Handle cleanup after print dialog is closed

@@ -32,8 +32,10 @@ export interface PatientData {
   registrationDate: Date;
   lastVisit: Date;
   balance: number;
-  status: 'active' | 'inactive' | 'overdue' | 'Sample Collected' | 'Report Printed';
+  status: 'active' | 'inactive' | 'overdue';
   tests?: string[]; // Array of test IDs
+  tags?: string[]; // Dynamic status tags like 'Billed', 'Report Printed'
+  tagsHistory?: { tag: string; at: Date }[]; // History of tag applications
   isDeleted?: boolean;
   deletedAt?: Date;
   deletedBy?: string;
@@ -58,6 +60,8 @@ const fromFirestore = (doc: any): PatientData => {
     balance: data.balance || 0,
     status: data.status || 'active',
     tests: data.tests || [],
+    tags: data.tags || [],
+    tagsHistory: (data.tagsHistory || []).map((h: any) => ({ tag: h.tag, at: h.at?.toDate ? h.at.toDate() : new Date(h.at) })),
     isDeleted: data.isDeleted || false,
     deletedAt: data.deletedAt?.toDate(),
     deletedBy: data.deletedBy
@@ -167,6 +171,37 @@ export const setPatientTests = async (patientId: string, tests: string[]): Promi
     throw error;
   }
 };
+
+// Tag helpers
+export const addPatientTag = async (patientId: string, tag: string): Promise<void> => {
+  if (!patientId || !tag) return;
+  try {
+    const docRef = doc(db, PATIENTS_COLLECTION, patientId);
+    const now = Timestamp.fromDate(new Date());
+    await updateDoc(docRef, { 
+      tags: arrayUnion(tag),
+      tagsHistory: arrayUnion({ tag, at: now }),
+      lastVisit: now 
+    });
+  } catch (error) {
+    console.error('Error adding patient tag:', error);
+    throw error;
+  }
+};
+
+export const removePatientTag = async (patientId: string, tag: string): Promise<void> => {
+  if (!patientId || !tag) return;
+  try {
+    const docRef = doc(db, PATIENTS_COLLECTION, patientId);
+    await updateDoc(docRef, { tags: arrayRemove(tag), lastVisit: Timestamp.fromDate(new Date()) });
+  } catch (error) {
+    console.error('Error removing patient tag:', error);
+    throw error;
+  }
+};
+
+export const markPatientBilled = async (patientId: string): Promise<void> => addPatientTag(patientId, 'Billed');
+export const markPatientReportPrinted = async (patientId: string): Promise<void> => addPatientTag(patientId, 'Report Printed');
 
 // Soft delete a patient
 export const softDeletePatient = async (id: string, deletedBy?: string): Promise<void> => {

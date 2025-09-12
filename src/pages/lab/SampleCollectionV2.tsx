@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { getPatient, PatientData, addTestToPatient, removeTestFromPatient, updatePatient } from '@/services/patientService';
+import { getPatient, PatientData, addTestToPatient, removeTestFromPatient, markPatientReportPrinted } from '@/services/patientService';
 import { testConfigurations, testConfigByTestId, sampleTests as externalSampleTests } from '../../modules/tests/config';
 import { TestParameterTable } from '@/components/tests/TestParameterTable';
 import { demoTests } from '@/data/demoData';
@@ -321,26 +321,10 @@ const SampleCollectionV2: React.FC = () => {
     }
   }, [selectedTestId]);
 
-  // Update patient status when test is collected
-  const updatePatientStatus = useCallback(async (status: 'active' | 'inactive' | 'overdue' | 'Sample Collected' | 'Report Printed') => {
-    if (!patient?.id) return;
-    
-    try {
-      await updatePatient(patient.id, { status });
-      console.log(`Patient status updated to: ${status}`);
-    } catch (error) {
-      console.error('Failed to update patient status:', error);
-    }
-  }, [patient?.id]);
-
   // Toggle sample collected status
   const toggleSampleCollected = useCallback((testId: string) => {
     const wasCollected = samples.find(s => s.testId === testId)?.collected || false;
     
-    // If marking as collected, update patient status
-    if (!wasCollected) {
-      updatePatientStatus('Sample Collected');
-    }
     setSamples(prevSamples => {
       const updatedSamples = prevSamples.map(sample =>
         sample.testId === testId
@@ -772,6 +756,12 @@ const SampleCollectionV2: React.FC = () => {
     onAfterPrint: () => {
       console.log('Print completed');
       setShowPrintDialog(false);
+      // Mark patient as Report Printed
+      if (patient?.id) {
+        markPatientReportPrinted(patient.id).catch(err => {
+          console.error('Failed to mark Report Printed:', err);
+        });
+      }
     },
     print: async (printIframe) => {
       // Custom print function to ensure proper handling
@@ -898,11 +888,6 @@ const SampleCollectionV2: React.FC = () => {
       const reportId = await labReportService.saveLabReport(reportData);
       setSavedReportId(reportId);
       
-      // Update patient status to 'Report Printed'
-      if (patient?.id) {
-        await updatePatientStatus('Report Printed');
-      }
-
       // Update the current test with the latest data
       const updatedTest = {
         ...test,
@@ -1139,8 +1124,93 @@ const SampleCollectionV2: React.FC = () => {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-          <div ref={printRef} className="print-container">
+          <div ref={printRef} className="print-container print-preview">
             <style>{`
+              /* Base styles applied both in preview and in the actual print window */
+              .print-content {
+                width: 210mm;
+                min-height: 297mm;
+                display: flex;
+                flex-direction: column;
+                font-size: 12px;
+                line-height: 1.4;
+                background: white;
+                margin: 0 auto;
+              }
+              /* Minimal utility fallbacks so we don't depend on Tailwind in the print window */
+              .text-center { text-align: center !important; }
+              .text-right { text-align: right !important; }
+              .text-left { text-align: left !important; }
+              .font-semibold { font-weight: 600 !important; }
+              .font-bold { font-weight: 700 !important; }
+              .text-sm { font-size: 0.875rem !important; }
+              .text-base { font-size: 1rem !important; }
+              .text-xs { font-size: 0.75rem !important; }
+              .text-red-600 { color: #dc2626 !important; }
+              .pl-6 { padding-left: 1.5rem !important; }
+              .px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+              .py-2 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+              .pt-4 { padding-top: 1rem !important; }
+              .pt-6 { padding-top: 1.5rem !important; }
+              .pt-8 { padding-top: 2rem !important; }
+
+              /* Table styling for print */
+              .print-content table { width: 95%; margin: 0 auto; border-collapse: collapse; }
+              .print-content thead tr { background: #f3f4f6; }
+              .print-content th, .print-content td { border: 1px solid #d1d5db; padding: 6px 8px; }
+              .print-content thead th { font-weight: 600; }
+              /* Align data cells: 1st col left, others centered */
+              .print-content tbody td:nth-child(1) { text-align: left; }
+              .print-content tbody td:nth-child(2),
+              .print-content tbody td:nth-child(3),
+              .print-content tbody td:nth-child(4) { text-align: center; }
+              .print-header { width: 100%; }
+              .print-header img {
+                width: 100%;
+                height: auto;
+                max-height: 50mm;
+                display: block;
+              }
+              .print-body { padding: 0; }
+              .print-footer img {
+                width: 100%;
+                height: auto;
+                max-height: 35mm;
+                display: block;
+              }
+              .print-signatures { width: 100%; }
+              .print-notes { text-align: center; }
+              .print-content table thead th { text-align: left; }
+
+              /* Preview WYSIWYG styles to mirror print (scoped to preview container) */
+              .print-preview .print-content {
+                width: 210mm;
+                min-height: 297mm;
+                display: flex;
+                flex-direction: column;
+                font-size: 12px;
+                line-height: 1.4;
+                background: white;
+                margin: 0 auto;
+              }
+              .print-preview .print-header { width: 100%; }
+              .print-preview .print-header img {
+                width: 100%;
+                height: auto;
+                max-height: 50mm;
+                display: block;
+              }
+              .print-preview .print-body { padding: 0; }
+              .print-preview .print-footer img {
+                width: 100%;
+                height: auto;
+                max-height: 35mm;
+                display: block;
+              }
+              .print-preview .print-signatures { width: 100%; }
+              .print-preview .print-notes { text-align: center; }
+              .print-preview table thead th { text-align: left; }
+
               @media print {
                 @page {
                   size: A4;
@@ -1162,6 +1232,7 @@ const SampleCollectionV2: React.FC = () => {
                   width: 210mm !important;
                   min-height: 297mm !important;
                   display: flex !important;
+                  flex-direction: column !important;
                   flex-direction: column !important;
                   font-size: 12px !important;
                   line-height: 1.4 !important;
@@ -1273,12 +1344,16 @@ const SampleCollectionV2: React.FC = () => {
                   align-items: flex-start !important;
                   line-height: 1.2 !important;
                 }
-                .test-title { 
-                  font-size: 12px !important; 
-                  margin: 8px 0 5px 0 !important; 
-                  text-align: center !important; 
+                .test-title h3 {
+                  font-size: 14px !important;
+                  margin: 0 auto !important;
+                  text-align: center !important;
                   font-weight: bold !important;
-                  text-decoration: underline !important;
+                  letter-spacing: 0.5px !important;
+                }
+                /* Ensure table headers are left-aligned in print */
+                .print-content table thead th {
+                  text-align: left !important;
                 }
               }
             `}</style>
@@ -1292,7 +1367,7 @@ const SampleCollectionV2: React.FC = () => {
                 <XCircle className="h-4 w-4" />
               </Button>
             </div>
-            <div className="print-content">
+            <div className="print-content flex flex-col" style={{ minHeight: '100vh' }}>
               {/* Hospital Header - Full Width */}
               <div className="print-header">
                 <img 
@@ -1303,7 +1378,7 @@ const SampleCollectionV2: React.FC = () => {
               </div>
 
               {/* Report Body Content */}
-              <div className="print-body">
+              <div className="print-body flex-1">
                 <div>
                   {/* Centered REPORT Title */}
                   <div className="text-center mb-2">
@@ -1322,7 +1397,7 @@ const SampleCollectionV2: React.FC = () => {
                     </div>
                     
                     {/* Center QR Code */}
-                    <div className="flex flex-col items-center justify-start" style={{ marginLeft: '20px' }}>
+                    <div className="flex flex-col items-center justify-start">
                       <div>
                         <QRCode
                           value={`https://swatihospital.com/verify-report/${currentTest?.testId || 'unknown'}-${Date.now()}`}
@@ -1331,31 +1406,33 @@ const SampleCollectionV2: React.FC = () => {
                           className="qr-code"
                         />
                       </div>
-                      <p className="text-xs font-semibold text-center mt-1">SCAN QR FOR VERIFICATION</p>
+                      
                     </div>
                     
                     {/* Right Side */}
                     <div className="space-y-1 text-right">
                       <p><span className="font-semibold">Sex:</span> {patient?.gender || 'N/A'}</p>
-                      <p><span className="font-semibold">Received On:</span> {currentTest?.collectedAt ? new Date(currentTest.collectedAt).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')}</p>
-                      <p><span className="font-semibold">Reported On:</span> {new Date().toLocaleDateString('en-GB')}</p>
+                      <p><span className="font-semibold">Received On:</span> {currentTest?.collectedAt ? new Date(currentTest.collectedAt).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true}) : new Date().toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true})}</p>
+                      <p><span className="font-semibold">Reported On:</span> {new Date().toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true})}</p>
                     </div>
                   </div>
 
                   {/* Test Name */}
-                  <div className="test-title">
-                    <h3>{currentTest.testName?.toUpperCase() || 'LABORATORY TEST'}</h3>
+                  <div className="text-center my-4">
+                    <h3 className="text-lg font-bold border-b-2 border-black inline-block px-4 pb-1">
+                      {currentTest.testName?.toUpperCase() || 'LABORATORY TEST'}
+                    </h3>
                   </div>
                   
                   {/* Test Results Table */}
-                  <div className="flex-1">
-                    <table className="print-table">
+                  <div className="flex-1 flex justify-center">
+                    <table className="border-collapse" style={{ width: '95%', maxWidth: '1200px' }}>
                       <thead>
-                        <tr>
-                          <th>Investigation</th>
-                          <th>Result</th>
-                          <th>Units</th>
-                          <th>Ref. Range</th>
+                        <tr className="bg-gray-100">
+                          <th className="border border-gray-300 px-3 pl-6 py-2 text-left font-semibold">Investigation</th>
+                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Result</th>
+                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Units</th>
+                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Ref. Range</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1372,20 +1449,20 @@ const SampleCollectionV2: React.FC = () => {
                           const isAbnormal = param?.value && field.refRange && !isValueInRange(param.value, field.refRange);
                           
                           return (
-                            <tr key={field.id}>
-                              <td>{field.label}</td>
-                              <td className={`text-center font-semibold ${isAbnormal ? 'text-red-600' : ''}`}>
+                            <tr key={field.id} className="hover:bg-gray-50">
+                              <td className="border border-gray-200 px-3 pl-6 py-2">{field.label}</td>
+                              <td className={`border border-gray-200 px-3 py-2 text-center font-semibold ${isAbnormal ? 'text-red-600' : ''}`}>
                                 {param?.value || '-'} {isAbnormal && (parseFloat(param?.value || '0') > parseFloat(field.refRange?.split('-')[1] || '0') ? '↑' : '↓')}
                               </td>
-                              <td className="text-center">{field.unit || '-'}</td>
-                              <td className="text-center">{field.refRange || '-'}</td>
+                              <td className="border border-gray-200 px-3 py-2 text-center">{field.unit || '-'}</td>
+                              <td className="border border-gray-200 px-3 py-2 text-center">{field.refRange || '-'}</td>
                             </tr>
                           );
                         })}
                         {/* Show message if no parameters have values */}
                         {(!testConfig?.fields?.some((field: any) => testParameters[field.id]?.value?.trim())) && (
                           <tr>
-                            <td colSpan={4} className="text-center text-gray-500">
+                            <td colSpan={4} className="border border-gray-200 px-3 py-4 text-center text-gray-500">
                               No test results entered yet
                             </td>
                           </tr>
@@ -1395,25 +1472,25 @@ const SampleCollectionV2: React.FC = () => {
                   </div>
                 </div>
 
-                <div>
+                <div style={{ marginTop: '3vh' }}>
                   {/* Signatures */}
-                  <div className="print-signatures">
-                    <div className="flex justify-between w-full">
+                  <div className="print-signatures border-t-2 border-gray-300 pt-6">
+                    <div className="flex justify-between w-full max-w-2xl mx-auto">
                       <div className="text-left">
-                        <p className="font-bold">Komal Kumari</p>
-                        <p className="text-xs">DMLT</p>
+                        <p className="font-bold text-base">Komal Kumari</p>
+                        <p className="text-sm text-gray-600">DMLT</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold">Dr Amar Kumar</p>
-                        <p className="text-xs">MBBS</p>
+                        <p className="font-bold text-base">Dr. Amar Kumar</p>
+                        <p className="text-sm text-gray-600">MBBS</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Important Notes */}
-                  <div className="print-notes">
-                    <p className="font-semibold">• Clinical Correlation is essential for Final Diagnosis. • Report for Medico Legal Purpose.</p>
-                    <p>• If test results are unexpected, please contact the laboratory</p>
+                  <div className="print-notes mt-16 mb-2 text-sm text-gray-700 text-center">
+                    <p className="font-medium mb-1">• Clinical Correlation is essential for Final Diagnosis • Report for Medico Legal Purpose</p>
+                    <p className="text-gray-600">• If test results are unexpected, please contact the laboratory</p>
                   </div>
                 </div>
               </div>
