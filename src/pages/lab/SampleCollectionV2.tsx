@@ -1191,13 +1191,19 @@ const SampleCollectionV2: React.FC = () => {
                   position: fixed;
                   top: 0;
                   left: 0;
-                  width: 100%;
-                  height: 100%;
+                  right: 0;
+                  bottom: 0;
                   background: url('/watermark.png') no-repeat center center;
                   background-size: 80% auto;
-                  opacity: 0.3;
+                  opacity: 0.1 !important;
                   z-index: 9999;
                   pointer-events: none;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                @page {
+                  margin: 0;
+                  size: A4;
                 }
               }
 
@@ -1387,7 +1393,20 @@ const SampleCollectionV2: React.FC = () => {
               </Button>
             </div>
             <div className="print-content" style={{ position: 'relative' }}>
-              <div className="print-watermark" style={{ display: 'none' }}></div>
+              <div className="print-watermark" style={{
+                display: 'block',
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '80%',
+                height: '80%',
+                background: 'url(/watermark.png) no-repeat center center',
+                backgroundSize: 'contain',
+                opacity: 0.1,
+                zIndex: 1,
+                pointerEvents: 'none'
+              }}></div>
               {/* Hospital Header - Full Width */}
               <div className="print-header">
                 <img 
