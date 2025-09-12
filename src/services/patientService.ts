@@ -32,7 +32,7 @@ export interface PatientData {
   registrationDate: Date;
   lastVisit: Date;
   balance: number;
-  status: 'active' | 'inactive' | 'overdue';
+  status: 'active' | 'inactive' | 'overdue' | 'Sample Collected' | 'Report Printed';
   tests?: string[]; // Array of test IDs
   isDeleted?: boolean;
   deletedAt?: Date;

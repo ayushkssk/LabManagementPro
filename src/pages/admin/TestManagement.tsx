@@ -9,68 +9,13 @@ import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Trash2, Plus, Upload, Download, Pencil, Loader2, Printer } from "lucide-react";
-import type { Test as TestType, TestField, Hospital, TestResult, FieldResult } from "@/types";
+import { Trash2, Plus, Upload, Download, Pencil, Loader2, ListPlus, ChevronsUpDown, X, Check } from "lucide-react";
+import type { Test as TestType, TestField } from "@/types";
 import { addTest, deleteTest, getTests, updateTest, assignTestCodes, reloadDefaultTests, type TestData } from "@/services/testService";
 import { getUnits, addUnit, reloadDefaultUnits, type UnitData } from "@/services/unitService";
 import { useHospitals } from '@/context/HospitalContext';
-import { printTestReport } from "@/utils/printUtils";
-// Using a mock hospital since the context doesn't expose the current hospital directly
-const MOCK_HOSPITAL: Hospital = {
-  id: 'mock-hospital-id',
-  name: 'Demo Hospital',
-  displayName: 'Demo Hospital',
-  type: 'hospital',
-  registrationNumber: 'REG12345',
-  gstNumber: 'GST12345',
-  address: {
-    street: '123 Medical St',
-    city: 'Medical City',
-    state: 'Medical State',
-    pincode: '123456',
-    country: 'Medical Country'
-  },
-  phoneNumbers: ['+1234567890'],
-  email: 'info@demohospital.com',
-  logoUrl: '/logo.png',
-  settings: {
-    primaryColor: '#3b82f6',
-    secondaryColor: '#1d4ed8',
-    fontFamily: 'Arial, sans-serif',
-    headerStyle: 'centered',
-    showLogo: true,
-    showTagline: true,
-    showGst: true,
-    letterHeadEnabled: true,
-    timezone: 'UTC',
-    dateFormat: 'DD/MM/YYYY',
-    currency: 'USD'
-  },
-  letterhead: {
-    logoUrl: '/logo.png',
-    showHospitalName: true,
-    showAddress: true,
-    showContact: true,
-    showEmail: true,
-    showWebsite: true,
-    showGst: true,
-    showRegistration: true
-  },
-  admin: {
-    id: 'admin-1',
-    name: 'Admin User',
-    email: 'admin@demohospital.com',
-    phone: '+1234567890',
-    role: 'admin',
-    createdAt: new Date()
-  },
-  isActive: true,
-  isVerified: true,
-  isDemo: true,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  registrationDate: new Date()
-};
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 const useXLSX = () => {
   const [xlsx, setXLSX] = useState<any>(null);
@@ -108,7 +53,165 @@ const useXLSX = () => {
   };
 };
 
-const emptyField = (): TestField => ({ id: crypto.randomUUID(), name: "", type: "number", unit: "", normalRange: "" });
+// Common test parameters that can be added via multi-select
+const commonTestParameters = [
+  { label: "Hemoglobin (Hb)", value: "hemoglobin", unit: "g/dL", normalRange: "12.0-16.0" },
+  { label: "White Blood Cells (WBC)", value: "wbc", unit: "x10³/µL", normalRange: "4.0-11.0" },
+  { label: "Red Blood Cells (RBC)", value: "rbc", unit: "x10⁶/µL", normalRange: "4.0-5.9" },
+  { label: "Hematocrit (HCT)", value: "hct", unit: "%", normalRange: "36-46" },
+  { label: "Mean Corpuscular Volume (MCV)", value: "mcv", unit: "fL", normalRange: "80-100" },
+  { label: "Mean Corpuscular Hemoglobin (MCH)", value: "mch", unit: "pg", normalRange: "27-32" },
+  { label: "Platelets", value: "platelets", unit: "x10³/µL", normalRange: "150-450" },
+  { label: "Glucose (Fasting)", value: "glucose", unit: "mg/dL", normalRange: "70-100" },
+  { label: "Urea (BUN)", value: "urea", unit: "mg/dL", normalRange: "7-20" },
+  { label: "Creatinine", value: "creatinine", unit: "mg/dL", normalRange: "0.5-1.2" },
+  { label: "Sodium (Na)", value: "sodium", unit: "mEq/L", normalRange: "135-145" },
+  { label: "Potassium (K)", value: "potassium", unit: "mEq/L", normalRange: "3.5-5.1" },
+  { label: "Chloride (Cl)", value: "chloride", unit: "mEq/L", normalRange: "98-107" },
+  { label: "Total Protein", value: "total_protein", unit: "g/dL", normalRange: "6.0-8.3" },
+  { label: "Albumin", value: "albumin", unit: "g/dL", normalRange: "3.5-5.0" },
+  { label: "Alkaline Phosphatase (ALP)", value: "alp", unit: "U/L", normalRange: "44-147" },
+  { label: "Alanine Aminotransferase (ALT)", value: "alt", unit: "U/L", normalRange: "0-41" },
+  { label: "Aspartate Aminotransferase (AST)", value: "ast", unit: "U/L", normalRange: "0-40" },
+  { label: "Bilirubin (Total)", value: "bilirubin_total", unit: "mg/dL", normalRange: "0.2-1.2" },
+  { label: "Bilirubin (Direct)", value: "bilirubin_direct", unit: "mg/dL", normalRange: "0.0-0.3" },
+]
+
+// MultiSelect component
+const MultiSelect = ({
+  options,
+  selected,
+  onChange,
+  placeholder = "Select options...",
+  searchPlaceholder = "Search options...",
+  emptyText = "No options found.",
+  className,
+}: {
+  options: { label: string; value: string }[];
+  selected: string[];
+  onChange: (value: string[]) => void;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
+  className?: string;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredOptions = useMemo(() => {
+    if (!search) return options;
+    return options.filter((option) =>
+      option.label.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [options, search]);
+
+  const handleSelect = (value: string) => {
+    if (selected.includes(value)) {
+      onChange(selected.filter((item) => item !== value));
+    } else {
+      onChange([...selected, value]);
+    }
+  };
+
+  const removeSelected = (value: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange(selected.filter((item) => item !== value));
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn("w-full justify-between h-auto min-h-10", className, {
+            "text-muted-foreground": selected.length === 0,
+          })}
+        >
+          <div className="flex flex-wrap gap-1 flex-1 text-left">
+            {selected.length > 0 ? (
+              selected.map((value) => {
+                const option = options.find((opt) => opt.value === value);
+                return (
+                  <Badge
+                    key={value}
+                    variant="secondary"
+                    className="flex items-center gap-1 mr-1 mb-1"
+                  >
+                    {option?.label}
+                    <button
+                      type="button"
+                      onClick={(e) => removeSelected(value, e)}
+                      className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                );
+              })
+            ) : (
+              <span>{placeholder}</span>
+            )}
+          </div>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0" align="start">
+        <div className="w-full p-2">
+          <Input
+            placeholder={searchPlaceholder}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9 mb-2"
+          />
+          <div className="max-h-[200px] overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="py-2 px-3 text-sm text-muted-foreground">
+                {emptyText}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {filteredOptions.map((option) => (
+                  <div
+                    key={option.value}
+                    className={cn(
+                      "relative flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                      selected.includes(option.value) && "bg-accent/50"
+                    )}
+                    onClick={() => handleSelect(option.value)}
+                  >
+                    <div className="flex items-center">
+                      <div
+                        className={cn(
+                          "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                          selected.includes(option.value)
+                            ? "bg-primary text-primary-foreground"
+                            : "opacity-50 [&_svg]:invisible"
+                        )}
+                      >
+                        <Check className="h-4 w-4" />
+                      </div>
+                      {option.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+const emptyField = (name = "", unit = "", normalRange = ""): TestField => ({
+  id: crypto.randomUUID(),
+  name,
+  type: "number",
+  unit,
+  normalRange,
+});
 
 const emptyTest = (): Omit<TestType, "id"> => ({ name: "", category: "", price: 0, description: "", fields: [emptyField()] });
 
@@ -120,17 +223,7 @@ const TestManagement: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<{ id?: string; data: Omit<TestType, "id"> } | null>(null);
-  // Using mock hospital data for the print functionality
-  const hospital = MOCK_HOSPITAL;
-  
-  // Mock patient data for testing print
-  const mockPatient = {
-    name: "John Doe",
-    age: 35,
-    gender: "Male",
-    doctor: "Dr. Smith",
-    date: new Date().toLocaleDateString()
-  };
+  // Removed printing dependencies and mock data
 
   type LoadedTest = TestData & { id: string; code?: string; };
   const { data: tests = [], isLoading } = useQuery<LoadedTest[]>({ queryKey: ["tests"], queryFn: getTests as any });
@@ -670,39 +763,6 @@ const TestManagement: React.FC = () => {
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => {
-                              const testResult: TestResult = {
-                                testId: t.id || `temp-${Date.now()}`,
-                                testName: t.name,
-                                fields: t.fields?.map(f => ({
-                                  fieldId: f.id || `field-${Date.now()}`,
-                                  fieldName: f.name,
-                                  value: '',
-                                  unit: 'unit' in f ? String(f.unit) : undefined,
-                                  normalRange: 'normalRange' in f ? String(f.normalRange) : undefined
-                                } as FieldResult)) || []
-                              };
-                              
-                              printTestReport({
-                                hospital,
-                                testName: t.name,
-                                testFields: testResult.fields.map(f => ({
-                                  fieldName: f.fieldName,
-                                  value: f.value,
-                                  unit: f.unit,
-                                  normalRange: f.normalRange
-                                })),
-                                patientInfo: mockPatient,
-                                hospitalId: hospital.id
-                              });
-                            }}
-                            className="text-blue-600 hover:bg-blue-50"
-                          >
-                            <Printer className="w-4 h-4 mr-1" /> Print
-                          </Button>
                           {/* Hide edit/delete for protected tests */}
                           {!t.protected && (
                             <>
@@ -736,166 +796,341 @@ const TestManagement: React.FC = () => {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl w-full p-0">
-          <DialogHeader className="border-b px-6 py-4">
-            <DialogTitle className="text-xl">{editing?.id ? "Edit Test" : "Add Test"}</DialogTitle>
+        <DialogContent className="max-w-2xl w-full p-0 rounded-lg overflow-hidden">
+          <DialogHeader className="bg-primary/5 px-6 py-4 border-b">
+            <DialogTitle className="text-xl font-semibold text-foreground">
+              {editing?.id ? "Edit Test" : "Add New Test"}
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              {editing?.id ? "Update test details" : "Create a new test with parameters"}
+            </p>
           </DialogHeader>
-          <div className="p-6 overflow-y-auto max-h-[70vh]">
+          
+          <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
             {editing && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Name</Label>
-                    <Input value={editing.data.name} onChange={(e) => setEditing((p) => p && ({ ...p, data: { ...p.data, name: e.target.value } }))} />
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="test-name" className="text-sm font-medium">Test Name</Label>
+                    <Input
+                      id="test-name"
+                      value={editing.data.name}
+                      onChange={(e) => setEditing(p => p && ({ ...p, data: { ...p.data, name: e.target.value } }))}
+                      placeholder="e.g., Complete Blood Count"
+                      className="h-10"
+                    />
                   </div>
-                  <div>
-                    <Label>Category</Label>
-                    <Input value={editing.data.category} onChange={(e) => setEditing((p) => p && ({ ...p, data: { ...p.data, category: e.target.value } }))} />
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="test-category" className="text-sm font-medium">Category</Label>
+                    <Input
+                      id="test-category"
+                      value={editing.data.category}
+                      onChange={(e) => setEditing(p => p && ({ ...p, data: { ...p.data, category: e.target.value } }))}
+                      placeholder="e.g., Hematology"
+                      className="h-10"
+                    />
                   </div>
-                  <div>
-                    <Label>Price</Label>
-                    <Input type="number" value={editing.data.price} onChange={(e) => setEditing((p) => p && ({ ...p, data: { ...p.data, price: Number(e.target.value) } }))} />
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="test-price" className="text-sm font-medium">Price (₹)</Label>
+                    <Input
+                      id="test-price"
+                      type="number"
+                      value={editing.data.price}
+                      onChange={(e) => setEditing(p => p && ({ ...p, data: { ...p.data, price: Number(e.target.value) } }))}
+                      placeholder="0.00"
+                      className="h-10"
+                    />
                   </div>
-                  <div>
-                    <Label>Description</Label>
-                    <Input value={editing.data.description} onChange={(e) => setEditing((p) => p && ({ ...p, data: { ...p.data, description: e.target.value } }))} />
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="test-description" className="text-sm font-medium">Description (Optional)</Label>
+                    <Input
+                      id="test-description"
+                      value={editing.data.description}
+                      onChange={(e) => setEditing(p => p && ({ ...p, data: { ...p.data, description: e.target.value } }))}
+                      placeholder="Brief description of the test"
+                      className="h-10"
+                    />
                   </div>
                 </div>
-
-                <Separator />
-
-                <div className="space-y-3">
+                
+                <Separator className="my-4" />
+                
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium">Reference Parameters</h4>
+                    <div className="space-y-1">
+                      <h4 className="font-medium">Test Parameters</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Add parameters included in this test
+                      </p>
+                    </div>
+                    
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditing((p) => {
-                          if (!p) return p;
-                          const next = { ...p };
-                          const template = getCbcTemplateFields();
-                          next.data = {
-                            ...next.data,
-                            name: next.data.name || "Complete Blood Count (CBC)",
-                            category: next.data.category || "Hematology",
-                            fields: template
-                          };
-                          return next;
-                        })}
+                      <Select
+                        onValueChange={(value) => {
+                          if (value === 'cbc') {
+                            setEditing(p => p ? {
+                              ...p,
+                              data: {
+                                ...p.data,
+                                name: p.data.name || "Complete Blood Count (CBC)",
+                                category: p.data.category || "Hematology",
+                                fields: getCbcTemplateFields()
+                              }
+                            } : p);
+                          } else if (value === 'lft') {
+                            setEditing(p => p ? {
+                              ...p,
+                              data: {
+                                ...p.data,
+                                name: p.data.name || "Liver Function Test (LFT)",
+                                category: p.data.category || "Biochemistry",
+                                fields: getLftTemplateFields()
+                              }
+                            } : p);
+                          }
+                        }}
                       >
-                        Load CBC Template
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditing((p) => {
-                          if (!p) return p;
-                          const next = { ...p };
-                          const template = getLftTemplateFields();
-                          next.data = {
-                            ...next.data,
-                            name: next.data.name || "Liver Function Test (LFT)",
-                            category: next.data.category || "Biochemistry",
-                            fields: template
-                          };
-                          return next;
-                        })}
-                      >
-                        Load LFT Template
-                      </Button>
-                      <Button variant="secondary" size="sm" onClick={() => setEditing((p) => p && ({ ...p, data: { ...p.data, fields: [...p.data.fields, emptyField()] } }))}>
-                        <Plus className="w-4 h-4 mr-1" /> Add Parameter
-                      </Button>
+                        <SelectTrigger className="w-[180px] h-9">
+                          <SelectValue placeholder="Load template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cbc">CBC Template</SelectItem>
+                          <SelectItem value="lft">LFT Template</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 gap-1"
+                          onClick={() =>
+                            setEditing(p => p ? {
+                              ...p,
+                              data: { ...p.data, fields: [...p.data.fields, emptyField()] }
+                            } : p)
+                          }
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>Add Parameter</span>
+                        </Button>
+                        
+                        <MultiSelect
+                          options={commonTestParameters.map(p => ({
+                            label: p.label,
+                            value: p.value,
+                          }))}
+                          selected={[]}
+                          onChange={(selectedValues) => {
+                            if (!editing) return;
+                            
+                            const newFields = selectedValues
+                              .filter(value => 
+                                !editing.data.fields.some(field => 
+                                  field.name.toLowerCase() === commonTestParameters
+                                    .find(p => p.value === value)?.label.toLowerCase()
+                                )
+                              )
+                              .map(value => {
+                                const param = commonTestParameters.find(p => p.value === value);
+                                return emptyField(
+                                  param?.label || "",
+                                  param?.unit || "",
+                                  param?.normalRange || ""
+                                );
+                              });
+                            
+                            if (newFields.length > 0) {
+                              setEditing({
+                                ...editing,
+                                data: {
+                                  ...editing.data,
+                                  fields: [...editing.data.fields, ...newFields]
+                                }
+                              });
+                            }
+                          }}
+                          placeholder="Add common parameters"
+                          searchPlaceholder="Search parameters..."
+                          emptyText="No parameters found"
+                          className="w-[200px] h-9"
+                        />
+                      </div>
                     </div>
                   </div>
-
-                  <div className="space-y-2 max-h-80 overflow-auto pr-1">
-                    {editing.data.fields.map((f, idx) => (
-                      <div key={f.id} className="grid grid-cols-12 gap-2 items-end border p-3 rounded">
-                        <div className="col-span-3">
-                          <Label>Name</Label>
-                          <Input value={f.name} onChange={(e) => setEditing((p) => {
-                            if (!p) return p; const fields = [...p.data.fields]; fields[idx] = { ...fields[idx], name: e.target.value }; return { ...p, data: { ...p.data, fields } };
-                          })} />
-                        </div>
-                        <div className="col-span-2">
-                          <Label>Type</Label>
-                          <Select value={f.type} onValueChange={(val) => setEditing((p) => {
-                            if (!p) return p; const fields = [...p.data.fields]; fields[idx] = { ...fields[idx], type: val as TestField["type"] }; return { ...p, data: { ...p.data, fields } };
-                          })}>
-                            <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="number">number</SelectItem>
-                              <SelectItem value="text">text</SelectItem>
-                              <SelectItem value="select">select</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="col-span-2">
-                          <Label>Unit</Label>
-                          <Select 
-                            value={(f.unit ?? "").trim()}
-                            onValueChange={async (val) => {
-                              if (val === "__add__") {
-                                const name = window.prompt("Enter new unit name (e.g., mg/dL):", "");
-                                const unitName = (name || "").trim();
-                                if (unitName) {
-                                  try {
-                                    await addUnit(unitName);
-                                    await refetchUnits();
-                                    setEditing((p) => {
-                                      if (!p) return p; const fields = [...p.data.fields]; fields[idx] = { ...fields[idx], unit: unitName }; return { ...p, data: { ...p.data, fields } };
-                                    });
-                                  } catch (e) {
-                                    toast.error("Failed to add unit");
-                                  }
-                                }
-                              } else {
-                                setEditing((p) => {
-                                  if (!p) return p; const fields = [...p.data.fields]; fields[idx] = { ...fields[idx], unit: val }; return { ...p, data: { ...p.data, fields } };
-                                });
-                              }
-                            }}
-                          >
-                            <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
-                            <SelectContent>
-                              {(units || []).map((u) => (
-                                <SelectItem key={u.id || u.name} value={u.name}>{u.name}</SelectItem>
-                              ))}
-                              <SelectItem value="__add__">+ Add new unit…</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="col-span-4">
-                          <Label>Normal Range</Label>
-                          <Input value={f.normalRange ?? ""} onChange={(e) => setEditing((p) => {
-                            if (!p) return p; const fields = [...p.data.fields]; fields[idx] = { ...fields[idx], normalRange: e.target.value }; return { ...p, data: { ...p.data, fields } };
-                          })} />
-                        </div>
-                        <div className="col-span-1 flex justify-end">
-                          <Button variant="destructive" size="icon" onClick={() => setEditing((p) => {
-                            if (!p) return p; const fields = p.data.fields.filter((x) => x.id !== f.id); return { ...p, data: { ...p.data, fields } };
-                          })}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                  
+                  {editing.data.fields.length > 0 ? (
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="grid grid-cols-12 gap-4 p-3 bg-muted/30 text-sm font-medium">
+                        <div className="col-span-4">Parameter Name</div>
+                        <div className="col-span-2">Type</div>
+                        <div className="col-span-2">Unit</div>
+                        <div className="col-span-3">Normal Range</div>
+                        <div className="col-span-1"></div>
                       </div>
-                    ))}
-                  </div>
+                      
+                      <div className="divide-y">
+                        {editing.data.fields.map((field, idx) => (
+                          <div key={field.id} className="grid grid-cols-12 gap-4 p-3 items-center hover:bg-muted/30 transition-colors">
+                            <div className="col-span-4">
+                              <Input
+                                value={field.name}
+                                onChange={(e) =>
+                                  setEditing(p => p ? {
+                                    ...p,
+                                    data: {
+                                      ...p.data,
+                                      fields: p.data.fields.map((f, i) => 
+                                        i === idx ? { ...f, name: e.target.value } : f
+                                      )
+                                    }
+                                  } : p)
+                                }
+                                placeholder="Parameter name"
+                                className="h-9"
+                              />
+                            </div>
+                            
+                            <div className="col-span-2">
+                              <Select
+                                value={field.type}
+                                onValueChange={(val) =>
+                                  setEditing(p => p ? {
+                                    ...p,
+                                    data: {
+                                      ...p.data,
+                                      fields: p.data.fields.map((f, i) => 
+                                        i === idx ? { ...f, type: val as any } : f
+                                      )
+                                    }
+                                  } : p)
+                                }
+                              >
+                                <SelectTrigger className="h-9">
+                                  <SelectValue placeholder="Type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="number">Number</SelectItem>
+                                  <SelectItem value="text">Text</SelectItem>
+                                  <SelectItem value="select">Select</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div className="col-span-2">
+                              <Input
+                                value={field.unit || ""}
+                                onChange={(e) =>
+                                  setEditing(p => p ? {
+                                    ...p,
+                                    data: {
+                                      ...p.data,
+                                      fields: p.data.fields.map((f, i) => 
+                                        i === idx ? { ...f, unit: e.target.value } : f
+                                      )
+                                    }
+                                  } : p)
+                                }
+                                placeholder="Unit"
+                                className="h-9"
+                              />
+                            </div>
+                            
+                            <div className="col-span-3">
+                              <Input
+                                value={field.normalRange || ""}
+                                onChange={(e) =>
+                                  setEditing(p => p ? {
+                                    ...p,
+                                    data: {
+                                      ...p.data,
+                                      fields: p.data.fields.map((f, i) => 
+                                        i === idx ? { ...f, normalRange: e.target.value } : f
+                                      )
+                                    }
+                                  } : p)
+                                }
+                                placeholder="e.g., 0-100"
+                                className="h-9"
+                              />
+                            </div>
+                            
+                            <div className="col-span-1 flex justify-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                                onClick={() =>
+                                  setEditing(p => p ? {
+                                    ...p,
+                                    data: {
+                                      ...p.data,
+                                      fields: p.data.fields.filter((_, i) => i !== idx)
+                                    }
+                                  } : p)
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Remove parameter</span>
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed rounded-lg">
+                      <div className="rounded-full bg-primary/10 p-3 mb-3">
+                        <Plus className="h-6 w-6 text-primary" />
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">No parameters added yet</p>
+                      <p className="text-xs text-muted-foreground text-center max-w-xs">
+                        Add parameters manually or select a template to get started
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
+              </>
             )}
           </div>
-          <DialogFooter className="border-t p-4">
-            <div className="flex w-full justify-between">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <div className="flex gap-2">
-                {editing?.id && (
-                  <Button variant="destructive" onClick={() => editing?.id && delMut.mutate(editing.id)}>Delete</Button>
+          
+          <DialogFooter className="bg-muted/30 px-6 py-4 border-t flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            <div className="text-sm text-muted-foreground">
+              {editing?.data.fields.length} {editing?.data.fields.length === 1 ? 'parameter' : 'parameters'} added
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+                className="h-10 w-full sm:w-24"
+              >
+                Cancel
+              </Button>
+              
+              <Button
+                type="button"
+                onClick={save}
+                disabled={addMut.isPending || updMut.isPending}
+                className="h-10 w-full sm:w-32"
+              >
+                {addMut.isPending || updMut.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {editing?.id ? 'Saving...' : 'Adding...'}
+                  </>
+                ) : editing?.id ? (
+                  'Save Changes'
+                ) : (
+                  'Add Test'
                 )}
-                <Button onClick={save}>Save</Button>
-              </div>
+              </Button>
             </div>
           </DialogFooter>
         </DialogContent>

@@ -261,13 +261,9 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({
             <span className="font-medium">Age/Gender:</span>
             <div className="text-gray-700">{patient.age} Y / {patient.gender || 'N/A'}</div>
           </div>
-          <div className="p-2 border-r border-gray-400">
+          <div className="p-2">
             <span className="font-medium">Phone:</span>
             <div className="text-gray-700">{patient.phone}</div>
-          </div>
-          <div className="p-2">
-            <span className="font-medium">Referred By:</span>
-            <div className="text-gray-700">{patient.doctor || 'Self'}</div>
           </div>
         </div>
         <div className="grid grid-cols-1 text-xs border-l border-r border-b border-gray-400">

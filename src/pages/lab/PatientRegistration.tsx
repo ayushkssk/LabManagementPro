@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase';
+import Navbar from '@/components/layout/Navbar';
 import { addPatient } from '@/services/patientService';
 import { PdfLetterhead } from '@/components/print/PdfLetterhead';
 import { InvoiceTemplate } from '@/components/billing/InvoiceTemplates';
@@ -109,6 +110,7 @@ const PatientRegistration: React.FC = () => {
     setPatientId(generatePatientId());
   }, []);
   
+  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [patient, setPatient] = useState<PatientForm>({
     name: '',
     age: '',
@@ -732,6 +734,9 @@ const PatientRegistration: React.FC = () => {
         </div>
         
         <div class="bill-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 11px;">
+          <div class="payment-method" style="margin-bottom: 5px; font-weight: bold;">
+            Payment Method: <span style="text-transform: capitalize;">${paymentMethod}</span>
+          </div>
           <div class="bill-no">
             <strong>Bill No.: ${patientId || 'SWT-250911-127'}</strong>
           </div>
@@ -754,10 +759,9 @@ const PatientRegistration: React.FC = () => {
               <td><strong>Patient Name:</strong><br>${patient.name || 'N/A'}</td>
               <td><strong>Age/Gender:</strong><br>${patient.age || 'N/A'} Y / ${patient.gender || 'N/A'}</td>
               <td><strong>Phone:</strong><br>${patient.phone || 'N/A'}</td>
-              <td><strong>Referred By:</strong><br>${patient.doctor || 'Self'}</td>
             </tr>
             <tr>
-              <td colspan="4"><strong>Address:</strong><br>${patient.address || 'N/A'}</td>
+              <td colspan="3"><strong>Address:</strong><br>${patient.address || 'N/A'}</td>
             </tr>
           </tbody>
         </table>
@@ -801,7 +805,7 @@ const PatientRegistration: React.FC = () => {
           <tbody>
             <tr>
               <td><strong>Total Amount:</strong> ₹${calculateTotal()}</td>
-              <td><strong>Payment Mode:</strong> Cash</td>
+              <td><strong>Payment Mode:</strong> ${paymentMethod}</td>
             </tr>
             <tr>
               <td><strong>Discount:</strong> ₹0.00</td>
@@ -815,8 +819,12 @@ const PatientRegistration: React.FC = () => {
         </table>
         
         
-        <div style="margin-top: 100px;"></div>
-        <div class="terms-container" style="margin: 10px 0 5px 0; font-size: 9px; line-height: 1.3;">
+        <!-- Terms & Conditions at the bottom -->
+        <div class="terms-container" style="position: absolute; bottom: 15%; left: 0; right: 0; margin: 0; padding: 10px; font-size: 9px; line-height: 1.3; border-top: 1px solid #eee;">
+          <!-- Authorized Signature below terms -->
+          <div class="footer" style="text-align: right; margin: 15px 0 0 0; padding: 0; width: 100%;">
+            <p style="margin: 0 20px 0 0;"><strong>Authorized Signature</strong></p>
+          </div>
           <div style="margin-bottom: 5px;"><strong>Terms & Conditions:</strong></div>
           <ol style="margin: 0 0 5px 0; padding-left: 15px;">
             <li>Please bring this bill at the time of sample collection.</li>
@@ -825,10 +833,6 @@ const PatientRegistration: React.FC = () => {
             <li>This is a computer generated bill, no signature required.</li>
           </ol>
           <p style="margin: 0;"><strong>Note:</strong> Please check all details at the time of sample collection. The management will not be responsible for any discrepancy later.</p>
-        </div>
-        
-        <div class="footer" style="text-align: right; margin: 5px 0 10px 0; padding: 0;">
-          <p style="margin: 0;"><strong>Authorized Signature</strong></p>
         </div>
         
         <div class="letterhead-footer" style="position: absolute; bottom: 0; left: 0; width: 100%; margin: 0; padding: 0;">
@@ -1093,17 +1097,21 @@ const PatientRegistration: React.FC = () => {
         description: (
           <div>
             <p>Redirecting to report collection form.</p>
-            <p className="mt-1 font-medium">Patient ID: {patientId}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {new Date().toLocaleString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-              })}
-            </p>
+            <div className="flex justify-between items-center pt-4 border-t">
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Payment Method: <span className="font-medium capitalize">{paymentMethod}</span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Generated on: {new Date().toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Patient ID: {patientId}
+                </p>
+              </div>
+            </div>
           </div>
         ),
         variant: 'default',
@@ -1122,7 +1130,8 @@ const PatientRegistration: React.FC = () => {
 
   return (
     <div className="patient-registration-page h-screen w-full bg-background overflow-hidden m-0 p-0">
-      <div className="h-full flex flex-col px-4 py-2 max-w-full m-0">
+      <Navbar />
+      <div className="h-[calc(100vh-4rem)] flex flex-col px-4 py-2 max-w-full m-0">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="flex items-center gap-1 h-8 px-2">
@@ -1147,8 +1156,8 @@ const PatientRegistration: React.FC = () => {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
-          {/* Patient Form */}
-          <div className="flex-1 min-w-0 overflow-auto">
+          {/* Patient Form - 70% width */}
+          <div className="w-full lg:w-[70%] min-w-0 overflow-auto">
             <Card className="shadow-sm border-0 h-full">
               <CardHeader className="p-3 border-b">
                 <CardTitle className="text-lg">Patient Details</CardTitle>
@@ -1618,9 +1627,9 @@ const PatientRegistration: React.FC = () => {
             </Card>
           </div>
 
-          {/* Tests & Bill Summary */}
-          <div className="w-80 min-w-0 overflow-auto">
-            <Card className="shadow-sm border-0 h-full">
+          {/* Tests & Bill Summary - Full width right side */}
+          <div className="w-full lg:w-[30%] min-w-0 overflow-auto">
+            <Card className="shadow-sm border-0 h-full w-full">
               <CardHeader className="p-3 border-b">
                 <CardTitle className="text-lg">Tests & Bill Summary</CardTitle>
               </CardHeader>
@@ -1636,12 +1645,12 @@ const PatientRegistration: React.FC = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => window.print()}
+                        onClick={handlePrintBill}
                         className="print:hidden"
                       >
                         <Printer className="h-4 w-4 mr-2" />
                         Print Bill
-                      </Button>
+                    </Button>
                     </div>
                     <div className="border rounded-lg overflow-visible bg-white p-4 print:border-0 print:p-0 max-w-full">
                       <div className="w-full max-w-full print:p-4" style={{ fontSize: '12px', fontFamily: 'Arial, sans-serif' }}>
@@ -1912,6 +1921,24 @@ const PatientRegistration: React.FC = () => {
                 <li>Please bring this receipt when collecting the report</li>
                 <li>For any queries, contact: 1800-123-4567</li>
               </ul>
+            </div>
+
+            {/* Payment Method */}
+            <div className="rounded-lg border bg-card p-4">
+              <p className="text-sm font-medium mb-3">Payment Method</p>
+              <div className="flex flex-wrap gap-2">
+                {['Cash', 'Card', 'UPI', 'Dues'].map((method) => (
+                  <Button
+                    key={method}
+                    variant={paymentMethod === method.toLowerCase() ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setPaymentMethod(method.toLowerCase())}
+                    className="capitalize"
+                  >
+                    {method}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
           

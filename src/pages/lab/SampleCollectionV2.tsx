@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { getPatient, PatientData, addTestToPatient, removeTestFromPatient } from '@/services/patientService';
+import { getPatient, PatientData, addTestToPatient, removeTestFromPatient, updatePatient } from '@/services/patientService';
 import { testConfigurations, testConfigByTestId, sampleTests as externalSampleTests } from '../../modules/tests/config';
 import { TestParameterTable } from '@/components/tests/TestParameterTable';
 import { demoTests } from '@/data/demoData';
@@ -321,8 +321,26 @@ const SampleCollectionV2: React.FC = () => {
     }
   }, [selectedTestId]);
 
+  // Update patient status when test is collected
+  const updatePatientStatus = useCallback(async (status: 'active' | 'inactive' | 'overdue' | 'Sample Collected' | 'Report Printed') => {
+    if (!patient?.id) return;
+    
+    try {
+      await updatePatient(patient.id, { status });
+      console.log(`Patient status updated to: ${status}`);
+    } catch (error) {
+      console.error('Failed to update patient status:', error);
+    }
+  }, [patient?.id]);
+
   // Toggle sample collected status
   const toggleSampleCollected = useCallback((testId: string) => {
+    const wasCollected = samples.find(s => s.testId === testId)?.collected || false;
+    
+    // If marking as collected, update patient status
+    if (!wasCollected) {
+      updatePatientStatus('Sample Collected');
+    }
     setSamples(prevSamples => {
       const updatedSamples = prevSamples.map(sample =>
         sample.testId === testId
@@ -876,10 +894,14 @@ const SampleCollectionV2: React.FC = () => {
 
       console.log('About to save report data:', reportData);
       
-      // Save to database
+      // Save the lab report and get the report ID
       const reportId = await labReportService.saveLabReport(reportData);
-      console.log('Report saved with ID:', reportId);
       setSavedReportId(reportId);
+      
+      // Update patient status to 'Report Printed'
+      if (patient?.id) {
+        await updatePatientStatus('Report Printed');
+      }
 
       // Update the current test with the latest data
       const updatedTest = {

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
+import { Menu, ChevronRight } from 'lucide-react';
 // Removed FloatingActionButton (Help & Support)
 // Removed Footer import as it's no longer needed
 
@@ -38,6 +38,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   };
 
+  // Build breadcrumb items from current path
+  const breadcrumbItems = useMemo(() => {
+    const parts = location.pathname.split('/').filter(Boolean);
+    return [
+      { label: 'Home', path: '/' },
+      ...parts.map((p, idx) => ({
+        label: p.charAt(0).toUpperCase() + p.slice(1).replace(/-/g, ' '),
+        path: '/' + parts.slice(0, idx + 1).join('/')
+      }))
+    ];
+  }, [location.pathname]);
+
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden">
       <div className="flex flex-1 overflow-hidden">
@@ -51,6 +63,28 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             onMenuToggle={toggleSidebar} 
             isSidebarCollapsed={isCollapsed} 
           />
+          {/* Global Breadcrumb */}
+          <div className="px-4 md:px-6 py-2 bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40 border-b">
+            <nav className="flex items-center text-sm text-muted-foreground gap-1">
+              {breadcrumbItems.map((item, index) => (
+                <div key={item.path} className="flex items-center">
+                  {index > 0 && (
+                    <ChevronRight className="h-3.5 w-3.5 mx-1 text-muted-foreground/60" />
+                  )}
+                  <Link
+                    to={item.path}
+                    className={
+                      index === breadcrumbItems.length - 1
+                        ? 'text-foreground font-medium'
+                        : 'hover:text-primary transition-colors'
+                    }
+                  >
+                    {item.label}
+                  </Link>
+                </div>
+              ))}
+            </nav>
+          </div>
           
           <main className="flex-1 overflow-auto bg-muted/30">
             <div className="max-w-[1600px] mx-auto w-full h-full">
