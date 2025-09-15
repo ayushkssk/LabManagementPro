@@ -83,7 +83,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     
-    if (foundUser && (password === 'demo123' || password === 'demo@123')) {
+    // Allow per-user custom password if defined on the demo user; otherwise accept demo defaults
+    const isPasswordValid = foundUser 
+      ? (foundUser as any).password 
+        ? password === (foundUser as any).password 
+        : (password === 'demo123' || password === 'demo@123')
+      : false;
+
+    if (foundUser && isPasswordValid) {
       // If this is a demo hospital user, make sure the hospital exists
       if (foundUser.hospitalId && foundUser.hospitalId.startsWith('demo-')) {
         try {

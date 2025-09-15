@@ -1,3 +1,5 @@
+@import './print-styles.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -138,5 +140,3 @@
   }
 }
 
-/* Print styles */
-@import './print-styles.css';

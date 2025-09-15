@@ -1439,6 +1439,17 @@ export const demoUsers: User[] = [
     hospitalId: 'hospital-1',
     createdAt: new Date('2023-01-01').toISOString(),
   },
+  // IT4B Admin (custom credential)
+  {
+    id: 'it4b-admin-1',
+    email: 'ayush@it4b.in',
+    name: 'Ayush (IT4B)',
+    role: 'admin',
+    hospitalId: 'demo-hospital-1',
+    photoURL: '',
+    createdAt: new Date().toISOString(),
+    password: 'Ayush@123'
+  },
   {
     id: 'user-2',
     email: 'tech@healthcare.com',

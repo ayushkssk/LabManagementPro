@@ -11,6 +11,10 @@
     ],
     "rewrites": [
       {
+        "source": "/api/report/**",
+        "function": "report"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

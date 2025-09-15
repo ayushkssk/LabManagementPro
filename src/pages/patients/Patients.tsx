@@ -25,8 +25,8 @@ import {
   bulkRestorePatients,
   getDeletedPatients 
 } from '@/services/patientService';
-import { db } from '@/firebase';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { auth, db } from '@/firebase';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { DeletePatientsModal } from '@/components/patients/DeletePatientsModal';
 import { useAuth } from '@/context/AuthContext';
@@ -89,8 +89,12 @@ const Patients = () => {
         }, {});
         setTests(testsMap);
 
-        // Subscribe to patients in real-time and filter on client for showDeleted
-        const patientsQuery = query(collection(db, 'patients'), orderBy('registrationDate', 'desc'));
+        // Subscribe to patients belonging to current user only
+        const uid = auth.currentUser?.uid || '__no_user__';
+        const patientsQuery = query(
+          collection(db, 'patients'),
+          where('createdByUid', '==', uid)
+        );
         unsubscribe = onSnapshot(patientsQuery, (snap) => {
           const items: PatientData[] = snap.docs.map((d: any) => {
             const data = d.data();

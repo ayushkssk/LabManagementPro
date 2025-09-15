@@ -1,4 +1,4 @@
-import { db } from '@/firebase';
+import { auth, db } from '@/firebase';
 import {
   collection,
   doc,
@@ -21,6 +21,8 @@ const PATIENTS_COLLECTION = 'patients';
 export interface PatientData {
   id?: string;
   hospitalId?: string;
+  createdByUid?: string;
+  createdByEmail?: string;
   name: string;
   age: number;
   gender: 'Male' | 'Female' | 'Other';
@@ -47,6 +49,8 @@ const fromFirestore = (doc: any): PatientData => {
   return {
     id: doc.id,
     hospitalId: data.hospitalId || data.id, // backward compatibility if previously stored under 'id'
+    createdByUid: data.createdByUid,
+    createdByEmail: data.createdByEmail,
     name: data.name,
     age: data.age,
     gender: data.gender,
@@ -72,21 +76,31 @@ const fromFirestore = (doc: any): PatientData => {
 const toFirestore = (patient: PatientData) => {
   const data: any = {
     ...patient,
-    registrationDate: Timestamp.fromDate(patient.registrationDate),
-    lastVisit: Timestamp.fromDate(patient.lastVisit || new Date()),
+    registrationDate: patient.registrationDate instanceof Date ? Timestamp.fromDate(patient.registrationDate) : patient.registrationDate,
+    lastVisit: patient.lastVisit instanceof Date ? Timestamp.fromDate(patient.lastVisit || new Date()) : patient.lastVisit,
   };
   
   if (patient.deletedAt) {
-    data.deletedAt = Timestamp.fromDate(patient.deletedAt);
+    data.deletedAt = patient.deletedAt instanceof Date ? Timestamp.fromDate(patient.deletedAt) : patient.deletedAt;
   }
-  
+  // Remove any undefined fields (Firestore rejects undefined values)
+  Object.keys(data).forEach((k) => {
+    if (data[k] === undefined) delete data[k];
+  });
+
   return data;
 };
 
 export const getPatients = async (includeDeleted: boolean = false): Promise<PatientData[]> => {
   try {
-    // Use simple query to avoid composite index requirement
-    const q = query(collection(db, PATIENTS_COLLECTION), orderBy('registrationDate', 'desc'));
+    const uid = auth.currentUser?.uid;
+    // Only fetch patients owned by current user
+    const q = uid
+      ? query(
+          collection(db, PATIENTS_COLLECTION),
+          where('createdByUid', '==', uid)
+        )
+      : query(collection(db, PATIENTS_COLLECTION), where('createdByUid', '==', '__no_user__'));
     const querySnapshot = await getDocs(q);
     const allPatients = querySnapshot.docs.map(doc => fromFirestore(doc));
     
@@ -120,7 +134,15 @@ export const getPatient = async (id: string): Promise<PatientData | null> => {
 
 export const addPatient = async (patient: Omit<PatientData, 'id'>): Promise<string> => {
   try {
-    const docRef = await addDoc(collection(db, PATIENTS_COLLECTION), toFirestore(patient as PatientData));
+    const uid = auth.currentUser?.uid || 'anonymous';
+    const email = auth.currentUser?.email || undefined;
+    const payload: PatientData = {
+      ...patient,
+      createdByUid: uid,
+      // Firestore does not allow undefined; store null or omit later in toFirestore cleanup
+      createdByEmail: email ?? null,
+    } as PatientData;
+    const docRef = await addDoc(collection(db, PATIENTS_COLLECTION), toFirestore(payload));
     return docRef.id;
   } catch (error) {
     console.error('Error adding patient:', error);
@@ -131,7 +153,9 @@ export const addPatient = async (patient: Omit<PatientData, 'id'>): Promise<stri
 export const updatePatient = async (id: string, patient: Partial<PatientData>): Promise<void> => {
   try {
     const docRef = doc(db, PATIENTS_COLLECTION, id);
-    await updateDoc(docRef, toFirestore(patient as PatientData));
+    // Never allow changing ownership via update
+    const { createdByUid: _ignore1, createdByEmail: _ignore2, ...rest } = patient as any;
+    await updateDoc(docRef, toFirestore(rest as PatientData));
   } catch (error) {
     console.error('Error updating patient:', error);
     throw error;
@@ -308,8 +332,10 @@ export const bulkDeletePatients = async (ids: string[]): Promise<void> => {
 // Get only soft-deleted patients
 export const getDeletedPatients = async (): Promise<PatientData[]> => {
   try {
-    // Use simple query and filter on client side to avoid index requirement
-    const q = query(collection(db, PATIENTS_COLLECTION));
+    const uid = auth.currentUser?.uid;
+    const q = uid
+      ? query(collection(db, PATIENTS_COLLECTION), where('createdByUid', '==', uid))
+      : query(collection(db, PATIENTS_COLLECTION), where('createdByUid', '==', '__no_user__'));
     const querySnapshot = await getDocs(q);
     const allPatients = querySnapshot.docs.map(doc => fromFirestore(doc));
     
@@ -350,7 +376,14 @@ export const deletePatientsByHospital = async (hospitalId: string): Promise<numb
   try {
     let totalDeleted = 0;
     // Fetch in chunks to avoid very large batches
-    const patientsQuery = query(collection(db, PATIENTS_COLLECTION), where('hospitalId', '==', hospitalId));
+    const uid = auth.currentUser?.uid;
+    const patientsQuery = uid
+      ? query(
+          collection(db, PATIENTS_COLLECTION),
+          where('hospitalId', '==', hospitalId),
+          where('createdByUid', '==', uid)
+        )
+      : query(collection(db, PATIENTS_COLLECTION), where('createdByUid', '==', '__no_user__'));
     const snapshot = await getDocs(patientsQuery);
     if (snapshot.empty) return 0;
 

@@ -91,6 +91,7 @@ const SampleCollectionV2: React.FC = () => {
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [currentTest, setCurrentTest] = useState<Sample | null>(null);
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
+  const [savedReportToken, setSavedReportToken] = useState<string | null>(null);
   const [showAddTestDropdown, setShowAddTestDropdown] = useState(false);
   const [testSearchQuery, setTestSearchQuery] = useState('');
   const [sidebarSearch, setSidebarSearch] = useState('');
@@ -677,7 +678,7 @@ const SampleCollectionV2: React.FC = () => {
           border-collapse: collapse !important;
           margin: 4mm 0 !important;
           page-break-inside: avoid !important;
-          font-size: 9px !important;
+          font-size: 13px !important;
         }
         .print-table th, .print-table td {
           border: 1px solid #000 !important;
@@ -685,6 +686,10 @@ const SampleCollectionV2: React.FC = () => {
           text-align: left !important;
           background: transparent !important;
           vertical-align: top !important;
+        }
+        /* Make the values (Result column) a bit larger for readability */
+        .print-table td.result-cell {
+          font-size: 14px !important;
         }
         .print-table th {
           background: #f5f5f5 !important;
@@ -884,9 +889,10 @@ const SampleCollectionV2: React.FC = () => {
 
       console.log('About to save report data:', reportData);
       
-      // Save the lab report and get the report ID
-      const reportId = await labReportService.saveLabReport(reportData);
+      // Save the lab report and get the report ID + token
+      const { reportId, token } = await labReportService.saveLabReport(reportData);
       setSavedReportId(reportId);
+      setSavedReportToken(token);
       
       // Update the current test with the latest data
       const updatedTest = {
@@ -1007,7 +1013,7 @@ const SampleCollectionV2: React.FC = () => {
             }
             
             th, td {
-              border: 1px solid #000 !important;
+              border: none !important; /* remove grid */
               padding: 4px 6px !important;
               text-align: left !important;
               background: transparent !important;
@@ -1018,6 +1024,10 @@ const SampleCollectionV2: React.FC = () => {
             th {
               background: #f5f5f5 !important;
               font-weight: bold !important;
+            }
+            /* Make the first column (Investigation) bold in print */
+            tbody td:nth-child(1) {
+              font-weight: 700 !important;
             }
             
             h1, h2, h3 {
@@ -1157,10 +1167,10 @@ const SampleCollectionV2: React.FC = () => {
               /* Table styling for print */
               .print-content table { width: 95%; margin: 0 auto; border-collapse: collapse; }
               .print-content thead tr { background: #f3f4f6; }
-              .print-content th, .print-content td { border: 1px solid #d1d5db; padding: 6px 8px; }
+              .print-content th, .print-content td { border: none; padding: 6px 8px; } /* remove grid in preview */
               .print-content thead th { font-weight: 600; }
               /* Align data cells: 1st col left, others centered */
-              .print-content tbody td:nth-child(1) { text-align: left; }
+              .print-content tbody td:nth-child(1) { text-align: left; font-weight: 700; }
               .print-content tbody td:nth-child(2),
               .print-content tbody td:nth-child(3),
               .print-content tbody td:nth-child(4) { text-align: center; }
@@ -1407,7 +1417,7 @@ const SampleCollectionV2: React.FC = () => {
                 zIndex: 1,
                 pointerEvents: 'none'
               }}></div>
-              {/* Hospital Header - Full Width */}
+               {/* Hospital Header - Full Width */}
               <div className="print-header">
                 <img 
                   src="/letetrheadheader.png" 
@@ -1427,19 +1437,19 @@ const SampleCollectionV2: React.FC = () => {
                   </div>
 
                   {/* Patient Information Row */}
-                  <div className="flex justify-between items-start mb-4 patient-info">
+                  <div className="flex justify-between items-start mb-4 patient-info mx-8">
                     {/* Left Side */}
-                    <div className="space-y-1">
-                      <p><span className="font-semibold">Name:</span> {patient?.name || 'N/A'}</p>
-                      <p><span className="font-semibold">Age:</span> {patient?.age || 'N/A'} Year</p>
-                      <p><span className="font-semibold">Referred By:</span> {'Dr. SWATI HOSPITAL'}</p>
+                    <div className="space-y-1 ml-4">
+                      <p><span className="font-bold">Name: </span><span className="font-bold">{patient?.name || 'N/A'}</span></p>
+                      <p><span className="font-bold">Age: </span><span className="font-bold">{patient?.age || 'N/A'} Year</span></p>
+                      <p><span className="font-bold">Referred By: </span><span className="font-bold">{'Dr. SWATI HOSPITAL'}</span></p>
                     </div>
                     
                     {/* Center QR Code */}
                     <div className="flex flex-col items-center justify-start">
                       <div>
                         <QRCode
-                          value={`https://swatihospital.com/verify-report/${currentTest?.testId || 'unknown'}-${Date.now()}`}
+                          value={`${location.origin}/api/report/${savedReportId || 'unknown'}${savedReportToken ? `?token=${savedReportToken}` : ''}`}
                           size={60}
                           level="M"
                           className="qr-code"
@@ -1449,10 +1459,10 @@ const SampleCollectionV2: React.FC = () => {
                     </div>
                     
                     {/* Right Side */}
-                    <div className="space-y-1 text-right">
-                      <p><span className="font-semibold">Sex:</span> {patient?.gender || 'N/A'}</p>
-                      <p><span className="font-semibold">Received On:</span> {currentTest?.collectedAt ? new Date(currentTest.collectedAt).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true}) : new Date().toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true})}</p>
-                      <p><span className="font-semibold">Reported On:</span> {new Date().toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true})}</p>
+                    <div className="space-y-1 text-right mr-4">
+                      <p><span className="font-bold">Sex: </span><span className="font-bold">{patient?.gender || 'N/A'}</span></p>
+                      <p><span className="font-bold">Received On: </span><span className="font-bold">{currentTest?.collectedAt ? new Date(currentTest.collectedAt).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true}) : new Date().toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true})}</span></p>
+                      <p><span className="font-bold">Reported On: </span><span className="font-bold">{new Date().toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true})}</span></p>
                     </div>
                   </div>
 
@@ -1465,13 +1475,13 @@ const SampleCollectionV2: React.FC = () => {
                   
                   {/* Test Results Table */}
                   <div className="flex-1 flex justify-center">
-                    <table className="border-collapse" style={{ width: '95%', maxWidth: '1200px' }}>
+                    <table className="border-collapse print-table" style={{ width: '95%', maxWidth: '1200px' }}>
                       <thead>
                         <tr className="bg-gray-100">
                           <th className="border border-gray-300 px-3 pl-6 py-2 text-left font-semibold">Investigation</th>
-                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Result</th>
-                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Units</th>
-                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Ref. Range</th>
+                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">Result</th>
+                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">Units</th>
+                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">Ref. Range</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1490,7 +1500,7 @@ const SampleCollectionV2: React.FC = () => {
                           return (
                             <tr key={field.id} className="hover:bg-gray-50">
                               <td className="border border-gray-200 px-3 pl-6 py-2">{field.label}</td>
-                              <td className={`border border-gray-200 px-3 py-2 text-center font-semibold ${isAbnormal ? 'text-red-600' : ''}`}>
+                              <td className={`border border-gray-200 px-3 py-2 text-center font-semibold result-cell ${isAbnormal ? 'text-red-600' : ''}`}>
                                 {param?.value || '-'} {isAbnormal && (parseFloat(param?.value || '0') > parseFloat(field.refRange?.split('-')[1] || '0') ? '↑' : '↓')}
                               </td>
                               <td className="border border-gray-200 px-3 py-2 text-center">{field.unit || '-'}</td>

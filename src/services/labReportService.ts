@@ -1,13 +1,15 @@
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  Timestamp 
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  Timestamp,
+  addDoc,
+  collectionGroup,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -37,6 +39,7 @@ export interface LabReport {
   status: 'draft' | 'completed' | 'printed';
   createdAt: Date;
   updatedAt: Date;
+  token?: string; // optional short token for public access validation
 }
 
 export interface TestDraft {
@@ -52,12 +55,15 @@ export interface TestDraft {
   updatedAt: Date;
 }
 
-const LAB_REPORTS_COLLECTION = 'labReports';
+// New storage path
+const PATIENTS_COLLECTION = 'patients';
 const TEST_DRAFTS_COLLECTION = 'testDrafts';
 
 export const labReportService = {
-  // Save lab report to database
-  async saveLabReport(reportData: Omit<LabReport, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  // Save lab report to nested path patients/<patientId>/reports/<autoId>
+  async saveLabReport(
+    reportData: Omit<LabReport, 'id' | 'createdAt' | 'updatedAt' | 'token'>
+  ): Promise<{ reportId: string; token: string }> {
     try {
       console.log('=== LAB REPORT SERVICE DEBUG ===');
       console.log('Attempting to save report data:', reportData);
@@ -72,16 +78,22 @@ export const labReportService = {
         throw new Error('Invalid parameters data');
       }
       
-      const reportId = `${reportData.patientId}-${reportData.testId}-${Date.now()}`;
-      console.log('Generated report ID:', reportId);
+      // Generate short token for public validation
+      const token = Math.random().toString(36).slice(2, 10);
+
+      const patientReportsCol = collection(
+        db,
+        PATIENTS_COLLECTION,
+        reportData.patientId,
+        'reports'
+      );
       
-      const reportRef = doc(db, LAB_REPORTS_COLLECTION, reportId);
-      
-      const labReport: LabReport = {
+      const baseNow = new Date();
+      const labReport: Omit<LabReport, 'id'> = {
         ...reportData,
-        id: reportId,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: baseNow,
+        updatedAt: baseNow,
+        token,
       };
       
       console.log('Final lab report object:', labReport);
@@ -111,15 +123,17 @@ export const labReportService = {
         collectedAt: Timestamp.fromDate(new Date(cleanedLabReport.collectedAt)),
         reportedAt: Timestamp.fromDate(new Date(cleanedLabReport.reportedAt)),
         createdAt: Timestamp.fromDate(cleanedLabReport.createdAt),
-        updatedAt: Timestamp.fromDate(cleanedLabReport.updatedAt)
-      };
+        updatedAt: Timestamp.fromDate(cleanedLabReport.updatedAt),
+      } as any;
+      // addDoc to auto-generate unguessable ID, also store id field inside for easier queries
+      const addedRef = await addDoc(patientReportsCol, firestoreData);
+      const reportId = addedRef.id;
+      await setDoc(addedRef, { id: reportId }, { merge: true });
       
       console.log('Firestore data to save:', firestoreData);
       
-      await setDoc(reportRef, firestoreData);
       console.log('Report saved successfully with ID:', reportId);
-
-      return reportId;
+      return { reportId, token };
     } catch (error) {
       console.error('=== LAB REPORT SERVICE ERROR ===');
       console.error('Error saving lab report:', error);
@@ -128,20 +142,22 @@ export const labReportService = {
     }
   },
 
-  // Get lab report by ID
+  // Get lab report by ID (searching collection group 'reports')
   async getLabReport(reportId: string): Promise<LabReport | null> {
     try {
-      const reportRef = doc(db, LAB_REPORTS_COLLECTION, reportId);
-      const reportSnap = await getDoc(reportRef);
-
-      if (reportSnap.exists()) {
-        const data = reportSnap.data();
+      const cg = collectionGroup(db, 'reports');
+      const q = query(cg, where('id', '==', reportId));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const docSnap = snap.docs[0];
+        const data: any = docSnap.data();
         return {
           ...data,
-          collectedAt: data.collectedAt.toDate(),
-          reportedAt: data.reportedAt.toDate(),
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate()
+          id: data.id || docSnap.id,
+          collectedAt: data.collectedAt?.toDate?.() || new Date(),
+          reportedAt: data.reportedAt?.toDate?.() || new Date(),
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date(),
         } as LabReport;
       }
 
@@ -156,8 +172,7 @@ export const labReportService = {
   async getPatientLabReports(patientId: string): Promise<LabReport[]> {
     try {
       const reportsQuery = query(
-        collection(db, LAB_REPORTS_COLLECTION),
-        where('patientId', '==', patientId),
+        collection(db, PATIENTS_COLLECTION, patientId, 'reports'),
         orderBy('createdAt', 'desc')
       );
 
@@ -168,10 +183,11 @@ export const labReportService = {
         const data = doc.data();
         reports.push({
           ...data,
+          id: data.id || doc.id,
           collectedAt: data.collectedAt.toDate(),
           reportedAt: data.reportedAt.toDate(),
           createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate()
+          updatedAt: data.updatedAt.toDate(),
         } as LabReport);
       });
 
@@ -185,8 +201,13 @@ export const labReportService = {
   // Update lab report status
   async updateLabReportStatus(reportId: string, status: LabReport['status']): Promise<void> {
     try {
-      const reportRef = doc(db, LAB_REPORTS_COLLECTION, reportId);
-      await setDoc(reportRef, {
+      // Find the report document via collection group
+      const cg = collectionGroup(db, 'reports');
+      const q = query(cg, where('id', '==', reportId));
+      const snap = await getDocs(q);
+      if (snap.empty) throw new Error('Report not found');
+      const docSnap = snap.docs[0];
+      await setDoc(docSnap.ref, {
         status,
         updatedAt: Timestamp.fromDate(new Date())
       }, { merge: true });

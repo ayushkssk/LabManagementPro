@@ -23,7 +23,7 @@ import { demoTests } from '@/data/demoData';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/firebase';
+import { auth, db } from '@/firebase';
 import Navbar from '@/components/layout/Navbar';
 import { addPatient, markPatientBilled } from '@/services/patientService';
 import { PdfLetterhead } from '@/components/print/PdfLetterhead';
@@ -448,8 +448,10 @@ const PatientRegistration: React.FC = () => {
   // Check for duplicate patient by phone number
   const checkForDuplicate = async (phone: string) => {
     try {
+      const uid = auth.currentUser?.uid || '__no_user__';
       const q = query(
         collection(db, 'patients'),
+        where('createdByUid', '==', uid),
         where('phone', '==', phone)
       );
       
