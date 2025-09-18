@@ -49,6 +49,51 @@ const TestsList: React.FC = () => {
     });
   }, [tests, searchQuery]);
 
+  const handleExport = async () => {
+    try {
+      // Lazy-load xlsx to keep initial bundle small
+      const mod = await import('xlsx');
+      const XLSX: any = (mod as any).default || mod;
+
+      // Flatten rows: one row per parameter; first row per test includes Test info
+      const rows: any[] = [];
+      filteredTests.forEach((t) => {
+        const fields = t.fields || [];
+        if (fields.length === 0) {
+          rows.push({
+            'Test Code': t.code || `TEST-${t.id.slice(-4).toUpperCase()}`,
+            'Test Name': t.name,
+            Category: t.category,
+            Parameter: '',
+            Unit: '',
+            'Normal Range': '',
+            Price: t.price,
+          });
+          return;
+        }
+        fields.forEach((f, idx) => {
+          rows.push({
+            'Test Code': idx === 0 ? (t.code || `TEST-${t.id.slice(-4).toUpperCase()}`) : '',
+            'Test Name': idx === 0 ? t.name : '',
+            Category: idx === 0 ? t.category : '',
+            Parameter: f.name,
+            Unit: (f as any).unit || '',
+            'Normal Range': (f as any).normalRange || '',
+            Price: idx === 0 ? t.price : '',
+          });
+        });
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Tests');
+      XLSX.writeFile(wb, 'laboratory_tests.xlsx');
+    } catch (err) {
+      // no-op: if xlsx missing, fail silently here or show alert
+      console.error('Export failed:', err);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -74,7 +119,7 @@ const TestsList: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Button className="ml-auto">
+            <Button className="ml-auto" onClick={handleExport}>
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>

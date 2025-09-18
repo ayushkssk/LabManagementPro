@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, ArrowLeft, CheckCircle, ClipboardList, XCircle, Printer, Plus, Search, Beaker, BadgeCheck, ChevronRight } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle, ClipboardList, Printer, Plus, Search, Beaker, BadgeCheck, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -17,6 +17,9 @@ import { useHospitalLetterhead } from '@/hooks/useHospitalLetterhead';
 import { useReactToPrint } from 'react-to-print';
 import QRCode from 'react-qr-code';
 import { labReportService, LabReport, LabReportParameter, TestDraft } from '@/services/labReportService';
+import { useAuth } from '@/context/AuthContext';
+import { useHospitals } from '@/context/HospitalContext';
+import { generateReportId, generateReportToken, saveReportData, createShareableReportUrl } from '@/utils/reportStorage';
 
 // Types
 interface Sample {
@@ -92,6 +95,7 @@ const SampleCollectionV2: React.FC = () => {
   const [currentTest, setCurrentTest] = useState<Sample | null>(null);
   const [savedReportId, setSavedReportId] = useState<string | null>(null);
   const [savedReportToken, setSavedReportToken] = useState<string | null>(null);
+  const [isSavingReport, setIsSavingReport] = useState(false);
   const [showAddTestDropdown, setShowAddTestDropdown] = useState(false);
   const [testSearchQuery, setTestSearchQuery] = useState('');
   const [sidebarSearch, setSidebarSearch] = useState('');
@@ -112,6 +116,9 @@ const SampleCollectionV2: React.FC = () => {
   const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [lastSavedData, setLastSavedData] = useState<Record<string, any>>({});
   const { hospital: hospitalData } = useHospitalLetterhead();
+  const { user } = useAuth();
+  const { hospitals } = useHospitals();
+  const hospital = hospitals[0]; // Use first hospital for demo
 
   // Derived state
   const selectedTest = useMemo(
@@ -173,12 +180,13 @@ const SampleCollectionV2: React.FC = () => {
         const params: Record<string, TableParam> = {};
         config.fields.forEach((field: any) => {
           const savedParam = draft?.parameters?.[field.id];
+          const defaultVal = field?.defaultValue ?? (field.type === 'select' && Array.isArray(field.options) && field.options.includes('Negative') ? 'Negative' : '');
           params[field.id] = {
             id: field.id,
             name: field.label,
             unit: field.unit || '',
             normalRange: field.refRange || '',
-            value: savedParam?.value ?? (field.type === 'select' && Array.isArray(field.options) && field.options.includes('Negative') ? 'Negative' : ''),
+            value: savedParam?.value ?? defaultVal,
             notes: savedParam?.notes || '',
             type: field.type,
             options: field.type === 'select' ? field.options : undefined,
@@ -208,15 +216,16 @@ const SampleCollectionV2: React.FC = () => {
         // Fallback to empty parameters if draft loading fails
         const params: Record<string, TableParam> = {};
         config.fields.forEach((field: any) => {
+          const defaultVal = field?.defaultValue ?? (field.type === 'select' && Array.isArray(field.options) && field.options.includes('Negative') ? 'Negative' : '');
           params[field.id] = {
             id: field.id,
             name: field.label,
             unit: field.unit || '',
             normalRange: field.refRange || '',
-            value: (field.type === 'select' && Array.isArray(field.options) && field.options.includes('Negative')) ? 'Negative' : '',
+            value: defaultVal,
             notes: '',
             type: field.type,
-            options: field.type === 'select' ? field.options : undefined,
+            options: field.type === 'select' ? field.options : undefined
           };
         });
         setParameters(params);
@@ -608,125 +617,86 @@ const SampleCollectionV2: React.FC = () => {
           height: 297mm;
           margin: 0 !important;
           padding: 0 !important;
-          background: white !important;
-          color: #000 !important;
           font-family: Arial, sans-serif !important;
-          font-size: 10px !important;
-          line-height: 1.2 !important;
-        }
-        .no-print, button, .print-hide {
-          display: none !important;
         }
         .print-content {
           width: 210mm !important;
-          height: 297mm !important;
+          min-height: 297mm !important;
           margin: 0 !important;
           padding: 0 !important;
-          box-shadow: none !important;
-          border-radius: 0 !important;
-          page-break-inside: avoid !important;
-          display: flex !important;
-          flex-direction: column !important;
+          background: white !important;
           position: relative !important;
         }
         .print-header {
           width: 100% !important;
           margin: 0 !important;
           padding: 0 !important;
-          page-break-after: avoid !important;
-          flex-shrink: 0 !important;
         }
         .print-header img {
           width: 100% !important;
           height: auto !important;
           max-height: 60mm !important;
           display: block !important;
-          margin: 0 !important;
-          padding: 0 !important;
         }
         .print-body {
-          flex: 1 !important;
-          padding: 10mm 15mm !important;
-          display: flex !important;
-          flex-direction: column !important;
-          justify-content: space-between !important;
-        }
-        .report-title {
-          text-align: center !important;
-          margin: 8mm 0 6mm 0 !important;
-          padding: 4mm 0 !important;
-          background: #1e40af !important;
-          color: white !important;
-          font-size: 14px !important;
-          font-weight: bold !important;
-          letter-spacing: 2px !important;
+          padding: 5mm 10mm 60mm 10mm !important;
         }
         .patient-info {
-          margin: 6mm 0 !important;
           font-size: 10px !important;
-          page-break-inside: avoid !important;
-        }
-        .test-title {
-          font-size: 12px !important;
-          margin: 6mm 0 4mm 0 !important;
-          text-align: center !important;
-          font-weight: bold !important;
-          page-break-after: avoid !important;
+          font-weight: 600 !important;
+          margin-bottom: 4px !important;
+          display: flex !important;
+          justify-content: space-between !important;
+          line-height: 1.1 !important;
         }
         .print-table {
           width: 100% !important;
           border-collapse: collapse !important;
-          margin: 4mm 0 !important;
-          page-break-inside: avoid !important;
-          font-size: 13px !important;
+          margin: 3mm 0 !important;
+          font-size: 11px !important;
+          table-layout: fixed !important;
+          border: none !important;
         }
+        .print-table th:nth-child(1), .print-table td:nth-child(1) { width: 30% !important; }
+        .print-table th:nth-child(2), .print-table td:nth-child(2) { width: 25% !important; }
+        .print-table th:nth-child(3), .print-table td:nth-child(3) { width: 15% !important; }
+        .print-table th:nth-child(4), .print-table td:nth-child(4) { width: 30% !important; }
         .print-table th, .print-table td {
-          border: 1px solid #000 !important;
-          padding: 2mm !important;
+          border: none !important;
+          padding: 1.5mm 3mm !important;
           text-align: left !important;
           background: transparent !important;
           vertical-align: top !important;
-        }
-        /* Make the values (Result column) a bit larger for readability */
-        .print-table td.result-cell {
-          font-size: 14px !important;
+          line-height: 1.1 !important;
         }
         .print-table th {
-          background: #f5f5f5 !important;
+          background-color: #f5f5f5 !important;
           font-weight: bold !important;
-          text-align: center !important;
         }
-        .print-signatures {
-          /* Place signatures at the bottom of the page in print */
+        .print-table td.result-cell {
+          font-size: 12px !important;
+          font-weight: bold !important;
+        }
+        .print-notes-fixed {
           position: absolute !important;
-          left: 15mm !important;
-          right: 15mm !important;
-          bottom: 20mm !important;
-          margin: 0 !important;
-          page-break-inside: avoid !important;
-          font-size: 10px !important;
-        }
-        .print-notes {
-          margin: 4mm 0 !important;
+          left: 10mm !important;
+          right: 10mm !important;
+          bottom: 15mm !important;
+          text-align: center !important;
           font-size: 8px !important;
-          page-break-inside: avoid !important;
-          background: #f0f8ff !important;
-          padding: 3mm !important;
         }
         .print-footer {
+          position: absolute !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
           width: 100% !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          page-break-inside: avoid !important;
-          flex-shrink: 0 !important;
         }
         .print-footer img {
           width: 100% !important;
           height: auto !important;
-          max-height: 40mm !important;
+          max-height: 25mm !important;
           display: block !important;
-          margin: 0 !important;
-          padding: 0 !important;
         }
         .qr-code {
           width: 15mm !important;
@@ -943,7 +913,7 @@ const SampleCollectionV2: React.FC = () => {
     }
     console.log('=== SAVE & PRINT DEBUG END ===');
   }, [samples, technicianName, patient, parameters]);
-  
+
   // Function to handle the print button in the dialog
   const handlePrintFromDialog = useCallback(() => {
     console.log('Print button clicked');
@@ -1022,7 +992,7 @@ const SampleCollectionV2: React.FC = () => {
             }
             
             th {
-              background: #f5f5f5 !important;
+              background-color: #f5f5f5 !important;
               font-weight: bold !important;
             }
             /* Make the first column (Investigation) bold in print */
@@ -1117,7 +1087,112 @@ const SampleCollectionV2: React.FC = () => {
     
     return true;
   };
-  
+
+  const handleSaveTest = async () => {
+    if (!currentTest || !patient || !hospital) {
+      toast({
+        title: "Error",
+        description: "Missing test, patient, or hospital information",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate that at least one parameter has a value
+    const hasValues = Object.values(parameters).some(param => param.value && param.value.trim() !== '');
+    if (!hasValues) {
+      toast({
+        title: "Error",
+        description: "Please enter at least one test result before saving",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingReport(true);
+
+    try {
+      // Generate unique report ID and token
+      const reportId = generateReportId();
+      const reportToken = generateReportToken();
+
+      // Get test configuration
+      const configMap = testConfigByTestId;
+      const configKey = configMap[currentTest.testId];
+      const testConfig = configKey ? testConfigurations[configKey] : null;
+
+      if (!testConfig) {
+        throw new Error('Test configuration not found');
+      }
+
+      // Prepare report data for storage
+      const reportData = {
+        reportId,
+        patientId: patient.id,
+        testId: currentTest.testId,
+        testName: currentTest.testName,
+        hospitalId: hospital?.id || '',
+        patient: {
+          id: patient.id,
+          name: patient.name,
+          age: patient.age,
+          gender: patient.gender
+        },
+        parameters: Object.fromEntries(
+          Object.entries(parameters).map(([key, param]) => [
+            key,
+            { value: param.value || '' }
+          ])
+        ),
+        testConfig: {
+          fields: testConfig.fields
+        },
+        collectedAt: typeof currentTest.collectedAt === 'string' ? currentTest.collectedAt : new Date().toISOString(),
+        token: reportToken
+      };
+
+      // Save report to Firebase
+      await saveReportData(reportData);
+
+      // Store report ID and token for QR code
+      setSavedReportId(reportId);
+      setSavedReportToken(reportToken);
+
+      // Create the sample data
+      const sampleData: Sample = {
+        testId: currentTest.testId,
+        testName: currentTest.testName,
+        sampleType: 'Blood', // Default sample type
+        container: 'EDTA Tube', // Default container
+        instructions: 'Standard collection procedure',
+        collected: true,
+        collectedAt: new Date(currentTest.collectedAt || new Date().toISOString())
+      };
+
+      // Add to samples array
+      const updatedSamples = [...samples, sampleData];
+      setSamples(updatedSamples);
+
+      // Clear current test and parameters
+      setCurrentTest(null);
+      setParameters({});
+
+      toast({
+        title: "Success",
+        description: `Test results saved successfully. Report ID: ${reportId}`,
+      });
+    } catch (error) {
+      console.error('Error saving test:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save test results",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingReport(false);
+    }
+  };
+
   // Print dialog component
   const PrintDialog = () => {
     if (!showPrintDialog || !currentTest) return null;
@@ -1134,18 +1209,21 @@ const SampleCollectionV2: React.FC = () => {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-          <div ref={printRef} className="print-container print-preview">
+          <div ref={printRef} className="print-content print-preview">
             <style>{`
-              /* Base styles applied both in preview and in the actual print window */
+              /* Unified styles for both preview and print */
               .print-content {
-                width: 210mm;
-                min-height: 297mm;
-                display: flex;
-                flex-direction: column;
-                font-size: 12px;
-                line-height: 1.4;
-                background: white;
-                margin: 0 auto;
+                width: 210mm !important;
+                min-height: 297mm !important;
+                display: flex !important;
+                flex-direction: column !important;
+                font-size: 12px !important;
+                line-height: 1.4 !important;
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                position: relative !important;
+                font-family: Arial, sans-serif !important;
               }
               /* Minimal utility fallbacks so we don't depend on Tailwind in the print window */
               .text-center { text-align: center !important; }
@@ -1164,31 +1242,121 @@ const SampleCollectionV2: React.FC = () => {
               .pt-6 { padding-top: 1.5rem !important; }
               .pt-8 { padding-top: 2rem !important; }
 
-              /* Table styling for print */
-              .print-content table { width: 95%; margin: 0 auto; border-collapse: collapse; }
-              .print-content thead tr { background: #f3f4f6; }
-              .print-content th, .print-content td { border: none; padding: 6px 8px; } /* remove grid in preview */
-              .print-content thead th { font-weight: 600; }
-              /* Align data cells: 1st col left, others centered */
-              .print-content tbody td:nth-child(1) { text-align: left; font-weight: 700; }
-              .print-content tbody td:nth-child(2),
-              .print-content tbody td:nth-child(3),
-              .print-content tbody td:nth-child(4) { text-align: center; }
-              .print-header { width: 100%; }
+              /* Unified table styling */
+              .print-table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                margin: 3mm 0 !important;
+                font-size: 11px !important;
+                table-layout: fixed !important;
+                border: none !important;
+              }
+              .print-table th:nth-child(1), .print-table td:nth-child(1) { width: 30% !important; }
+              .print-table th:nth-child(2), .print-table td:nth-child(2) { width: 25% !important; }
+              .print-table th:nth-child(3), .print-table td:nth-child(3) { width: 15% !important; }
+              .print-table th:nth-child(4), .print-table td:nth-child(4) { width: 30% !important; }
+              .print-table th, .print-table td {
+                border: none !important;
+                padding: 2mm 3mm !important;
+                text-align: left !important;
+                background: transparent !important;
+                vertical-align: top !important;
+                line-height: 1.15 !important;
+              }
+              .print-table th {
+                background-color: #f5f5f5 !important;
+                font-weight: bold !important;
+              }
+              .print-table th:nth-child(1) {
+                text-align: left !important;
+              }
+              .print-table th:nth-child(2), .print-table th:nth-child(3), .print-table th:nth-child(4) {
+                text-align: center !important;
+              }
+              .print-table td:nth-child(1) {
+                text-align: left !important;
+                font-weight: bold !important;
+                white-space: nowrap !important;
+              }
+              .print-table td:nth-child(2), .print-table td:nth-child(3), .print-table td:nth-child(4) {
+                text-align: center !important;
+              }
+              .print-table td.result-cell {
+                font-size: 12px !important;
+                font-weight: bold !important;
+                text-align: center !important;
+              }
+              .print-header { 
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
               .print-header img {
-                width: 100%;
-                height: auto;
-                max-height: 50mm;
-                display: block;
+                width: 100% !important;
+                height: auto !important;
+                max-height: 60mm !important;
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
               }
-              .print-body { padding: 0; }
+              .print-body {
+                flex: 1 !important;
+                padding: 2mm 10mm 60mm 10mm !important;
+                display: flex !important;
+                flex-direction: column !important;
+              }
+              .print-footer {
+                position: absolute !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
               .print-footer img {
-                width: 100%;
-                height: auto;
-                max-height: 35mm;
-                display: block;
+                width: 100% !important;
+                height: auto !important;
+                max-height: 25mm !important;
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
               }
-              .print-signatures { width: 100%; }
+              .print-signatures { 
+                width: calc(100% - 20mm) !important;
+                position: absolute !important;
+                left: 10mm !important;
+                right: 10mm !important;
+                bottom: 35mm !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                font-size: 12px !important;
+              }
+              .print-signatures .text-left {
+                text-align: left !important;
+              }
+              .print-signatures .text-right {
+                text-align: right !important;
+              }
+              .print-signatures .font-bold {
+                font-weight: bold !important;
+                font-size: 14px !important;
+              }
+              .print-signatures .text-xs {
+                font-size: 10px !important;
+              }
+              .print-notes-fixed {
+                position: absolute !important;
+                left: 10mm !important;
+                right: 10mm !important;
+                bottom: 15mm !important;
+                width: calc(100% - 20mm) !important;
+                margin: 0 auto !important;
+                text-align: center !important;
+                font-size: 8px !important;
+                line-height: 1.2 !important;
+              }
               .print-notes { text-align: center; }
               .print-content table thead th { text-align: left; }
               
@@ -1197,6 +1365,13 @@ const SampleCollectionV2: React.FC = () => {
                 .print-content {
                   position: relative;
                 }
+                .test-title {
+                  text-align: center;
+                  margin-top: -1px;
+                  margin-bottom: 2px;
+                  font-weight: bold;
+                  font-size: 11px;
+                } 
                 .print-watermark {
                   position: fixed;
                   top: 0;
@@ -1217,41 +1392,70 @@ const SampleCollectionV2: React.FC = () => {
                 }
               }
 
-              /* Preview WYSIWYG styles to mirror print (scoped to preview container) */
+              /* Preview container styling */
+              .print-preview {
+                display: flex !important;
+                justify-content: center !important;
+                align-items: flex-start !important;
+                min-height: 100vh !important;
+                background: #f5f5f5 !important;
+                padding: 20px !important;
+              }
+              /* Screen preview should look EXACTLY like print */
+              .print-preview {
+                display: flex !important;
+                align-items: flex-start !important;
+                justify-content: center !important;
+                background: #ffffff !important;
+                padding: 0 !important;
+              }
               .print-preview .print-content {
-                width: 210mm;
-                min-height: 297mm;
-                display: flex;
-                flex-direction: column;
-                font-size: 12px;
-                line-height: 1.4;
-                background: white;
-                margin: 0 auto;
+                width: 210mm !important;
+                min-height: 297mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                position: relative !important;
               }
-              .print-preview .print-header { width: 100%; }
-              .print-preview .print-header img {
-                width: 100%;
-                height: auto;
-                max-height: 50mm;
-                display: block;
+              .print-header img {
+                width: 100% !important;
+                height: auto !important;
+                max-height: 60mm !important;
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
               }
-              .print-preview .print-body { padding: 0; }
-              .print-preview .print-footer img {
-                width: 100%;
-                height: auto;
-                max-height: 35mm;
-                display: block;
+              .print-body {
+                padding: 5mm 10mm 60mm 10mm !important;
+                display: flex !important;
+                flex-direction: column !important;
               }
-              .print-preview .print-signatures { width: 100%; }
-              .print-preview .print-notes { text-align: center; }
-              .print-preview table thead th { text-align: left; }
+              /* QR block alignment under 'Lab Report' title */
+              .qr-block {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 18mm !important;
+                margin: 0 4mm !important;
+                transform: translateX(-5mm) !important; /* shift a bit left */
+              }
+              .print-footer img {
+                width: 100% !important;
+                height: auto !important;
+                max-height: 25mm !important;
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
 
               @media print {
                 @page {
-                  size: A4;
-                  margin: 0;
-                  -webkit-print-color-adjust: exact;
-                  print-color-adjust: exact;
+                  size: A4 !important;
+                  margin: 0 !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
                 }
                 .print-container {
                   width: 210mm !important;
@@ -1262,129 +1466,34 @@ const SampleCollectionV2: React.FC = () => {
                   border-radius: 0 !important;
                   background: white !important;
                 }
+                .print-preview {
+                  background: white !important;
+                  padding: 0 !important;
+                }
                 .no-print { display: none !important; }
-                .print-content {
-                  width: 210mm !important;
-                  min-height: 297mm !important;
-                  display: flex !important;
-                  flex-direction: column !important;
-                  flex-direction: column !important;
-                  font-size: 12px !important;
-                  line-height: 1.4 !important;
-                }
-                .print-header { width: 100% !important; flex-shrink: 0 !important; }
-                .print-header img {
-                  width: 100% !important;
-                  height: auto !important;
-                  max-height: 50mm !important;
-                  display: block !important;
-                }
-                .print-body {
-                  flex: 1 !important;
-                  padding: 1mm 12mm !important;
-                  display: flex !important;
-                  flex-direction: column !important;
-                  justify-content: flex-start !important;
-                }
-                .bg-blue-600 {
-                  background-color: #2563eb !important;
-                  color: white !important;
-                  text-align: center !important;
-                  padding: 2px 0 !important;
-                  margin-top: -2px !important;
-                  margin-bottom: 3px !important;
-                  font-weight: bold !important;
-                  font-size: 12px !important;
-                }
-                .print-table {
+                .patient-info {
                   font-size: 10px !important;
-                  border-collapse: collapse !important;
-                  width: 100% !important;
-                  margin: 5px 0 !important;
-                  border: 1px solid #000 !important;
-                }
-                .print-table th,
-                .print-table td {
-                  padding: 3px 5px !important;
-                  border: 1px solid #000 !important;
-                  text-align: left !important;
-                  line-height: 1.2 !important;
-                }
-                .print-table th {
-                  background-color: #f5f5f5 !important;
-                  font-weight: bold !important;
-                }
-                .print-footer { width: 100% !important; flex-shrink: 0 !important; margin-top: auto !important; }
-                .print-footer img {
-                  width: 100% !important;
-                  height: auto !important;
-                  max-height: 35mm !important;
-                  display: block !important;
-                }
-                .print-signatures { 
-                  margin: 8px 0 0 0 !important; 
-                  font-size: 10px !important;
-                  width: 100% !important;
-                }
-                /* Force inner wrapper to be a single-row flex container in print */
-                .print-signatures > .flex {
+                  font-weight: 600 !important;
+                  margin-bottom: 4px !important;
                   display: flex !important;
                   justify-content: space-between !important;
-                  align-items: baseline !important;
-                  width: 100% !important;
+                  align-items: center !important;
+                  line-height: 1.1 !important;
+                  padding: 0 10mm !important;
                 }
-                /* Reset any absolute positioning for children so both align on the same baseline */
-                .print-signatures > .flex > div {
-                  position: static !important;
-                  top: auto !important;
-                }
-                .print-signatures .text-left {
-                  text-align: left !important;
-                }
-                .print-signatures .text-right {
-                  text-align: right !important;
-                }
-                .print-signatures p {
-                  margin: 0 !important;
-                  line-height: 1.2 !important;
-                }
-                .print-notes { 
-                  margin: 1px 0 1px 0 !important; 
-                  font-size: 6px !important; 
-                  padding: 1px !important;
-                  text-align: center !important;
-                  background-color: transparent !important;
-                  border: none !important;
-                  line-height: 1.0 !important;
-                  clear: both !important;
-                }
-                .print-notes p { 
-                  margin: 0 0 2px 0 !important;
-                }
-                .print-notes p:last-child { 
-                  margin-bottom: 0 !important;
-                }
-                .print-notes .mb-1 { 
-                  margin-bottom: 0 !important;
-                }
-                .qr-code { width: 50px !important; height: 50px !important; }
-                .patient-info > div:nth-child(2) {
-                  margin-left: 20px !important;
-                }
-                .patient-info { 
-                  font-size: 10px !important; 
-                  margin-bottom: 8px !important;
-                  display: flex !important;
-                  justify-content: space-between !important;
-                  align-items: flex-start !important;
-                  line-height: 1.2 !important;
+                /* Emphasize key patient details on print to match 'Lab Report' badge (text-sm ~14px) */
+                .patient-left p { font-size: 14px !important; font-weight: 800 !important; line-height: 1.2 !important; }
+                .patient-left span { font-weight: 800 !important; font-size: 14px !important; }
+                .qr-code {
+                  width: 40px !important;
+                  height: 40px !important;
                 }
                 .test-title h3 {
-                  font-size: 14px !important;
+                  font-size: 12px !important;
                   margin: 0 auto !important;
                   text-align: center !important;
                   font-weight: bold !important;
-                  letter-spacing: 0.5px !important;
+                  letter-spacing: 0.3px !important;
                 }
                 /* Ensure table headers are left-aligned in print */
                 .print-content table thead th {
@@ -1392,16 +1501,7 @@ const SampleCollectionV2: React.FC = () => {
                 }
               }
             `}</style>
-            <div className="p-6 no-print">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="float-right"
-                onClick={() => setShowPrintDialog(false)}
-              >
-                <XCircle className="h-4 w-4" />
-              </Button>
-            </div>
+            
             <div className="print-content" style={{ position: 'relative' }}>
               <div className="print-watermark" style={{
                 display: 'block',
@@ -1430,88 +1530,83 @@ const SampleCollectionV2: React.FC = () => {
               <div className="print-body flex-1">
                 <div>
                   {/* Centered REPORT Title */}
-                  <div className="text-center mb-2">
+                  <div className="text-center mb-1" style={{marginTop: '-2mm'}}>
                     <div className="bg-blue-600 text-white py-1 px-3 font-bold text-sm">
                       Lab Report
                     </div>
                   </div>
 
                   {/* Patient Information Row */}
-                  <div className="flex justify-between items-start mb-4 patient-info mx-8">
+                  <div className="flex justify-between items-center mb-2 patient-info">
                     {/* Left Side */}
-                    <div className="space-y-1 ml-4">
+                    <div className="space-y-0.5 flex-1 patient-left">
                       <p><span className="font-bold">Name: </span><span className="font-bold">{patient?.name || 'N/A'}</span></p>
                       <p><span className="font-bold">Age: </span><span className="font-bold">{patient?.age || 'N/A'} Year</span></p>
                       <p><span className="font-bold">Referred By: </span><span className="font-bold">{'Dr. SWATI HOSPITAL'}</span></p>
                     </div>
                     
                     {/* Center QR Code */}
-                    <div className="flex flex-col items-center justify-start">
-                      <div>
+                    <div className="flex flex-col items-center justify-center flex-shrink-0">
                         <QRCode
-                          value={`${location.origin}/api/report/${savedReportId || 'unknown'}${savedReportToken ? `?token=${savedReportToken}` : ''}`}
-                          size={60}
+                          value={savedReportId ? `${location.origin}/public-report/${savedReportId}${savedReportToken ? `?token=${savedReportToken}` : ''}` : `${location.origin}/public-report/pending`}
+                          size={40}
                           level="M"
                           className="qr-code"
                         />
-                      </div>
-                      
                     </div>
                     
                     {/* Right Side */}
-                    <div className="space-y-1 text-right mr-4">
-                      <p><span className="font-bold">Sex: </span><span className="font-bold">{patient?.gender || 'N/A'}</span></p>
+                    <div className="space-y-0.5 text-right flex-1">
+                      <p><span className="font-bold">Gender: </span><span className="font-bold">{patient?.gender || 'N/A'}</span></p>
                       <p><span className="font-bold">Received On: </span><span className="font-bold">{currentTest?.collectedAt ? new Date(currentTest.collectedAt).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true}) : new Date().toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true})}</span></p>
                       <p><span className="font-bold">Reported On: </span><span className="font-bold">{new Date().toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true})}</span></p>
                     </div>
                   </div>
 
                   {/* Test Name */}
-                  <div className="text-center my-4">
-                    <h3 className="text-lg font-bold border-b-2 border-black inline-block px-4 pb-1">
+                  <div className="text-center my-2 test-title">
+                    <h3 className="text-base font-bold border-b-2 border-black inline-block px-3 pb-0.5">
                       {currentTest.testName?.toUpperCase() || 'LABORATORY TEST'}
                     </h3>
                   </div>
                   
                   {/* Test Results Table */}
                   <div className="flex-1 flex justify-center">
-                    <table className="border-collapse print-table" style={{ width: '95%', maxWidth: '1200px' }}>
+                    <table className="border-collapse print-table">
                       <thead>
                         <tr className="bg-gray-100">
-                          <th className="border border-gray-300 px-3 pl-6 py-2 text-left font-semibold">Investigation</th>
-                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">Result</th>
-                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">Units</th>
-                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">Ref. Range</th>
+                          <th className="pl-2 pr-1 py-1.5 text-left font-semibold w-[30%]">Parameter</th>
+                          <th className="px-2 py-1.5 text-center font-semibold w-[25%]">Result</th>
+                          <th className="px-2 py-1.5 text-center font-semibold w-[15%]">Unit</th>
+                          <th className="px-2 py-1.5 text-center font-semibold w-[30%]">Normal Range</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {testConfig?.fields?.map((field: any) => {
-                          // Get parameter value
-                          const param = testParameters[field.id];
-                          // Only show parameters that have values entered
-                          if (!param?.value || param.value.trim() === '') {
-                            return null;
-                          }
-                          return field;
-                        }).filter(Boolean).map((field: any) => {
-                          const param = testParameters[field.id];
-                          const isAbnormal = param?.value && field.refRange && !isValueInRange(param.value, field.refRange);
-                          
-                          return (
-                            <tr key={field.id} className="hover:bg-gray-50">
-                              <td className="border border-gray-200 px-3 pl-6 py-2">{field.label}</td>
-                              <td className={`border border-gray-200 px-3 py-2 text-center font-semibold result-cell ${isAbnormal ? 'text-red-600' : ''}`}>
-                                {param?.value || '-'} {isAbnormal && (parseFloat(param?.value || '0') > parseFloat(field.refRange?.split('-')[1] || '0') ? '↑' : '↓')}
-                              </td>
-                              <td className="border border-gray-200 px-3 py-2 text-center">{field.unit || '-'}</td>
-                              <td className="border border-gray-200 px-3 py-2 text-center">{field.refRange || '-'}</td>
-                            </tr>
-                          );
-                        })}
+                        {(testConfig?.fields || [])
+                          .map((field: any) => {
+                            const param = testParameters[field.id];
+                            if (!param?.value || param.value.trim() === '') return null;
+                            return { field, param };
+                          })
+                          .filter(Boolean)
+                          .map((item: any) => {
+                            const { field, param } = item;
+                            const isAbnormal = param?.value && field.refRange && !isValueInRange(param.value, field.refRange);
+                            return (
+                              <tr key={field.id} className="hover:bg-gray-50 align-top">
+                                <td className="pl-2 pr-0 py-1.5 font-bold text-sm" style={{whiteSpace: 'nowrap'}}>{field.label}</td>
+                                <td className={`pl-0 pr-2 py-1.5 text-center font-bold text-sm result-cell break-words ${isAbnormal ? 'text-red-600' : ''}`}> 
+                                  {param?.value || '-'} {isAbnormal && (parseFloat(param?.value || '0') > parseFloat(field.refRange?.split('-')[1] || '0') ? '↑' : '↓')}
+                                </td>
+                                <td className="px-2 py-1.5 text-center break-words text-sm">{field.unit || '-'}</td>
+                                <td className="px-2 py-1.5 text-center break-words text-sm">{field.refRange || '-'}</td>
+                              </tr>
+                            );
+                          })}
                         {/* Show message if no parameters have values */}
                         {(!testConfig?.fields?.some((field: any) => testParameters[field.id]?.value?.trim())) && (
                           <tr>
-                            <td colSpan={4} className="border border-gray-200 px-3 py-4 text-center text-gray-500">
+                            <td colSpan={4} className="px-3 py-4 text-center text-gray-500">
                               No test results entered yet
                             </td>
                           </tr>
@@ -1521,26 +1616,22 @@ const SampleCollectionV2: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ marginTop: '3vh' }}>
-                  {/* Signatures */}
-                  <div className="print-signatures border-t-2 border-gray-300 pt-6">
-                    <div className="flex justify-between w-full max-w-2xl mx-auto">
-                      <div className="text-left">
-                        <p className="font-bold text-base">Komal Kumari</p>
-                        <p className="text-sm text-gray-600">DMLT</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-base">Dr. Amar Kumar</p>
-                        <p className="text-sm text-gray-600">MBBS</p>
-                      </div>
-                    </div>
+                {/* Signatures Section */}
+                <div className="print-signatures flex justify-between items-center mt-8 mb-4" style={{position: 'absolute', left: '10mm', right: '10mm', bottom: '35mm', width: 'calc(100% - 20mm)'}}>
+                  <div className="text-left">
+                    <div className="font-bold text-sm">Komal Kumari</div>
+                    <div className="text-xs">DMLT</div>
                   </div>
-
-                  {/* Important Notes */}
-                  <div className="print-notes mt-16 mb-2 text-sm text-gray-700 text-center">
-                    <p className="font-medium mb-1">• Clinical Correlation is essential for Final Diagnosis • Report for Medico Legal Purpose</p>
-                    <p className="text-gray-600">• If test results are unexpected, please contact the laboratory</p>
+                  <div className="text-right">
+                    <div className="font-bold text-sm">Dr. Amar Kumar</div>
+                    <div className="text-xs">MBBS</div>
                   </div>
+                </div>
+                
+                {/* Notes fixed at bottom above footer */}
+                <div className="print-notes-fixed text-xs text-gray-700 text-center">
+                  <p className="mb-0.5 text-xs">• Clinical Correlation is essential for Final Diagnosis • Not For Medico Legal Purpose</p>
+                  <p className="text-gray-600 text-xs">• If test results are unexpected, please contact the laboratory</p>
                 </div>
               </div>
 
@@ -1554,15 +1645,16 @@ const SampleCollectionV2: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="p-4 border-t flex justify-end space-x-2">
-            <Button 
-              variant="outline" 
+          <div className="p-4 border-t flex items-center justify-between">
+            <Button
+              variant="outline"
               onClick={() => setShowPrintDialog(false)}
             >
               Close
             </Button>
-            <Button 
-              onClick={() => {
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={() => {
                 // Use the print content from this dialog's printRef
                 const printContent = printRef.current;
                 if (printContent) {
@@ -1594,11 +1686,12 @@ const SampleCollectionV2: React.FC = () => {
                   }
                 }
               }}
-              className="bg-primary"
-            >
-              <Printer className="mr-2 h-4 w-4" />
-              Print Report
-            </Button>
+                className="bg-primary"
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                Print Report
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -1788,7 +1881,7 @@ const SampleCollectionV2: React.FC = () => {
                                       e.stopPropagation();
                                     }}
                                   >
-                                    <XCircle className="h-4 w-4" />
+                                    {/* <XCircle className="h-4 w-4" /> */}
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>

@@ -34,7 +34,6 @@ type Gender = 'Male' | 'Female' | 'Other';
 interface PatientForm {
   name: string;
   age: string;
-  dob: string;
   gender: Gender | '';
   phone: string;
   doctor: string;
@@ -114,7 +113,6 @@ const PatientRegistration: React.FC = () => {
   const [patient, setPatient] = useState<PatientForm>({
     name: '',
     age: '',
-    dob: '',
     gender: '',
     phone: '',
     doctor: '',
@@ -149,35 +147,15 @@ const PatientRegistration: React.FC = () => {
     'test-urine-routine',
   ];
 
-  // Handle Enter to behave like Tab within the form (skip textarea and allow submit buttons)
+  // Do not auto-advance on Enter; only Tab should move focus between fields
   const handleFormKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter') return;
     const target = e.target as HTMLElement;
     if (!formRef.current) return;
     // Allow Enter in textarea to create new line
     if (target.tagName.toLowerCase() === 'textarea') return;
-    // Allow Enter on submit button to submit
-    if (target instanceof HTMLButtonElement && target.type === 'submit') return;
-
+    // Prevent form submit and auto-advance on Enter
     e.preventDefault();
-
-    const focusableSelectors = [
-      'input:not([type="hidden"]):not([disabled])',
-      'select:not([disabled])',
-      'textarea:not([disabled])',
-      'button:not([disabled])',
-      '[tabindex]:not([tabindex="-1"])'
-    ].join(',');
-
-    const focusables = Array.from(
-      formRef.current.querySelectorAll<HTMLElement>(focusableSelectors)
-    ).filter(el => !el.hasAttribute('disabled') && el.tabIndex !== -1 && el.offsetParent !== null);
-
-    const index = focusables.indexOf(target);
-    if (index > -1) {
-      const next = focusables[index + 1] || focusables[0];
-      next.focus();
-    }
   };
 
   // WhatsApp Support launcher
@@ -196,14 +174,10 @@ const PatientRegistration: React.FC = () => {
   const doctors = ['Dr. Sharma', 'Dr. Patel', 'Dr. Gupta', 'Dr. Reddy', 'Dr. Kapoor', 'Dr. Malhotra', 'Dr. Choudhary', 'Dr. Iyer', 'Dr. Nair', 'Dr. Desai'];
   const stateList = ['Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'Uttar Pradesh', 'West Bengal', 'Gujarat', 'Rajasthan'];
 
-  // Generate random date of birth (between 18-80 years ago)
-  const getRandomDOB = () => {
-    const currentYear = new Date().getFullYear();
-    const birthYear = currentYear - Math.floor(Math.random() * 62 + 18);
-    const birthMonth = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
-    const birthDay = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
-    return `${birthYear}-${birthMonth}-${birthDay}`;
-  };
+    // Generate random age (between 1-80)
+    const getRandomAge = () => {
+      return Math.floor(Math.random() * 80) + 1;
+    };
 
   // Generate random phone number
   const getRandomPhone = () => {
@@ -225,8 +199,6 @@ const PatientRegistration: React.FC = () => {
         const houseNumber = Math.floor(Math.random() * 200) + 1;
         const pincode = Math.floor(400000 + Math.random() * 100000);
         const doctor = doctors[Math.floor(Math.random() * doctors.length)];
-        const dob = getRandomDOB();
-        const age = new Date().getFullYear() - new Date(dob).getFullYear();
         
         // Available test IDs from the test data
         const allTestIds = demoTests.map(test => test.id);
@@ -248,7 +220,7 @@ const PatientRegistration: React.FC = () => {
         setPatient(prev => ({
           ...prev,
           name: `${firstName} ${lastName}`,
-          age: age.toString(),
+          age: getRandomAge().toString(),
           gender: gender,
           phone: getRandomPhone(),
           doctor: doctor,
@@ -256,22 +228,8 @@ const PatientRegistration: React.FC = () => {
           city: city,
           state: state,
           pincode: pincode.toString(),
-          selectedTests: selectedTests,
-          dob: dob
+          selectedTests: selectedTests
         }));
-
-        // Update date input fields
-        const [year, month, day] = dob.split('-');
-        
-        setTimeout(() => {
-          const dayInput = document.getElementById('day') as HTMLInputElement;
-          const monthInput = document.getElementById('month') as HTMLInputElement;
-          const yearInput = document.getElementById('year') as HTMLInputElement;
-          
-          if (dayInput) dayInput.value = day;
-          if (monthInput) monthInput.value = month;
-          if (yearInput) yearInput.value = year;
-        }, 100);
 
         // Trigger toast notification
         toast({
@@ -316,26 +274,8 @@ const PatientRegistration: React.FC = () => {
     }
   }, [patient.state]);
 
-  const calculateAge = (dob: string) => {
-    if (!dob) return '';
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    
-    return age.toString();
-  };
-
-  const isDobEmpty = () => {
-    const day = (document.getElementById('day') as HTMLInputElement)?.value;
-    const month = (document.getElementById('month') as HTMLInputElement)?.value;
-    const year = (document.getElementById('year') as HTMLInputElement)?.value;
-    return !day && !month && !year;
-  };
+  // Function to check if age is empty
+  const isAgeEmpty = () => !patient.age;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -381,13 +321,12 @@ const PatientRegistration: React.FC = () => {
       return;
     }
     
-    // If age is being updated and DOB is empty, allow manual entry
-    if (name === 'age' && (isDobEmpty() || !patient.dob)) {
+    // Handle age input
+    if (name === 'age') {
       const sanitized = value.replace(/\D/g, '').slice(0, 3);
       setPatient(prev => ({
         ...prev,
-        age: sanitized,
-        dob: '' // Clear DOB when age is manually entered
+        age: sanitized
       }));
       return;
     }
@@ -425,7 +364,6 @@ const PatientRegistration: React.FC = () => {
     setPatient({
       name: '',
       age: '',
-      dob: '',
       gender: '',
       phone: '',
       doctor: '',
@@ -436,13 +374,6 @@ const PatientRegistration: React.FC = () => {
       selectedTests: [],
       registrationDate: new Date()
     });
-    // Reset date inputs
-    const dayInput = document.getElementById('day') as HTMLInputElement;
-    const monthInput = document.getElementById('month') as HTMLInputElement;
-    const yearInput = document.getElementById('year') as HTMLInputElement;
-    if (dayInput) dayInput.value = '';
-    if (monthInput) monthInput.value = '';
-    if (yearInput) yearInput.value = '';
   };
 
   // Check for duplicate patient by phone number
@@ -488,39 +419,6 @@ const PatientRegistration: React.FC = () => {
       }
     }
     
-    // Validate date of birth if provided
-    if (patient.dob) {
-      const [year, month, day] = patient.dob.split('-').map(Number);
-      
-      // Check for valid date
-      const date = new Date(year, month - 1, day);
-      const isValidDate = date.getFullYear() === year && 
-                         date.getMonth() === month - 1 && 
-                         date.getDate() === day;
-      
-      if (!isValidDate) {
-        toast({
-          title: 'Invalid Date',
-          description: 'Please enter a valid date of birth',
-          variant: 'destructive',
-        });
-        document.getElementById('day')?.focus();
-        return;
-      }
-      
-      // Check if date is in the future
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (date > today) {
-        toast({
-          title: 'Invalid Date',
-          description: 'Date of birth cannot be in the future',
-          variant: 'destructive',
-        });
-        document.getElementById('day')?.focus();
-        return;
-      }
-    }
     
     // Validate 10-digit mobile number (numeric only)
     const phoneValid = /^\d{10}$/.test(patient.phone);
@@ -543,17 +441,26 @@ const PatientRegistration: React.FC = () => {
       }
     }
     
-    // Validate age (0-120) if provided
-    if (patient.age) {
-      const ageNum = parseInt(patient.age, 10);
-      if (isNaN(ageNum) || ageNum < 0 || ageNum > 120) {
-        toast({
-          title: 'Invalid Age',
-          description: 'Age must be a number between 0 and 120.',
-          variant: 'destructive',
-        });
-        return;
-      }
+    // Validate age (0-120) - required field
+    if (!patient.age) {
+      toast({
+        title: 'Age Required',
+        description: 'Please enter patient age',
+        variant: 'destructive',
+      });
+      document.getElementById('age')?.focus();
+      return;
+    }
+    
+    const ageNum = parseInt(patient.age, 10);
+    if (isNaN(ageNum) || ageNum < 0 || ageNum > 120) {
+      toast({
+        title: 'Invalid Age',
+        description: 'Age must be a number between 0 and 120.',
+        variant: 'destructive',
+      });
+      document.getElementById('age')?.focus();
+      return;
     }
     
     // Validate pincode if provided: must be exactly 6 digits
@@ -1188,147 +1095,7 @@ const PatientRegistration: React.FC = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="dob">Date of Birth <span className="text-muted-foreground text-xs">(DD/MM/YYYY)</span></Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="day"
-                            name="day"
-                            type="text"
-                            maxLength={2}
-                            placeholder="DD"
-                            className="w-16 text-center"
-                            inputMode="numeric"
-                            pattern="(0[1-9]|[12][0-9]|3[01])"
-                            onChange={handleInputChange}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Tab') {
-                                e.preventDefault();
-                                if (!e.shiftKey) {
-                                  document.getElementById('month')?.focus();
-                                } else {
-                                  document.getElementById('name')?.focus();
-                                }
-                              } else if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                document.getElementById('month')?.focus();
-                              }
-                            }}
-                            onBlur={(e) => {
-                              let day = e.target.value.padStart(2, '0');
-                              // Validate day range (1-31)
-                              const dayNum = parseInt(day, 10) || 1;
-                              day = Math.min(31, Math.max(1, dayNum)).toString().padStart(2, '0');
-                              
-                              const month = (document.getElementById('month') as HTMLInputElement)?.value.padStart(2, '0') || '01';
-                              const year = (document.getElementById('year') as HTMLInputElement)?.value || new Date().getFullYear();
-                              const newDate = `${year}-${month}-${day}`;
-                              
-                              // Update the input value with validated day
-                              e.target.value = day;
-                              
-                              if (day && month && year) {
-                                setPatient(prev => ({
-                                  ...prev,
-                                  dob: newDate,
-                                  age: calculateAge(newDate)
-                                }));
-                              }
-                            }}
-                          />
-                          <span className="flex items-center">/</span>
-                          <Input
-                            id="month"
-                            name="month"
-                            type="text"
-                            maxLength={2}
-                            placeholder="MM"
-                            className="w-16 text-center"
-                            inputMode="numeric"
-                            pattern="(0[1-9]|1[0-2])"
-                            onChange={handleInputChange}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Tab') {
-                                e.preventDefault();
-                                if (!e.shiftKey) {
-                                  document.getElementById('year')?.focus();
-                                } else {
-                                  document.getElementById('day')?.focus();
-                                }
-                              } else if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                document.getElementById('year')?.focus();
-                              }
-                            }}
-                            onBlur={(e) => {
-                              let month = e.target.value.padStart(2, '0');
-                              // Validate month range (1-12)
-                              const monthNum = parseInt(month, 10) || 1;
-                              month = Math.min(12, Math.max(1, monthNum)).toString().padStart(2, '0');
-                              
-                              const day = (document.getElementById('day') as HTMLInputElement)?.value.padStart(2, '0') || '01';
-                              const year = (document.getElementById('year') as HTMLInputElement)?.value || new Date().getFullYear();
-                              const newDate = `${year}-${month}-${day}`;
-                              
-                              // Update the input value with validated month
-                              e.target.value = month;
-                              
-                              if (day && month && year) {
-                                setPatient(prev => ({
-                                  ...prev,
-                                  dob: newDate,
-                                  age: calculateAge(newDate)
-                                }));
-                              }
-                            }}
-                          />
-                          <span className="flex items-center">/</span>
-                          <Input
-                            id="year"
-                            name="year"
-                            type="text"
-                            maxLength={4}
-                            placeholder="YYYY"
-                            className="w-20"
-                            inputMode="numeric"
-                            pattern="(19|20)\d{2}"
-                            onChange={handleInputChange}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Tab') {
-                                e.preventDefault();
-                                if (!e.shiftKey) {
-                                  document.getElementById('age')?.focus();
-                                } else {
-                                  document.getElementById('month')?.focus();
-                                }
-                              }
-                            }}
-                            onBlur={(e) => {
-                              let year = e.target.value;
-                              // Validate year range (1900-current year)
-                              const currentYear = new Date().getFullYear();
-                              const yearNum = parseInt(year, 10) || currentYear;
-                              year = Math.min(currentYear, Math.max(1900, yearNum)).toString();
-                              
-                              const day = (document.getElementById('day') as HTMLInputElement)?.value.padStart(2, '0') || '01';
-                              const month = (document.getElementById('month') as HTMLInputElement)?.value.padStart(2, '0') || '01';
-                              const newDate = `${year}-${month}-${day}`;
-                              
-                              // Update the input value with validated year
-                              e.target.value = year;
-                              
-                              if (day && month && year) {
-                                setPatient(prev => ({
-                                  ...prev,
-                                  dob: newDate,
-                                  age: calculateAge(newDate)
-                                }));
-                              }
-                            }}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="age">Age</Label>
+                        <Label htmlFor="age">Age <span className="text-red-500">*</span></Label>
                         <Input
                           id="age"
                           name="age"
@@ -1337,16 +1104,20 @@ const PatientRegistration: React.FC = () => {
                           max="120"
                           value={patient.age}
                           onChange={handleInputChange}
-                          placeholder={isDobEmpty() ? 'Enter age' : 'Auto-calculated'}
+                          placeholder="Enter age"
                           className="w-full"
-                          readOnly={!isDobEmpty()}
                           inputMode="numeric"
                           pattern="\\d{1,3}"
                           maxLength={3}
+                          required
                           onKeyDown={(e) => {
                             if (e.key === 'Tab') {
                               e.preventDefault();
-                              document.getElementById('gender-trigger')?.focus();
+                              if (!e.shiftKey) {
+                                document.getElementById('gender-trigger')?.focus();
+                              } else {
+                                document.getElementById('name')?.focus();
+                              }
                             }
                           }}
                         />
@@ -1398,10 +1169,7 @@ const PatientRegistration: React.FC = () => {
                           onChange={handleInputChange}
                           placeholder="Doctor's name (if any)"
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              document.getElementById('state-trigger')?.focus();
-                            } else if (e.key === 'Tab' && !e.shiftKey) {
+                            if (e.key === 'Tab' && !e.shiftKey) {
                               e.preventDefault();
                               document.getElementById('state-trigger')?.focus();
                             }
@@ -1412,92 +1180,86 @@ const PatientRegistration: React.FC = () => {
                     </div>
 
 
-                    {/* Row 4 - State, City, Pincode */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                    {/* State and City fields are now part of the grid */}
-                      <div className="space-y-2">
-                        <Label htmlFor="state">State</Label>
-                        <Select
-                          value={patient.state}
-                          onValueChange={(value) => handleSelectChange('state', value)}
-                        >
-                          <SelectTrigger
-                            id="state-trigger"
-                            className="w-full"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                document.getElementById('city-trigger')?.focus();
-                              } else if (e.key === 'Tab' && !e.shiftKey) {
-                                e.preventDefault();
-                                document.getElementById('city-trigger')?.focus();
-                              }
-                            }}
+                    {/* Row 4 - State, City, Pincode - Fixed at bottom */}
+                    <div className="fixed bottom-0 left-0 right-0 bg-white p-4 border-t shadow-lg z-10">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-7xl mx-auto">
+                        <div className="space-y-2">
+                          <Label htmlFor="state">State</Label>
+                          <Select
+                            value={patient.state}
+                            onValueChange={(value) => handleSelectChange('state', value)}
                           >
-                            <SelectValue placeholder="Select state" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {indianStates.map((state) => (
-                              <SelectItem key={state} value={state}>
-                                {state}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="city">City</Label>
-                        <Select
-                          value={patient.city}
-                          onValueChange={(value) => handleSelectChange('city', value)}
-                          disabled={!patient.state}
-                        >
-                          <SelectTrigger
-                            id="city-trigger"
-                            className="w-full"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                document.getElementById('pincode')?.focus();
-                              } else if (e.key === 'Tab' && !e.shiftKey) {
-                                e.preventDefault();
-                                document.getElementById('pincode')?.focus();
-                              }
-                            }}
-                          >
-                            <SelectValue placeholder={patient.state ? 'Select city' : 'Select state first'} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {cities.length > 0 ? (
-                              cities.map((city, idx) => (
-                                <SelectItem key={`${city}-${idx}`} value={city}>
-                                  {city}
+                            <SelectTrigger
+                              id="state-trigger"
+                              className="w-full"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Tab' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  document.getElementById('city-trigger')?.focus();
+                                }
+                              }}
+                            >
+                              <SelectValue placeholder="Select state" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {indianStates.map((state) => (
+                                <SelectItem key={state} value={state}>
+                                  {state}
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <div className="p-2 text-sm text-muted-foreground">
-                                {patient.state ? 'No cities available' : 'Select a state first'}
-                              </div>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="pincode">Pincode</Label>
-                        <Input
-                          id="pincode"
-                          name="pincode"
-                          type="tel"
-                          value={patient.pincode}
-                          onChange={handleInputChange}
-                          placeholder="Enter 6-digit pincode"
-                          inputMode="numeric"
-                          pattern="[0-9]{6}"
-                          maxLength={6}
-                          minLength={6}
-                          className="w-full"
-                        />
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="city">City</Label>
+                          <Select
+                            value={patient.city}
+                            onValueChange={(value) => handleSelectChange('city', value)}
+                            disabled={!patient.state}
+                          >
+                            <SelectTrigger
+                              id="city-trigger"
+                              className="w-full"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Tab' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  document.getElementById('pincode')?.focus();
+                                }
+                              }}
+                            >
+                              <SelectValue placeholder={patient.state ? 'Select city' : 'Select state first'} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {cities.length > 0 ? (
+                                cities.map((city, idx) => (
+                                  <SelectItem key={`${city}-${idx}`} value={city}>
+                                    {city}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <div className="p-2 text-sm text-muted-foreground">
+                                  {patient.state ? 'No cities available' : 'Select a state first'}
+                                </div>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="pincode">Pincode</Label>
+                          <Input
+                            id="pincode"
+                            name="pincode"
+                            type="tel"
+                            value={patient.pincode}
+                            onChange={handleInputChange}
+                            placeholder="Enter 6-digit pincode"
+                            inputMode="numeric"
+                            pattern="[0-9]{6}"
+                            maxLength={6}
+                            minLength={6}
+                            className="w-full"
+                          />
+                        </div>
                       </div>
                     </div>
 

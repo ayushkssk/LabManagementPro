@@ -18,11 +18,13 @@ import TestsList from "@/pages/tests/TestsList";
 import NotFound from "@/pages/NotFound";
 import { SuperAdminLayout } from "./pages/super-admin/SuperAdminLayout";
 import SuperAdminDashboard from "./pages/super-admin/Dashboard";
+import TestReportCreation from "@/pages/TestReportCreation";
 import { Overview } from "./pages/super-admin/Overview";
 import { Unauthorized } from "./pages/Unauthorized";
 import NewHospital from "./pages/super-admin/NewHospital";
 import HospitalDetails from "./pages/super-admin/HospitalDetails";
 import Hospitals from "./pages/super-admin/Hospitals";
+import PublicReport from "@/pages/PublicReport";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +76,12 @@ const AppRoutes = () => {
         )
       } />
       <Route path="/" element={<Navigate to="/login" replace />} />
+      
+      {/* Public Report Route - No authentication required */}
+      <Route path="/public-report/:reportId" element={<PublicReport />} />
+      
+      {/* Test Route for debugging */}
+      <Route path="/test-report" element={<TestReportCreation />} />
       
       {/* Admin Routes */}
       {/* Super Admin Routes */}
@@ -148,11 +156,7 @@ const AppRoutes = () => {
           <Unauthorized />
         </ProtectedRoute>
       } />
-      <Route path="*" element={
-        <ProtectedRoute requiredRole={['super-admin', 'admin', 'technician']}>
-          <NotFound />
-        </ProtectedRoute>
-      } />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

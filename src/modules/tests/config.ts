@@ -38,6 +38,9 @@ export const sampleTests: SampleTestMeta[] = [
   { id: 'test-culture-antibiotic-sensitivity', name: 'Culture & Antibiotic Sensitivity', category: 'Microbiology', sampleType: 'Urine/Other', container: 'Sterile Container', instructions: 'Collect in sterile container; transport promptly' },
   { id: 'test-urine-routine', name: 'Urine Routine Examination', category: 'Urology', sampleType: 'Urine', container: 'Sterile Urine Container', instructions: 'Midstream clean-catch sample preferred' },
   { id: 'test-cardiac-marker', name: 'CARDIAC MARKER', category: 'Cardiology', sampleType: 'Blood', container: 'Red Top', instructions: 'Point-of-care card test' },
+  { id: 'test-19', name: 'HIV 1 & 2 Antibody', category: 'SeroLOGY & INFECTIOUS DISEASE', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-20', name: 'Hepatitis B Surface Antigen (HBsAg)', category: 'SeroLOGY & INFECTIOUS DISEASE', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
+  { id: 'test-21', name: 'Anti-HCV (Hepatitis C)', category: 'SeroLOGY & INFECTIOUS DISEASE', sampleType: 'Blood', container: 'Red Top', instructions: 'Fasting not required' },
 ];
 
 export const testConfigurations: TestConfigurationMap = {
@@ -436,6 +439,25 @@ export const testConfigurations: TestConfigurationMap = {
       { id: 'trop_t_card', label: 'Trop-T (By Card)', type: 'select', options: ['Negative', 'Positive'], required: true, refRange: 'Negative' },
     ],
   },
+  hiv_1_2_antibody: {
+    fields: [
+      { id: 'hiv_result_1', label: 'Result 1', type: 'select', options: ['Negative', 'Positive'], required: true, refRange: 'Negative: < 1\nPositive: > 1' },
+      { id: 'hiv_result_2', label: 'Result 2', type: 'select', options: ['Negative', 'Positive'], required: true, refRange: 'Negative: < 1\nPositive: > 1' },
+      { id: 'hiv_comment', label: 'Comment', type: 'textarea', required: false, defaultValue: `METHODOLOGY: HIV screening has been developed and designed using gp-41, C terminal of gp-120 & gp-36 representing immunodominant regions of HIV-1 & HIV-2 envelope gene structure respectively. It has been evaluated by UNAIDS (WHO, Geneva), using samples of European, Asian, Latin American & African origin. The test is a screening test for anti-HIV-1 & HIV-2 and is for in vitro lab use only. HIV-1 and HIV-2 viruses share many morphological and biological characteristics; due to this, their antibodies have a cross reactivity of 30–70%. Appearance of dots for HIV-1 and HIV-2 on the test device does not necessarily imply co-infection with HIV-1 & HIV-2. Sample found to be reactive by the above test must be confirmed by standard supplemental assay, like Western Blot.` },
+    ],
+  },
+  hbsag: {
+    fields: [
+      { id: 'hbsag_result', label: 'HBsAg', type: 'select', options: ['Negative', 'Positive'], required: true, refRange: 'Negative: < 1\nPositive: > 1' },
+      { id: 'hbsag_comment', label: 'Comment', type: 'textarea', required: false, defaultValue: `Eliscan TM HBsAg (HBsAg is an in vitro enzyme immuno assay for the qualitative detection of hepatitis B surface Antigen in Human Serum or Plasma).` },
+    ],
+  },
+  anti_hcv: {
+    fields: [
+      { id: 'hcv_result', label: 'Result', type: 'select', options: ['Negative', 'Positive'], required: true, refRange: 'Negative: < 1\nPositive: > 1' },
+      { id: 'hcv_comment', label: 'Comment', type: 'textarea', required: false, defaultValue: `INTERPRETATION: HCV is a positive stranded RNA virus classified as a flavivirus in a separate unnamed genus. The ~9.5 kb genome encodes a core protein, two envelope glycoproteins and several structural proteins. Most new infections with HCV are subclinical. About 50% of HCV patients develop chronic hepatitis and many are at risk of progressing to cirrhosis. The virus undergoes variation during chronic infection and displays genomic diversity with different genotypes predominating in different regions.` },
+    ],
+  },
 };
 
 export const testConfigByTestId: Record<string, keyof typeof testConfigurations> = {
@@ -476,4 +498,7 @@ export const testConfigByTestId: Record<string, keyof typeof testConfigurations>
   'test-culture-antibiotic-sensitivity': 'culture_antibiotic_sensitivity',
   'test-urine-routine': 'urine_routine',
   'test-cardiac-marker': 'cardiac_marker_simple',
+  'test-19': 'hiv_1_2_antibody',
+  'test-20': 'hbsag',
+  'test-21': 'anti_hcv',
 };

@@ -566,8 +566,9 @@ export const demoTests: Test[] = [
     name: 'HIV 1 & 2 Antibody',
     price: 500,
     fields: [
-      { id: getFieldId(), name: 'HIV 1 & 2 Antibody', type: 'text', unit: '', normalRange: 'Non-Reactive' },
-      { id: getFieldId(), name: 'Method', type: 'text', unit: '', normalRange: 'ELISA/Chemiluminescence' }
+      { id: getFieldId(), name: 'Result 1', type: 'select', unit: '', normalRange: 'Negative: < 1; Positive: > 1', options: ['Negative', 'Positive'] },
+      { id: getFieldId(), name: 'Result 2', type: 'select', unit: '', normalRange: 'Negative: < 1; Positive: > 1', options: ['Negative', 'Positive'] },
+      { id: getFieldId(), name: 'Comment', type: 'text', unit: '', normalRange: '' }
     ]
   },
   {
@@ -576,8 +577,8 @@ export const demoTests: Test[] = [
     name: 'Hepatitis B Surface Antigen (HBsAg)',
     price: 400,
     fields: [
-      { id: getFieldId(), name: 'HBsAg', type: 'text', unit: '', normalRange: 'Non-Reactive' },
-      { id: getFieldId(), name: 'Method', type: 'text', unit: '', normalRange: 'ELISA/Chemiluminescence' }
+      { id: getFieldId(), name: 'HBsAg', type: 'select', unit: '', normalRange: 'Negative: < 1; Positive: > 1', options: ['Negative', 'Positive'] },
+      { id: getFieldId(), name: 'Comment', type: 'text', unit: '', normalRange: '' }
     ]
   },
   {
@@ -586,8 +587,8 @@ export const demoTests: Test[] = [
     name: 'Anti-HCV (Hepatitis C)',
     price: 500,
     fields: [
-      { id: getFieldId(), name: 'Anti-HCV', type: 'text', unit: '', normalRange: 'Non-Reactive' },
-      { id: getFieldId(), name: 'Method', type: 'text', unit: '', normalRange: 'ELISA/Chemiluminescence' }
+      { id: getFieldId(), name: 'Result', type: 'select', unit: '', normalRange: 'Negative: < 1; Positive: > 1', options: ['Negative', 'Positive'] },
+      { id: getFieldId(), name: 'Comment', type: 'text', unit: '', normalRange: '' }
     ]
   },
   {
