@@ -147,15 +147,35 @@ const PatientRegistration: React.FC = () => {
     'test-urine-routine',
   ];
 
-  // Do not auto-advance on Enter; only Tab should move focus between fields
+  // Helper: focus the next tabbable element inside the form
+  const focusNext = (current: HTMLElement) => {
+    if (!formRef.current) return;
+    const tabbables = Array.from(
+      formRef.current.querySelectorAll<HTMLElement>(
+        'input, textarea, select, button, [role="combobox"], [tabindex]:not([tabindex="-1"])'
+      )
+    )
+      .filter(el => !el.hasAttribute('disabled') && el.tabIndex !== -1 && el.offsetParent !== null);
+    const idx = tabbables.indexOf(current);
+    if (idx >= 0) {
+      const next = tabbables[idx + 1] || tabbables[0];
+      next.focus();
+      if ((next as HTMLInputElement).select) {
+        try { (next as HTMLInputElement).select(); } catch {}
+      }
+    }
+  };
+
+  // Make Enter key move to next field instead of submitting the form
   const handleFormKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter') return;
     const target = e.target as HTMLElement;
     if (!formRef.current) return;
     // Allow Enter in textarea to create new line
     if (target.tagName.toLowerCase() === 'textarea') return;
-    // Prevent form submit and auto-advance on Enter
+    // Prevent submit and move focus to next control
     e.preventDefault();
+    focusNext(target);
   };
 
   // WhatsApp Support launcher
@@ -1179,89 +1199,89 @@ const PatientRegistration: React.FC = () => {
                       </div>
                     </div>
 
-
-                    {/* Row 4 - State, City, Pincode - Fixed at bottom */}
-                    <div className="fixed bottom-0 left-0 right-0 bg-white p-4 border-t shadow-lg z-10">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-7xl mx-auto">
-                        <div className="space-y-2">
-                          <Label htmlFor="state">State</Label>
-                          <Select
-                            value={patient.state}
-                            onValueChange={(value) => handleSelectChange('state', value)}
-                          >
-                            <SelectTrigger
-                              id="state-trigger"
-                              className="w-full"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Tab' && !e.shiftKey) {
-                                  e.preventDefault();
-                                  document.getElementById('city-trigger')?.focus();
-                                }
-                              }}
-                            >
-                              <SelectValue placeholder="Select state" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {indianStates.map((state) => (
-                                <SelectItem key={state} value={state}>
-                                  {state}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="city">City</Label>
-                          <Select
-                            value={patient.city}
-                            onValueChange={(value) => handleSelectChange('city', value)}
-                            disabled={!patient.state}
-                          >
-                            <SelectTrigger
-                              id="city-trigger"
-                              className="w-full"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Tab' && !e.shiftKey) {
-                                  e.preventDefault();
-                                  document.getElementById('pincode')?.focus();
-                                }
-                              }}
-                            >
-                              <SelectValue placeholder={patient.state ? 'Select city' : 'Select state first'} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {cities.length > 0 ? (
-                                cities.map((city, idx) => (
-                                  <SelectItem key={`${city}-${idx}`} value={city}>
-                                    {city}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <div className="p-2 text-sm text-muted-foreground">
-                                  {patient.state ? 'No cities available' : 'Select a state first'}
-                                </div>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="pincode">Pincode</Label>
-                          <Input
-                            id="pincode"
-                            name="pincode"
-                            type="tel"
-                            value={patient.pincode}
-                            onChange={handleInputChange}
-                            placeholder="Enter 6-digit pincode"
-                            inputMode="numeric"
-                            pattern="[0-9]{6}"
-                            maxLength={6}
-                            minLength={6}
+                    {/* Row 3 - State, City, Pincode (moved here from footer) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="state">State</Label>
+                        <Select
+                          value={patient.state}
+                          onValueChange={(value) => handleSelectChange('state', value)}
+                        >
+                          <SelectTrigger
+                            id="state-trigger"
                             className="w-full"
-                          />
-                        </div>
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                document.getElementById('city-trigger')?.focus();
+                              }
+                            }}
+                          >
+                            <SelectValue placeholder="Select state" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {indianStates.map((state) => (
+                              <SelectItem key={state} value={state}>
+                                {state}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Select
+                          value={patient.city}
+                          onValueChange={(value) => handleSelectChange('city', value)}
+                          disabled={!patient.state}
+                        >
+                          <SelectTrigger
+                            id="city-trigger"
+                            className="w-full"
+                            onKeyDown={(e) => {
+                              if ((e.key === 'Tab' && !e.shiftKey) || e.key === 'Enter') {
+                                e.preventDefault();
+                                document.getElementById('pincode')?.focus();
+                              }
+                            }}
+                          >
+                            <SelectValue placeholder={patient.state ? 'Select city' : 'Select state first'} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {cities.length > 0 ? (
+                              cities.map((city, idx) => (
+                                <SelectItem key={`${city}-${idx}`} value={city}>
+                                  {city}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <div className="p-2 text-sm text-muted-foreground">
+                                {patient.state ? 'No cities available' : 'Select a state first'}
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="pincode">Pincode</Label>
+                        <Input
+                          id="pincode"
+                          name="pincode"
+                          type="tel"
+                          value={patient.pincode}
+                          onChange={handleInputChange}
+                          placeholder="Enter 6-digit pincode"
+                          inputMode="numeric"
+                          pattern="[0-9]{6}"
+                          maxLength={6}
+                          minLength={6}
+                          className="w-full"
+                        />
                       </div>
                     </div>
+
+
+                    
 
                     {/* Address (Full width) */}
                     <div className="space-y-2">

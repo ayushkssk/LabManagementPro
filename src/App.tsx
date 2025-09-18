@@ -15,6 +15,7 @@ import PatientRegistration from "@/pages/lab/PatientRegistration";
 import SampleCollectionV2 from "@/pages/lab/SampleCollectionV2";
 import Patients from "@/pages/patients/Patients";
 import TestsList from "@/pages/tests/TestsList";
+import TestDetails from "@/pages/tests/TestDetails";
 import NotFound from "@/pages/NotFound";
 import { SuperAdminLayout } from "./pages/super-admin/SuperAdminLayout";
 import SuperAdminDashboard from "./pages/super-admin/Dashboard";
@@ -141,6 +142,11 @@ const AppRoutes = () => {
       <Route path="/tests" element={
         <ProtectedRoute requiredRole={['admin', 'technician']}>
           <TestsList />
+        </ProtectedRoute>
+      } />
+      <Route path="/tests/:id" element={
+        <ProtectedRoute requiredRole={['admin', 'technician']}>
+          <TestDetails />
         </ProtectedRoute>
       } />
       <Route path="/lab/patients" element={

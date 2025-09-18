@@ -171,14 +171,67 @@ export const getTests = async (): Promise<TestData[]> => {
 // Get a single test by ID
 export const getTest = async (id: string): Promise<TestData | null> => {
   try {
-    const hid = getTenantHospitalId();
-    const docRef = hid ? doc(db, `hospitals/${hid}/tests`, id) : doc(db, TESTS_COLLECTION, id);
-    const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as TestData;
+    const isValidDocId = (val: string) => !val.includes('/');
+    if (isValidDocId(id)) {
+      const hid = getTenantHospitalId();
+      const docRef = hid ? doc(db, `hospitals/${hid}/tests`, id) : doc(db, TESTS_COLLECTION, id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as TestData;
+      }
     }
-    return null;
+    // Fallback: search in merged demo/extras/config catalogs
+    const assembleFields = (fields: any[]) => (fields || []).map((f: any) => ({
+      id: f.id,
+      name: f.name || f.label,
+      type: f.type || 'number',
+      unit: f.unit || '',
+      normalRange: f.normalRange || f.refRange || ''
+    }));
+
+    const listA: TestData[] = (demoTests || []).map((t: any) => ({
+      id: t.id,
+      name: t.name,
+      category: t.category,
+      price: Number(t.price || 0),
+      description: '',
+      fields: assembleFields(t.fields),
+      protected: true
+    }));
+    const listB: TestData[] = (extraDemoTests || []).map((t: any) => ({
+      id: t.id,
+      name: t.name,
+      category: t.category,
+      price: Number(t.price || 0),
+      description: '',
+      fields: assembleFields(t.fields),
+      protected: true
+    }));
+    const demoIds = new Set([...listA, ...listB].map(t => t.id));
+    const listC: TestData[] = (moduleSampleTests || []).map((meta: any) => {
+      if (demoIds.has(meta.id)) return null as any;
+      const cfgKey = (testConfigByTestId as any)[meta.id];
+      const cfg = cfgKey ? (testConfigurations as any)[cfgKey] : null;
+      const fields = cfg?.fields ? cfg.fields.map((f: any) => ({
+        id: f.id,
+        name: f.label,
+        type: f.type,
+        unit: f.unit || '',
+        normalRange: f.refRange || ''
+      })) : [];
+      return {
+        id: meta.id,
+        name: meta.name,
+        category: meta.category || 'General',
+        price: 0,
+        description: '',
+        fields,
+        protected: true
+      } as TestData;
+    }).filter(Boolean) as TestData[];
+
+    const fallback = [...listA, ...listB, ...listC].find(t => t.id === id) || null;
+    return fallback;
   } catch (error) {
     console.error('Error getting test:', error);
     throw error;

@@ -1238,15 +1238,15 @@ const SampleCollectionV2: React.FC = () => {
               .pl-6 { padding-left: 1.5rem !important; }
               .px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
               .py-2 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
-              .pt-4 { padding-top: 1rem !important; }
-              .pt-6 { padding-top: 1.5rem !important; }
-              .pt-8 { padding-top: 2rem !important; }
+              .pt-4 { padding-top: 0.5rem !important; }
+              .pt-6 { padding-top: 1rem !important; }
+              .pt-8 { padding-top: 1.5rem !important; }
 
               /* Unified table styling */
               .print-table {
                 width: 100% !important;
                 border-collapse: collapse !important;
-                margin: 3mm 0 !important;
+                margin: 1.5mm 0 !important;
                 font-size: 11px !important;
                 table-layout: fixed !important;
                 border: none !important;
@@ -1322,6 +1322,42 @@ const SampleCollectionV2: React.FC = () => {
                 margin: 0 !important;
                 padding: 0 !important;
               }
+              /* Standalone badge style to avoid relying on Tailwind in print window */
+              .report-badge {
+                display: inline-block !important;
+                background: #2563eb !important; /* Tailwind bg-blue-600 */
+                color: #ffffff !important;       /* Tailwind text-white */
+                padding: 2px 8px !important;     /* ~py-1 px-3 */
+                font-weight: 700 !important;     /* font-bold */
+                font-size: 0.875rem !important;  /* text-sm */
+                line-height: 1.25 !important;
+                border-radius: 3px !important;
+              }
+              /* Ensure bottom notes show in preview like print */
+              .print-notes-fixed {
+                position: absolute !important;
+                left: 10mm !important;
+                right: 10mm !important;
+                bottom: 15mm !important;
+                width: calc(100% - 20mm) !important;
+                margin: 0 auto !important;
+                text-align: center !important;
+                font-size: 8px !important;
+                line-height: 1.2 !important;
+              }
+              /* Position footer at the absolute bottom in preview */
+              .print-footer {
+                position: absolute !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+              /* Fine-tune signature subtitle alignment */
+              .sig-left .subtitle { margin-left: 6mm !important; display: inline-block !important; }
+              .sig-right .subtitle { margin-right: 6mm !important; display: inline-block !important; }
               .print-signatures { 
                 width: calc(100% - 20mm) !important;
                 position: absolute !important;
@@ -1412,12 +1448,14 @@ const SampleCollectionV2: React.FC = () => {
               .print-preview .print-content {
                 width: 210mm !important;
                 min-height: 297mm !important;
+                height: 297mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #ffffff !important;
                 box-shadow: none !important;
                 border-radius: 0 !important;
                 position: relative !important;
+                box-sizing: border-box !important;
               }
               .print-header img {
                 width: 100% !important;
@@ -1432,6 +1470,11 @@ const SampleCollectionV2: React.FC = () => {
                 display: flex !important;
                 flex-direction: column !important;
               }
+              /* Position test title slightly lower */
+              .test-title { margin: 2mm 0 !important; }
+              /* Reduce gaps between Name / Age / Referred By in preview */
+              .patient-left > * { margin-top: 0 !important; }
+              .patient-left p { margin: 1mm 0 !important; }
               /* QR block alignment under 'Lab Report' title */
               .qr-block {
                 display: flex !important;
@@ -1482,8 +1525,9 @@ const SampleCollectionV2: React.FC = () => {
                   padding: 0 10mm !important;
                 }
                 /* Emphasize key patient details on print to match 'Lab Report' badge (text-sm ~14px) */
-                .patient-left p { font-size: 14px !important; font-weight: 800 !important; line-height: 1.2 !important; }
+                .patient-left p { font-size: 14px !important; font-weight: 800 !important; line-height: 1.1 !important; margin: 1mm 0 !important; }
                 .patient-left span { font-weight: 800 !important; font-size: 14px !important; }
+                .patient-left { margin-left: -2mm !important; }
                 .qr-code {
                   width: 40px !important;
                   height: 40px !important;
@@ -1530,8 +1574,8 @@ const SampleCollectionV2: React.FC = () => {
               <div className="print-body flex-1">
                 <div>
                   {/* Centered REPORT Title */}
-                  <div className="text-center mb-1" style={{marginTop: '-2mm'}}>
-                    <div className="bg-blue-600 text-white py-1 px-3 font-bold text-sm">
+                  <div className="text-center mb-1" style={{marginTop: '-4mm'}}>
+                    <div className="report-badge">
                       Lab Report
                     </div>
                   </div>
@@ -1546,7 +1590,7 @@ const SampleCollectionV2: React.FC = () => {
                     </div>
                     
                     {/* Center QR Code */}
-                    <div className="flex flex-col items-center justify-center flex-shrink-0">
+                    <div className="flex flex-col items-center justify-center flex-shrink-0 qr-block">
                         <QRCode
                           value={savedReportId ? `${location.origin}/public-report/${savedReportId}${savedReportToken ? `?token=${savedReportToken}` : ''}` : `${location.origin}/public-report/pending`}
                           size={40}
@@ -1618,13 +1662,13 @@ const SampleCollectionV2: React.FC = () => {
 
                 {/* Signatures Section */}
                 <div className="print-signatures flex justify-between items-center mt-8 mb-4" style={{position: 'absolute', left: '10mm', right: '10mm', bottom: '35mm', width: 'calc(100% - 20mm)'}}>
-                  <div className="text-left">
+                  <div className="text-left sig-left">
                     <div className="font-bold text-sm">Komal Kumari</div>
-                    <div className="text-xs">DMLT</div>
+                    <div className="text-xs subtitle">DMLT</div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right sig-right">
                     <div className="font-bold text-sm">Dr. Amar Kumar</div>
-                    <div className="text-xs">MBBS</div>
+                    <div className="text-xs subtitle">MBBS</div>
                   </div>
                 </div>
                 
@@ -1645,7 +1689,7 @@ const SampleCollectionV2: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="p-4 border-t flex items-center justify-between">
+          <div className="p-4 border-t flex items-center justify-center gap-3">
             <Button
               variant="outline"
               onClick={() => setShowPrintDialog(false)}
