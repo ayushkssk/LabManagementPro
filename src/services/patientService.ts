@@ -31,6 +31,7 @@ export interface PatientData {
   city: string;
   state: string;
   pincode: string;
+  doctor?: string; // Referred By (Doctor)
   registrationDate: Date;
   lastVisit: Date;
   balance: number;
@@ -59,6 +60,7 @@ const fromFirestore = (doc: any): PatientData => {
     city: data.city,
     state: data.state,
     pincode: data.pincode,
+    doctor: data.doctor,
     registrationDate: data.registrationDate?.toDate(),
     lastVisit: data.lastVisit?.toDate(),
     balance: data.balance || 0,

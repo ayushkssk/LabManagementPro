@@ -14,6 +14,7 @@ import LabDashboard from "@/pages/lab/LabDashboard";
 import PatientRegistration from "@/pages/lab/PatientRegistration";
 import SampleCollectionV2 from "@/pages/lab/SampleCollectionV2";
 import Patients from "@/pages/patients/Patients";
+import PatientDetails from "@/pages/patients/PatientDetails";
 import TestsList from "@/pages/tests/TestsList";
 import TestDetails from "@/pages/tests/TestDetails";
 import NotFound from "@/pages/NotFound";
@@ -137,6 +138,11 @@ const AppRoutes = () => {
       <Route path="/patients" element={
         <ProtectedRoute requiredRole={['admin', 'technician']}>
           <Patients />
+        </ProtectedRoute>
+      } />
+      <Route path="/patients/:id" element={
+        <ProtectedRoute requiredRole={['admin', 'technician']}>
+          <PatientDetails />
         </ProtectedRoute>
       } />
       <Route path="/tests" element={

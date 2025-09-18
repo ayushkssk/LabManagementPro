@@ -20,6 +20,7 @@ import { labReportService, LabReport, LabReportParameter, TestDraft } from '@/se
 import { useAuth } from '@/context/AuthContext';
 import { useHospitals } from '@/context/HospitalContext';
 import { generateReportId, generateReportToken, saveReportData, createShareableReportUrl } from '@/utils/reportStorage';
+import { LabReportShared, LabReportParameterItem } from '@/components/print/LabReportShared';
 
 // Types
 interface Sample {
@@ -79,7 +80,7 @@ const SampleCollectionV2: React.FC = () => {
   // Navigation and routing
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
-  
+
   // State management
   const [isLoading, setIsLoading] = useState(true);
   const [patient, setPatient] = useState<PatientData | null>(null);
@@ -144,10 +145,10 @@ const SampleCollectionV2: React.FC = () => {
     const q = (testSearchQuery || '').trim().toLowerCase();
     const base = q
       ? availableTests.filter(test =>
-          test.name.toLowerCase().includes(q) ||
-          test.category.toLowerCase().includes(q) ||
-          test.id.toLowerCase().includes(q)
-        )
+        test.name.toLowerCase().includes(q) ||
+        test.category.toLowerCase().includes(q) ||
+        test.id.toLowerCase().includes(q)
+      )
       : availableTests.slice();
     return base.sort((a, b) => {
       const ia = recentTestPriority.indexOf(a.id);
@@ -162,20 +163,20 @@ const SampleCollectionV2: React.FC = () => {
   // Load test configuration when selected test changes
   useEffect(() => {
     if (!selectedTestId || !patient) return;
-    
+
     // Get the test configuration key from the mapping
     const configKey = testConfigByTestId[selectedTestId as keyof typeof testConfigByTestId];
     if (!configKey) return;
-    
+
     // Get the configuration for this test
     const config = testConfigurations[configKey as keyof typeof testConfigurations];
     if (!config) return;
-    
+
     // Load saved draft data for this test
     const loadDraftData = async () => {
       try {
         const draft = await labReportService.getTestDraft(patient.id, selectedTestId);
-        
+
         // Convert the configuration to table parameters
         const params: Record<string, TableParam> = {};
         config.fields.forEach((field: any) => {
@@ -192,21 +193,21 @@ const SampleCollectionV2: React.FC = () => {
             options: field.type === 'select' ? field.options : undefined,
           };
         });
-        
+
         setParameters(params);
-        
+
         // Update sample collection status if draft exists
         if (draft && draft.collected) {
-          setSamples(prevSamples => 
-            prevSamples.map(sample => 
-              sample.testId === selectedTestId 
-                ? { 
-                    ...sample, 
-                    collected: draft.collected,
-                    collectedAt: draft.collectedAt,
-                    collectedBy: draft.collectedBy,
-                    notes: draft.notes || sample.notes
-                  }
+          setSamples(prevSamples =>
+            prevSamples.map(sample =>
+              sample.testId === selectedTestId
+                ? {
+                  ...sample,
+                  collected: draft.collected,
+                  collectedAt: draft.collectedAt,
+                  collectedBy: draft.collectedBy,
+                  notes: draft.notes || sample.notes
+                }
                 : sample
             )
           );
@@ -231,7 +232,7 @@ const SampleCollectionV2: React.FC = () => {
         setParameters(params);
       }
     };
-    
+
     loadDraftData();
   }, [selectedTestId, patient]);
 
@@ -239,17 +240,17 @@ const SampleCollectionV2: React.FC = () => {
   useEffect(() => {
     const fetchPatientData = async () => {
       if (!patientId) return;
-      
+
       try {
         setIsLoading(true);
         const patientData = await getPatient(patientId);
-        
+
         if (!patientData) {
           throw new Error('Patient not found');
         }
-        
+
         setPatient(patientData);
-        
+
         // Build samples from patient's tests
         const selectedIds = patientData.tests || [];
         const orderedSamples = selectedIds.map(testId => {
@@ -266,7 +267,7 @@ const SampleCollectionV2: React.FC = () => {
               notes: ''
             };
           }
-          
+
           // Then try demoTests as fallback
           const fallback = demoTests.find(t => t.id === testId);
           return {
@@ -279,9 +280,9 @@ const SampleCollectionV2: React.FC = () => {
             notes: ''
           };
         });
-        
+
         setSamples(orderedSamples);
-        
+
         // Auto-select first test if available
         if (orderedSamples.length > 0) {
           setSelectedTestId(orderedSamples[0].testId);
@@ -297,23 +298,23 @@ const SampleCollectionV2: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchPatientData();
   }, [patientId]);
 
   // Handle test selection
   const handleTestSelect = useCallback((testId: string) => {
     setSelectedTestId(testId);
-    
+
     // Reset parameters when changing tests
     setParameters({});
-    
+
     // Initialize parameters for the selected test
     const configKey = testConfigByTestId[testId];
     if (!testConfigByTestId[testId] || !testConfigurations[testConfigByTestId[testId]]) {
       const testConfig = testConfigurations[configKey];
       const initialParams: { [key: string]: TableParam } = {};
-      
+
       testConfig.fields.forEach(field => {
         initialParams[field.id] = {
           id: field.id,
@@ -326,7 +327,7 @@ const SampleCollectionV2: React.FC = () => {
           options: field.type === 'select' ? field.options : undefined
         };
       });
-      
+
       setParameters(initialParams);
     }
   }, [selectedTestId]);
@@ -334,27 +335,27 @@ const SampleCollectionV2: React.FC = () => {
   // Toggle sample collected status
   const toggleSampleCollected = useCallback((testId: string) => {
     const wasCollected = samples.find(s => s.testId === testId)?.collected || false;
-    
+
     setSamples(prevSamples => {
       const updatedSamples = prevSamples.map(sample =>
         sample.testId === testId
           ? {
-              ...sample,
-              collected: !sample.collected,
-              collectedAt: sample.collected ? undefined : new Date(),
-              collectedBy: sample.collected ? undefined : technicianName || 'System',
-              notes: !sample.collected && !sample.notes ? 'Sample collected' : sample.notes,
-              // Save current parameters when marking as collected
-              parameters: !sample.collected ? Object.fromEntries(
-                Object.entries(parameters).map(([key, param]) => [
-                  key, 
-                  { value: param.value || '', notes: param.notes }
-                ])
-              ) : sample.parameters
-            }
+            ...sample,
+            collected: !sample.collected,
+            collectedAt: sample.collected ? undefined : new Date(),
+            collectedBy: sample.collected ? undefined : technicianName || 'System',
+            notes: !sample.collected && !sample.notes ? 'Sample collected' : sample.notes,
+            // Save current parameters when marking as collected
+            parameters: !sample.collected ? Object.fromEntries(
+              Object.entries(parameters).map(([key, param]) => [
+                key,
+                { value: param.value || '', notes: param.notes }
+              ])
+            ) : sample.parameters
+          }
           : sample
       );
-      
+
       // Update selectedTest if it's the one being toggled
       if (selectedTest?.testId === testId) {
         const updatedTest = updatedSamples.find(s => s.testId === testId);
@@ -366,10 +367,10 @@ const SampleCollectionV2: React.FC = () => {
           }
         }
       }
-      
+
       return updatedSamples;
     });
-    
+
     const test = samples.find(s => s.testId === testId);
     if (test && !test.collected) {
       setCurrentTest({
@@ -380,12 +381,12 @@ const SampleCollectionV2: React.FC = () => {
         notes: 'Sample collected',
         parameters: Object.fromEntries(
           Object.entries(parameters).map(([key, param]) => [
-            key, 
+            key,
             { value: param.value || '', notes: param.notes }
           ])
         )
       });
-      
+
       toast({
         title: 'Sample Collected',
         description: `${test.testName} has been marked as collected.`,
@@ -463,7 +464,7 @@ const SampleCollectionV2: React.FC = () => {
       console.error('Failed to remove test from patient in Firestore:', err);
       toast({ title: 'Sync Error', description: 'Could not sync removed test to database.', variant: 'destructive' });
     }
-    
+
     // If the removed test was selected, select another one or clear selection
     if (selectedTestId === testId) {
       const remainingSamples = samples.filter(s => s.testId !== testId);
@@ -473,13 +474,13 @@ const SampleCollectionV2: React.FC = () => {
         setSelectedTestId(null);
       }
     }
-    
+
     toast({
       title: 'Test Removed',
       description: `${testToRemove.testName} has been removed from the collection.`,
       variant: 'default',
     });
-    
+
     // Clear the test to delete state
     setTestToDelete(null);
   }, [samples, selectedTestId, patient]);
@@ -487,7 +488,7 @@ const SampleCollectionV2: React.FC = () => {
   // Auto-save functionality with debouncing
   const autoSaveTestData = useCallback(async (testId: string, parametersData: Record<string, TableParam>, sampleData: Sample) => {
     if (!patient || !testId) return;
-    
+
     try {
       // Clean and validate parameters data
       const cleanedParameters = Object.fromEntries(
@@ -495,13 +496,13 @@ const SampleCollectionV2: React.FC = () => {
           .filter(([key, param]) => key && param) // Remove undefined entries
           .map(([key, param]) => [
             key,
-            { 
-              value: param.value || '', 
-              notes: param.notes || '' 
+            {
+              value: param.value || '',
+              notes: param.notes || ''
             }
           ])
       );
-      
+
       const draftData: Omit<TestDraft, 'id' | 'createdAt' | 'updatedAt'> = {
         patientId: patient.id,
         testId: testId,
@@ -511,9 +512,9 @@ const SampleCollectionV2: React.FC = () => {
         collectedBy: sampleData.collectedBy || undefined,
         notes: sampleData.notes || undefined
       };
-      
+
       console.log('Preparing to auto-save draft data:', draftData);
-      
+
       // Only save if data has changed
       const dataKey = `${testId}-${JSON.stringify(draftData)}`;
       if (lastSavedData[testId] !== dataKey) {
@@ -530,22 +531,22 @@ const SampleCollectionV2: React.FC = () => {
   // Debounced auto-save effect
   useEffect(() => {
     if (!selectedTestId || !patient) return;
-    
+
     const currentSample = samples.find(s => s.testId === selectedTestId);
     if (!currentSample) return;
-    
+
     // Clear existing timeout
     if (autoSaveTimeout) {
       clearTimeout(autoSaveTimeout);
     }
-    
+
     // Set new timeout for auto-save (1 second delay)
     const timeout = setTimeout(() => {
       autoSaveTestData(selectedTestId, parameters, currentSample);
     }, 1000);
-    
+
     setAutoSaveTimeout(timeout);
-    
+
     // Cleanup timeout on unmount
     return () => {
       if (timeout) {
@@ -557,7 +558,7 @@ const SampleCollectionV2: React.FC = () => {
   // Handle form submission
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!technicianName.trim()) {
       toast({
         title: 'Validation Error',
@@ -566,19 +567,19 @@ const SampleCollectionV2: React.FC = () => {
       });
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       // In a real app, save to your backend here
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       toast({
         title: 'Success',
         description: 'Sample collection recorded successfully',
         variant: 'default',
       });
-      
+
     } catch (error) {
       console.error('Error saving sample collection:', error);
       toast({
@@ -724,7 +725,7 @@ const SampleCollectionV2: React.FC = () => {
             }
           });
         });
-        return Promise.all(imagePromises).then(() => {});
+        return Promise.all(imagePromises).then(() => { });
       }
       return Promise.resolve();
     },
@@ -749,7 +750,7 @@ const SampleCollectionV2: React.FC = () => {
       });
     }
   });
-  
+
   // Function to handle the Save & Print action
   const handleSaveAndPrint = useCallback(async (testId: string) => {
     try {
@@ -758,7 +759,7 @@ const SampleCollectionV2: React.FC = () => {
       console.log('Current parameters state:', parameters);
       console.log('Parameters keys:', Object.keys(parameters));
       console.log('Parameters values:', Object.values(parameters).map(p => ({ value: p?.value, notes: p?.notes })));
-      
+
       const test = samples.find(s => s.testId === testId);
       if (!test || !patient) {
         console.error('Test or patient not found', { test: !!test, patient: !!patient });
@@ -773,7 +774,7 @@ const SampleCollectionV2: React.FC = () => {
       // Get test configuration for parameter details
       const configKey = testConfigByTestId[testId];
       const testConfig = configKey ? testConfigurations[configKey] : null;
-      
+
       if (!testConfig) {
         console.error('Test configuration not found for:', testId, 'Available configs:', Object.keys(testConfigurations));
         console.error('Config mapping:', testConfigByTestId);
@@ -816,7 +817,7 @@ const SampleCollectionV2: React.FC = () => {
           const value = param?.value || '';
           const isAbnormal = value && field.refRange && !isValueInRange(value, field.refRange);
           console.log(`Field ${field.id} (${field.label}): "${value}"`);
-          
+
           return {
             id: field.id,
             label: field.label,
@@ -858,12 +859,12 @@ const SampleCollectionV2: React.FC = () => {
       };
 
       console.log('About to save report data:', reportData);
-      
+
       // Save the lab report and get the report ID + token
       const { reportId, token } = await labReportService.saveLabReport(reportData);
       setSavedReportId(reportId);
       setSavedReportToken(token);
-      
+
       // Update the current test with the latest data
       const updatedTest = {
         ...test,
@@ -873,7 +874,7 @@ const SampleCollectionV2: React.FC = () => {
         notes: test.notes || 'Sample collected',
         parameters: Object.fromEntries(
           Object.entries(parameters).map(([key, param]) => [
-            key, 
+            key,
             { value: param.value || '', notes: param.notes }
           ])
         )
@@ -881,10 +882,10 @@ const SampleCollectionV2: React.FC = () => {
 
       console.log('Updated test with parameters:', updatedTest);
       setCurrentTest(updatedTest);
-      
+
       // Update the samples array to keep it in sync
-      setSamples(prevSamples => 
-        prevSamples.map(s => 
+      setSamples(prevSamples =>
+        prevSamples.map(s =>
           s.testId === test.testId ? updatedTest : s
         )
       );
@@ -921,14 +922,14 @@ const SampleCollectionV2: React.FC = () => {
       console.error('Print content not found');
       return;
     }
-    
+
     try {
       // Get the print content HTML
       const printContent = printRef.current.innerHTML;
-      
+
       // Create a new window/tab for printing
       const printWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-      
+
       if (!printWindow) {
         console.error('Failed to open print window');
         return;
@@ -1059,10 +1060,10 @@ const SampleCollectionV2: React.FC = () => {
         </body>
         </html>
       `);
-      
+
       printWindow.document.close();
       printWindow.focus();
-      
+
     } catch (error) {
       console.error('Print error:', error);
     }
@@ -1073,10 +1074,10 @@ const SampleCollectionV2: React.FC = () => {
   // Helper function to check if value is in range
   const isValueInRange = (value: string, range: string): boolean => {
     if (!value || !range) return true;
-    
+
     const numValue = parseFloat(value);
     if (isNaN(numValue)) return true;
-    
+
     // Handle ranges like "21-40", "0.6-1.1", "2.4-5.7", etc.
     const rangeMatch = range.match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
     if (rangeMatch) {
@@ -1084,7 +1085,7 @@ const SampleCollectionV2: React.FC = () => {
       const max = parseFloat(rangeMatch[2]);
       return numValue >= min && numValue <= max;
     }
-    
+
     return true;
   };
 
@@ -1193,548 +1194,143 @@ const SampleCollectionV2: React.FC = () => {
     }
   };
 
-  // Print dialog component
+  // Print dialog component (shared preview + print)
   const PrintDialog = () => {
     if (!showPrintDialog || !currentTest) return null;
 
-    // Get the current test configuration using the mapping
-    const configMap = testConfigByTestId;
-    const configKey = configMap[currentTest.testId];
+    const configKey = testConfigByTestId[currentTest.testId];
     const testConfig = configKey ? testConfigurations[configKey] : null;
-    
-    // Get the actual collected test data from samples array
-    const collectedTest = samples.find(s => s.testId === currentTest.testId);
+
+    const collectedTest = samples.find((s) => s.testId === currentTest.testId);
     const testParameters = collectedTest?.parameters || parameters;
 
+    // Optional backdate controls (date-only). When set, they override the dates shown on print.
+    const [backdateReceivedOn, setBackdateReceivedOn] = useState<string>('');
+    const [backdateReportedOn, setBackdateReportedOn] = useState<string>('');
+
+    const receivedOnDate = backdateReceivedOn
+      ? new Date(`${backdateReceivedOn}T00:00:00`)
+      : (currentTest.collectedAt || new Date());
+
+    const reportedOnDate = backdateReportedOn
+      ? new Date(`${backdateReportedOn}T00:00:00`)
+      : new Date();
+
+    const sharedParams: LabReportParameterItem[] = (testConfig?.fields || [])
+      .map((field: any) => {
+        const p = testParameters[field.id];
+        return {
+          label: field.label,
+          value: p?.value ?? '',
+          unit: field.unit || '',
+          refRange: field.refRange || '',
+        } as LabReportParameterItem;
+      })
+      .filter((p) => (p.value || '').toString().trim() !== '');
+
+    const qrUrl = savedReportId
+      ? `${location.origin}/public-report/${savedReportId}${savedReportToken ? `?token=${savedReportToken}` : ''}`
+      : `${location.origin}/public-report/pending`;
+
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-          <div ref={printRef} className="print-content print-preview">
-            <style>{`
-              /* Unified styles for both preview and print */
-              .print-content {
-                width: 210mm !important;
-                min-height: 297mm !important;
-                display: flex !important;
-                flex-direction: column !important;
-                font-size: 12px !important;
-                line-height: 1.4 !important;
-                background: white !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                position: relative !important;
-                font-family: Arial, sans-serif !important;
-              }
-              /* Minimal utility fallbacks so we don't depend on Tailwind in the print window */
-              .text-center { text-align: center !important; }
-              .text-right { text-align: right !important; }
-              .text-left { text-align: left !important; }
-              .font-semibold { font-weight: 600 !important; }
-              .font-bold { font-weight: 700 !important; }
-              .text-sm { font-size: 0.875rem !important; }
-              .text-base { font-size: 1rem !important; }
-              .text-xs { font-size: 0.75rem !important; }
-              .text-red-600 { color: #dc2626 !important; }
-              .pl-6 { padding-left: 1.5rem !important; }
-              .px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
-              .py-2 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
-              .pt-4 { padding-top: 0.5rem !important; }
-              .pt-6 { padding-top: 1rem !important; }
-              .pt-8 { padding-top: 1.5rem !important; }
-
-              /* Unified table styling */
-              .print-table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                margin: 1.5mm 0 !important;
-                font-size: 11px !important;
-                table-layout: fixed !important;
-                border: none !important;
-              }
-              .print-table th:nth-child(1), .print-table td:nth-child(1) { width: 30% !important; }
-              .print-table th:nth-child(2), .print-table td:nth-child(2) { width: 25% !important; }
-              .print-table th:nth-child(3), .print-table td:nth-child(3) { width: 15% !important; }
-              .print-table th:nth-child(4), .print-table td:nth-child(4) { width: 30% !important; }
-              .print-table th, .print-table td {
-                border: none !important;
-                padding: 2mm 3mm !important;
-                text-align: left !important;
-                background: transparent !important;
-                vertical-align: top !important;
-                line-height: 1.15 !important;
-              }
-              .print-table th {
-                background-color: #f5f5f5 !important;
-                font-weight: bold !important;
-              }
-              .print-table th:nth-child(1) {
-                text-align: left !important;
-              }
-              .print-table th:nth-child(2), .print-table th:nth-child(3), .print-table th:nth-child(4) {
-                text-align: center !important;
-              }
-              .print-table td:nth-child(1) {
-                text-align: left !important;
-                font-weight: bold !important;
-                white-space: nowrap !important;
-              }
-              .print-table td:nth-child(2), .print-table td:nth-child(3), .print-table td:nth-child(4) {
-                text-align: center !important;
-              }
-              .print-table td.result-cell {
-                font-size: 12px !important;
-                font-weight: bold !important;
-                text-align: center !important;
-              }
-              .print-header { 
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-              .print-header img {
-                width: 100% !important;
-                height: auto !important;
-                max-height: 60mm !important;
-                display: block !important;
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-              .print-body {
-                flex: 1 !important;
-                padding: 2mm 10mm 60mm 10mm !important;
-                display: flex !important;
-                flex-direction: column !important;
-              }
-              .print-footer {
-                position: absolute !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-              .print-footer img {
-                width: 100% !important;
-                height: auto !important;
-                max-height: 25mm !important;
-                display: block !important;
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-              /* Standalone badge style to avoid relying on Tailwind in print window */
-              .report-badge {
-                display: inline-block !important;
-                background: #2563eb !important; /* Tailwind bg-blue-600 */
-                color: #ffffff !important;       /* Tailwind text-white */
-                padding: 2px 8px !important;     /* ~py-1 px-3 */
-                font-weight: 700 !important;     /* font-bold */
-                font-size: 0.875rem !important;  /* text-sm */
-                line-height: 1.25 !important;
-                border-radius: 3px !important;
-              }
-              /* Ensure bottom notes show in preview like print */
-              .print-notes-fixed {
-                position: absolute !important;
-                left: 10mm !important;
-                right: 10mm !important;
-                bottom: 15mm !important;
-                width: calc(100% - 20mm) !important;
-                margin: 0 auto !important;
-                text-align: center !important;
-                font-size: 8px !important;
-                line-height: 1.2 !important;
-              }
-              /* Position footer at the absolute bottom in preview */
-              .print-footer {
-                position: absolute !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-              /* Fine-tune signature subtitle alignment */
-              .sig-left .subtitle { margin-left: 6mm !important; display: inline-block !important; }
-              .sig-right .subtitle { margin-right: 6mm !important; display: inline-block !important; }
-              .print-signatures { 
-                width: calc(100% - 20mm) !important;
-                position: absolute !important;
-                left: 10mm !important;
-                right: 10mm !important;
-                bottom: 35mm !important;
-                display: flex !important;
-                justify-content: space-between !important;
-                align-items: center !important;
-                font-size: 12px !important;
-              }
-              .print-signatures .text-left {
-                text-align: left !important;
-              }
-              .print-signatures .text-right {
-                text-align: right !important;
-              }
-              .print-signatures .font-bold {
-                font-weight: bold !important;
-                font-size: 14px !important;
-              }
-              .print-signatures .text-xs {
-                font-size: 10px !important;
-              }
-              .print-notes-fixed {
-                position: absolute !important;
-                left: 10mm !important;
-                right: 10mm !important;
-                bottom: 15mm !important;
-                width: calc(100% - 20mm) !important;
-                margin: 0 auto !important;
-                text-align: center !important;
-                font-size: 8px !important;
-                line-height: 1.2 !important;
-              }
-              .print-notes { text-align: center; }
-              .print-content table thead th { text-align: left; }
-              
-              /* Watermark for print */
-              @media print {
-                .print-content {
-                  position: relative;
-                }
-                .test-title {
-                  text-align: center;
-                  margin-top: -1px;
-                  margin-bottom: 2px;
-                  font-weight: bold;
-                  font-size: 11px;
-                } 
-                .print-watermark {
-                  position: fixed;
-                  top: 0;
-                  left: 0;
-                  right: 0;
-                  bottom: 0;
-                  background: url('/watermark.png') no-repeat center center;
-                  background-size: 80% auto;
-                  opacity: 0.1 !important;
-                  z-index: 9999;
-                  pointer-events: none;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-                @page {
-                  margin: 0;
-                  size: A4;
-                }
-              }
-
-              /* Preview container styling */
-              .print-preview {
-                display: flex !important;
-                justify-content: center !important;
-                align-items: flex-start !important;
-                min-height: 100vh !important;
-                background: #f5f5f5 !important;
-                padding: 20px !important;
-              }
-              /* Screen preview should look EXACTLY like print */
-              .print-preview {
-                display: flex !important;
-                align-items: flex-start !important;
-                justify-content: center !important;
-                background: #ffffff !important;
-                padding: 0 !important;
-              }
-              .print-preview .print-content {
-                width: 210mm !important;
-                min-height: 297mm !important;
-                height: 297mm !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: #ffffff !important;
-                box-shadow: none !important;
-                border-radius: 0 !important;
-                position: relative !important;
-                box-sizing: border-box !important;
-              }
-              .print-header img {
-                width: 100% !important;
-                height: auto !important;
-                max-height: 60mm !important;
-                display: block !important;
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-              .print-body {
-                padding: 5mm 10mm 60mm 10mm !important;
-                display: flex !important;
-                flex-direction: column !important;
-              }
-              /* Position test title slightly lower */
-              .test-title { margin: 2mm 0 !important; }
-              /* Reduce gaps between Name / Age / Referred By in preview */
-              .patient-left > * { margin-top: 0 !important; }
-              .patient-left p { margin: 1mm 0 !important; }
-              /* QR block alignment under 'Lab Report' title */
-              .qr-block {
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                width: 18mm !important;
-                margin: 0 4mm !important;
-                transform: translateX(-5mm) !important; /* shift a bit left */
-              }
-              .print-footer img {
-                width: 100% !important;
-                height: auto !important;
-                max-height: 25mm !important;
-                display: block !important;
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-
-              @media print {
-                @page {
-                  size: A4 !important;
-                  margin: 0 !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-                .print-container {
-                  width: 210mm !important;
-                  min-height: 297mm !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  box-shadow: none !important;
-                  border-radius: 0 !important;
-                  background: white !important;
-                }
-                .print-preview {
-                  background: white !important;
-                  padding: 0 !important;
-                }
-                .no-print { display: none !important; }
-                .patient-info {
-                  font-size: 10px !important;
-                  font-weight: 600 !important;
-                  margin-bottom: 4px !important;
-                  display: flex !important;
-                  justify-content: space-between !important;
-                  align-items: center !important;
-                  line-height: 1.1 !important;
-                  padding: 0 10mm !important;
-                }
-                /* Emphasize key patient details on print to match 'Lab Report' badge (text-sm ~14px) */
-                .patient-left p { font-size: 14px !important; font-weight: 800 !important; line-height: 1.1 !important; margin: 1mm 0 !important; }
-                .patient-left span { font-weight: 800 !important; font-size: 14px !important; }
-                .patient-left { margin-left: -2mm !important; }
-                .qr-code {
-                  width: 40px !important;
-                  height: 40px !important;
-                }
-                .test-title h3 {
-                  font-size: 12px !important;
-                  margin: 0 auto !important;
-                  text-align: center !important;
-                  font-weight: bold !important;
-                  letter-spacing: 0.3px !important;
-                }
-                /* Ensure table headers are left-aligned in print */
-                .print-content table thead th {
-                  text-align: left !important;
-                }
-              }
-            `}</style>
-            
-            <div className="print-content" style={{ position: 'relative' }}>
-              <div className="print-watermark" style={{
-                display: 'block',
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '80%',
-                height: '80%',
-                background: 'url(/watermark.png) no-repeat center center',
-                backgroundSize: 'contain',
-                opacity: 0.1,
-                zIndex: 1,
-                pointerEvents: 'none'
-              }}></div>
-               {/* Hospital Header - Full Width */}
-              <div className="print-header">
-                <img 
-                  src="/letetrheadheader.png" 
-                  alt="Hospital Letterhead" 
-                  className="w-full h-auto"
-                />
-              </div>
-
-              {/* Report Body Content */}
-              <div className="print-body flex-1">
-                <div>
-                  {/* Centered REPORT Title */}
-                  <div className="text-center mb-1" style={{marginTop: '-4mm'}}>
-                    <div className="report-badge">
-                      Lab Report
-                    </div>
-                  </div>
-
-                  {/* Patient Information Row */}
-                  <div className="flex justify-between items-center mb-2 patient-info">
-                    {/* Left Side */}
-                    <div className="space-y-0.5 flex-1 patient-left">
-                      <p><span className="font-bold">Name: </span><span className="font-bold">{patient?.name || 'N/A'}</span></p>
-                      <p><span className="font-bold">Age: </span><span className="font-bold">{patient?.age || 'N/A'} Year</span></p>
-                      <p><span className="font-bold">Referred By: </span><span className="font-bold">{'Dr. SWATI HOSPITAL'}</span></p>
-                    </div>
-                    
-                    {/* Center QR Code */}
-                    <div className="flex flex-col items-center justify-center flex-shrink-0 qr-block">
-                        <QRCode
-                          value={savedReportId ? `${location.origin}/public-report/${savedReportId}${savedReportToken ? `?token=${savedReportToken}` : ''}` : `${location.origin}/public-report/pending`}
-                          size={40}
-                          level="M"
-                          className="qr-code"
-                        />
-                    </div>
-                    
-                    {/* Right Side */}
-                    <div className="space-y-0.5 text-right flex-1">
-                      <p><span className="font-bold">Gender: </span><span className="font-bold">{patient?.gender || 'N/A'}</span></p>
-                      <p><span className="font-bold">Received On: </span><span className="font-bold">{currentTest?.collectedAt ? new Date(currentTest.collectedAt).toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true}) : new Date().toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true})}</span></p>
-                      <p><span className="font-bold">Reported On: </span><span className="font-bold">{new Date().toLocaleString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true})}</span></p>
-                    </div>
-                  </div>
-
-                  {/* Test Name */}
-                  <div className="text-center my-2 test-title">
-                    <h3 className="text-base font-bold border-b-2 border-black inline-block px-3 pb-0.5">
-                      {currentTest.testName?.toUpperCase() || 'LABORATORY TEST'}
-                    </h3>
-                  </div>
-                  
-                  {/* Test Results Table */}
-                  <div className="flex-1 flex justify-center">
-                    <table className="border-collapse print-table">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="pl-2 pr-1 py-1.5 text-left font-semibold w-[30%]">Parameter</th>
-                          <th className="px-2 py-1.5 text-center font-semibold w-[25%]">Result</th>
-                          <th className="px-2 py-1.5 text-center font-semibold w-[15%]">Unit</th>
-                          <th className="px-2 py-1.5 text-center font-semibold w-[30%]">Normal Range</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(testConfig?.fields || [])
-                          .map((field: any) => {
-                            const param = testParameters[field.id];
-                            if (!param?.value || param.value.trim() === '') return null;
-                            return { field, param };
-                          })
-                          .filter(Boolean)
-                          .map((item: any) => {
-                            const { field, param } = item;
-                            const isAbnormal = param?.value && field.refRange && !isValueInRange(param.value, field.refRange);
-                            return (
-                              <tr key={field.id} className="hover:bg-gray-50 align-top">
-                                <td className="pl-2 pr-0 py-1.5 font-bold text-sm" style={{whiteSpace: 'nowrap'}}>{field.label}</td>
-                                <td className={`pl-0 pr-2 py-1.5 text-center font-bold text-sm result-cell break-words ${isAbnormal ? 'text-red-600' : ''}`}> 
-                                  {param?.value || '-'} {isAbnormal && (parseFloat(param?.value || '0') > parseFloat(field.refRange?.split('-')[1] || '0') ? '↑' : '↓')}
-                                </td>
-                                <td className="px-2 py-1.5 text-center break-words text-sm">{field.unit || '-'}</td>
-                                <td className="px-2 py-1.5 text-center break-words text-sm">{field.refRange || '-'}</td>
-                              </tr>
-                            );
-                          })}
-                        {/* Show message if no parameters have values */}
-                        {(!testConfig?.fields?.some((field: any) => testParameters[field.id]?.value?.trim())) && (
-                          <tr>
-                            <td colSpan={4} className="px-3 py-4 text-center text-gray-500">
-                              No test results entered yet
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Signatures Section */}
-                <div className="print-signatures flex justify-between items-center mt-8 mb-4" style={{position: 'absolute', left: '10mm', right: '10mm', bottom: '35mm', width: 'calc(100% - 20mm)'}}>
-                  <div className="text-left sig-left">
-                    <div className="font-bold text-sm">Komal Kumari</div>
-                    <div className="text-xs subtitle">DMLT</div>
-                  </div>
-                  <div className="text-right sig-right">
-                    <div className="font-bold text-sm">Dr. Amar Kumar</div>
-                    <div className="text-xs subtitle">MBBS</div>
-                  </div>
-                </div>
-                
-                {/* Notes fixed at bottom above footer */}
-                <div className="print-notes-fixed text-xs text-gray-700 text-center">
-                  <p className="mb-0.5 text-xs">• Clinical Correlation is essential for Final Diagnosis • Not For Medico Legal Purpose</p>
-                  <p className="text-gray-600 text-xs">• If test results are unexpected, please contact the laboratory</p>
-                </div>
-              </div>
-
-              {/* Footer Image - Full Width */}
-              <div className="print-footer">
-                <img 
-                  src="/letetrheadfooter.png" 
-                  alt="Hospital Footer" 
-                  className="w-full h-auto"
-                />
-              </div>
+      <div className="fixed inset-0 z-50 bg-background">
+        <div className="flex h-full w-full items-stretch">
+          {/* Left: Full preview */}
+          <div className="flex-1 min-w-0 overflow-auto flex items-center justify-center p-4 bg-muted/30">
+            <div ref={printRef} className="print-preview">
+              <LabReportShared
+                patient={{
+                  name: patient?.name || 'N/A',
+                  age: patient?.age || 'N/A',
+                  gender: patient?.gender || 'N/A',
+                  referredBy: (patient as any)?.doctor || (currentTest as any)?.doctor || ''
+                }}
+                testName={currentTest.testName || 'Laboratory Test'}
+                collectedAt={receivedOnDate}
+                reportedOn={reportedOnDate}
+                parameters={sharedParams}
+                qrUrl={qrUrl}
+                headerSrc="/letetrheadheader.png"
+                footerSrc="/letetrheadfooter.png"
+                watermarkSrc="/watermark.png"
+              />
             </div>
           </div>
-          <div className="p-4 border-t flex items-center justify-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowPrintDialog(false)}
-            >
-              Close
-            </Button>
-            <div className="flex items-center gap-2">
-              <Button 
-                onClick={() => {
-                // Use the print content from this dialog's printRef
-                const printContent = printRef.current;
-                if (printContent) {
-                  const printWindow = window.open('', '_blank');
-                  if (printWindow) {
-                    printWindow.document.write(`
-                      <!DOCTYPE html>
-                      <html>
-                        <head>
-                          <title>Lab Report - ${patient?.name || 'Patient'}</title>
-                          <style>
-                            @page { size: A4; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                            body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-                            .no-print { display: none !important; }
-                            ${printContent.querySelector('style')?.innerHTML || ''}
-                          </style>
-                        </head>
-                        <body>
-                          ${printContent.querySelector('.print-content')?.outerHTML || printContent.innerHTML}
-                        </body>
-                      </html>
-                    `);
-                    printWindow.document.close();
-                    printWindow.focus();
-                    setTimeout(() => {
-                      printWindow.print();
-                      printWindow.close();
-                    }, 250);
-                  }
-                }
-              }}
-                className="bg-primary"
-              >
-                <Printer className="mr-2 h-4 w-4" />
-                Print Report
+          {/* Right: Settings panel */}
+          <div className="w-full max-w-md h-full overflow-auto border-l bg-card flex flex-col">
+            <div className="p-4 border-b">
+              <div className="text-lg font-semibold">Print Settings</div>
+              <div className="text-xs text-muted-foreground mt-1">Left side shows the exact print layout. Adjust settings here.</div>
+            </div>
+            <div className="p-4 space-y-4 flex-1">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Backdate Received On</div>
+                <Input
+                  type="date"
+                  value={backdateReceivedOn}
+                  onChange={(e) => setBackdateReceivedOn(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Backdate Reported On</div>
+                <Input
+                  type="date"
+                  value={backdateReportedOn}
+                  onChange={(e) => setBackdateReportedOn(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <Button
+                  variant="ghost"
+                  onClick={() => { setBackdateReceivedOn(''); setBackdateReportedOn(''); }}
+                  className="text-xs"
+                >
+                  Reset Dates
+                </Button>
+              </div>
+            </div>
+            <div className="p-4 border-t flex items-center justify-between gap-2">
+              <Button variant="outline" onClick={() => setShowPrintDialog(false)}>
+                Close
               </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const content = printRef.current;
+                    if (!content) return;
+                    const win = window.open('', '_blank');
+                    if (!win) return;
+                    const styleTag = content.querySelector('style')?.outerHTML || '';
+                    const pageHtml = content.querySelector('.print-content')?.outerHTML || content.innerHTML;
+                    win.document.write(`<!DOCTYPE html><html><head><title>Lab Report - ${patient?.name || 'Patient'}</title><meta charSet="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />${styleTag}<style>@page{size:A4;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif;width:210mm;height:297mm}img{display:block;max-width:100%}body *{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}</style></head><body>${pageHtml}</body></html>`);
+                    win.document.close();
+                    win.focus();
+                  }}
+                >
+                  Open in New Tab
+                </Button>
+                <Button
+                  onClick={() => {
+                    const content = printRef.current;
+                    if (!content) return;
+                    const win = window.open('', '_blank');
+                    if (!win) return;
+                    const styleTag = content.querySelector('style')?.outerHTML || '';
+                    const pageHtml = content.querySelector('.print-content')?.outerHTML || content.innerHTML;
+                    win.document.write(`<!DOCTYPE html><html><head><title>Lab Report - ${patient?.name || 'Patient'}</title><meta charSet="utf-8" />${styleTag}<style>@page{size:A4;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}*,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif;width:210mm;height:297mm}img{display:block;max-width:100%}body *{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}</style></head><body>${pageHtml}</body></html>`);
+                    win.document.close();
+                    win.focus();
+                    setTimeout(() => { win.print(); win.close(); }, 250);
+                  }}
+                  className="bg-primary"
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  Print Report
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1887,11 +1483,11 @@ const SampleCollectionV2: React.FC = () => {
                   filteredSamples.map((sample) => (
                     <div
                       key={sample.testId}
-                      className={`p-3 rounded-lg border transition-all ${
-                        selectedTestId === sample.testId
-                          ? 'bg-primary/10 border-primary/30 shadow-sm'
-                          : 'hover:bg-muted/50 border-transparent'
-                      }`}
+                      className={`p - 3 rounded - lg border transition - all ${
+  selectedTestId === sample.testId
+    ? 'bg-primary/10 border-primary/30 shadow-sm'
+    : 'hover:bg-muted/50 border-transparent'
+} `}
                     >
                       <div 
                         onClick={() => handleTestSelect(sample.testId)}
